@@ -1,0 +1,13 @@
+.env
+/documents/RetailIQ_Agile.docx
+/documents/*jpg
+/documents/*png
+/logs/
+/temp/
+/cache/
+*.log
+*.tmp
+*.bak
+.DS_Store
+/main-stack/client/node_modules/
+/main-stack/server/node_modules/
