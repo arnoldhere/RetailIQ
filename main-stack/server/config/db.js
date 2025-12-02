@@ -6,6 +6,7 @@ const knex = require("knex")({
 		password: process.env.DB_PASSWORD_SQL,
 		database: process.env.DB_NAME_SQL,
 	},
+	pool: { max: 10 },
 });
 
 module.exports = knex;
