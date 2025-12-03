@@ -82,7 +82,7 @@ export default function CustomerHome() {
 								color="gray.900"
 								_hover={{ bg: "gray.100" }}
 							>
-								Explore More
+								Explore Products
 							</Button>
 							{/* <Button
 								colorScheme="whiteAlpha"

@@ -1,0 +1,11 @@
+-- upto now 
+    - authentication login, signup, reset password
+    - RBAC 
+    - basic supplier dashboard
+    - basic customer home
+    - basic admin dashboard and display users list 
+
+-- now next
+    - add products categories and products from admin
+    - read and edit products from admin
+    - explore products @ customer    

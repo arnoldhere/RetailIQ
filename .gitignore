@@ -11,3 +11,4 @@
 .DS_Store
 /main-stack/client/node_modules/
 /main-stack/server/node_modules/
+/main-stack/todo.txt/
