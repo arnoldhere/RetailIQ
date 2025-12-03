@@ -4,3 +4,4 @@ node_modules
 /client/public
 /client/node_modules
 /ml_services/retailiqenv
+demo.py

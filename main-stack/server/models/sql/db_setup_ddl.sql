@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   firstname VARCHAR(100) NOT NULL,
   lastname VARCHAR(100) NOT NULL,
-  role ENUM('admin','customer','store_manager') NOT NULL DEFAULT 'customer',
+  role ENUM('admin','customer','store_manager', 'supplier') NOT NULL DEFAULT 'customer',
   phone VARCHAR(50) UNIQUE,
   store_id INT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
