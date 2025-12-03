@@ -13,6 +13,7 @@ import CustomerHome from './pages/customer/Home'
 
 // Error Page
 import NotFound from './pages/NotFound'
+import UsersList from './pages/Admin/UsersList'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -33,8 +34,8 @@ function AppRoutes() {
         element={
           user ? (
             user.role === 'admin' ? <Navigate to="/admin/dashboard" replace /> :
-            user.role === 'supplier' ? <Navigate to="/supplier/dashboard" replace /> :
-            <Navigate to="/customer/home" replace />
+              user.role === 'supplier' ? <Navigate to="/supplier/dashboard" replace /> :
+                <Navigate to="/customer/home" replace />
           ) : (
             <Navigate to="/auth/login" replace />
           )
@@ -45,6 +46,8 @@ function AppRoutes() {
       <Route path="/supplier/dashboard" element={user?.role === 'supplier' ? <SupplierDashboard /> : <Navigate to="/auth/login" replace />} />
       <Route path="/customer/home" element={user?.role === 'customer' ? <CustomerHome /> : <Navigate to="/auth/login" replace />} />
 
+      {/* Other Admin Routes */}
+      <Route path='/admin/users' element={user?.role === 'admin' ? <UsersList /> : <Navigate to="/auth/login" replace />} />
       {/* 404 Catch All */}
       <Route path="*" element={<NotFound />} />
     </Routes>

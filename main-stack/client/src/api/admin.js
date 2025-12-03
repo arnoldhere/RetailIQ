@@ -4,4 +4,6 @@ export async function getOverview() {
   return client.get('/api/admin/overview')
 }
 
-export default { getOverview }
+export async function getUsers(){
+  return client.get("/api/admin/get-users")
+}

@@ -13,4 +13,13 @@ router.get('/overview', authMiddleware, async (req, res, next) => {
   }
 });
 
+router.get("/get-users", authMiddleware, async(req,res,next)=>{
+    try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getUsers(req, res);
+  } catch (err) {
+    next(err);
+  }
+})
+
 module.exports = router;
