@@ -5,6 +5,9 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 // Auth Pages
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
+import RequestOTP from './pages/auth/RequestOTP'
+import VerifyOTP from './pages/auth/VerifyOTP'
+import ResetPassword from './pages/auth/ResetPassword'
 
 // Dashboard Pages
 import AdminDashboard from './pages/Admin/Dashboard'
@@ -27,6 +30,9 @@ function AppRoutes() {
       {/* Auth Routes */}
       <Route path="/auth/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
       <Route path="/auth/signup" element={!user ? <Signup /> : <Navigate to="/" replace />} />
+      <Route path="/auth/forgot-password" element={!user ? <RequestOTP /> : <Navigate to="/" replace />} />
+      <Route path="/auth/verify-otp" element={!user ? <VerifyOTP /> : <Navigate to="/" replace />} />
+      <Route path="/auth/reset-password" element={!user ? <ResetPassword /> : <Navigate to="/" replace />} />
 
       {/* Protected Routes - Role Based */}
       <Route

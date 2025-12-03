@@ -37,4 +37,36 @@ router.get('/me', authMiddleware, AuthController.me);
 // Logout
 router.post('/logout', AuthController.logout);
 
+// Forgot password: Step 1 - Request OTP
+router.post(
+  '/forgot-password',
+  [
+    body('identifier').notEmpty().withMessage('Email or phone is required'),
+    body('channel').isIn(['email', 'sms']).withMessage('Channel must be email or sms'),
+  ],
+  AuthController.forgotPassword,
+);
+
+// Forgot password: Step 2 - Verify OTP
+router.post(
+  '/verify-otp',
+  [
+    body('identifier').notEmpty().withMessage('Email or phone is required'),
+    body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  ],
+  AuthController.verifyOTP,
+);
+
+// Forgot password: Step 3 - Reset Password
+router.post(
+  '/reset-password',
+  [
+    body('resetToken').notEmpty().withMessage('Reset token is required'),
+    body('newPassword')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters'),
+  ],
+  AuthController.resetPassword,
+);
+
 module.exports = router;

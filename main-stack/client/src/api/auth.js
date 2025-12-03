@@ -20,4 +20,16 @@ export async function logout() {
   return client.post('/api/auth/logout')
 }
 
+export async function forgotPassword(body) {
+  return client.post('/api/auth/forgot-password', body)
+}
+
+export async function verifyOTP(body) {
+  return client.post('/api/auth/verify-otp', body)
+}
+
+export async function resetPassword(body) {
+  return client.post('/api/auth/reset-password', body)
+}
+
 export default client

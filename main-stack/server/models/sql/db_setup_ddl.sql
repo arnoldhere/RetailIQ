@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
   role ENUM('admin','customer','store_manager', 'supplier') NOT NULL DEFAULT 'customer',
   phone VARCHAR(50) UNIQUE,
   store_id INT NULL,
+  otp VARCHAR(10) NULL,
+  otpGeneratedAt TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_users_store (store_id)
