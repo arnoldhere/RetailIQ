@@ -20,6 +20,10 @@ app.use(cors({ origin: CLIENT_URL, credentials: true }));
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
+// admin routes
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);
+
 app.get("/", (req, res) => {
 	res.send("Hello World!");
 });
