@@ -25,6 +25,15 @@ app.use('/api/auth', authRoutes);
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
 
+// public product routes (no auth required)
+const productRoutes = require('./routes/products');
+app.use('/api', productRoutes);
+
+// user routes
+const userRoutes = require("./routes/user")
+app.use('/api/user', userRoutes);
+
+
 // serve media files (uploaded images)
 app.use('/media', express.static(path.join(__dirname, 'media')));
 

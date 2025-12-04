@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ChakraProvider, Box } from '@chakra-ui/react'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { CartProvider } from './context/CartContext'
+import { WishlistProvider } from './context/WishlistContext'
 
 // Auth Pages
 import Login from './pages/auth/Login'
@@ -19,6 +21,12 @@ import NotFound from './pages/NotFound'
 import UsersList from './pages/Admin/UsersList'
 import Categories from './pages/Admin/Categories'
 import Products from './pages/Admin/Products'
+
+// Customer Pages
+import CustomerProducts from './pages/customer/Products'
+import ProductDetail from './pages/customer/ProductDetail'
+import Cart from './pages/customer/Cart'
+import Wishlist from './pages/customer/Wishlist'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -58,6 +66,13 @@ function AppRoutes() {
       <Route path='/admin/users' element={user?.role === 'admin' ? <UsersList /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/categories' element={user?.role === 'admin' ? <Categories /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/products' element={user?.role === 'admin' ? <Products /> : <Navigate to="/auth/login" replace />} />
+
+      {/* Customer Routes */}
+      <Route path='/customer/products' element={user?.role === 'customer' ? <CustomerProducts /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/customer/products/:id' element={user?.role === 'customer' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/customer/cart' element={user?.role === 'customer' ? <Cart /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/customer/wishlist' element={user?.role === 'customer' ? <Wishlist /> : <Navigate to="/auth/login" replace />} />
+
       {/* 404 Catch All */}
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -67,9 +82,13 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <ChakraProvider>
-        <AppRoutes />
-      </ChakraProvider>
+      <CartProvider>
+        <WishlistProvider>
+          <ChakraProvider>
+            <AppRoutes />
+          </ChakraProvider>
+        </WishlistProvider>
+      </CartProvider>
     </AuthProvider>
   )
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
 	Box,
 	Button,
@@ -19,6 +19,8 @@ import {
 	HStack,
 	Text,
 	Icon,
+	Link as ChakraLink,
+	Spacer,
 } from "@chakra-ui/react";
 import { HamburgerIcon, ChevronDownIcon } from "@chakra-ui/icons";
 import { useAuth } from "../context/AuthContext";
@@ -62,15 +64,78 @@ export default function Navbar() {
 						fontWeight="extrabold"
 						cursor="pointer"
 						onClick={() => navigate("/")}
+						flexShrink={0}
 					>
 						RetailIQ
 					</Heading>
 
 					{/* Desktop Menu */}
 					<HStack
+						spacing={6}
+						display={{ base: "none", md: "flex" }}
+						align="center"
+						ml={12}
+					>
+						{/* Navigation Links */}
+						<ChakraLink
+							fontSize="sm"
+							color="gray.300"
+							_hover={{ color: "cyan.400", textDecoration: "none" }}
+							transition="color 0.2s"
+							onClick={() => navigate("/customer/products")}
+						>
+							Explore
+						</ChakraLink>
+						<ChakraLink
+							fontSize="sm"
+							color="gray.300"
+							_hover={{ color: "cyan.400", textDecoration: "none" }}
+							transition="color 0.2s"
+							href="#about"
+						>
+							About Us
+						</ChakraLink>
+						<ChakraLink
+							fontSize="sm"
+							color="gray.300"
+							_hover={{ color: "cyan.400", textDecoration: "none" }}
+							transition="color 0.2s"
+							href="#contact"
+						>
+							Contact Us
+						</ChakraLink>
+
+						{/* Cart & Wishlist Icons (for customers) */}
+						{user?.role === "customer" && (
+							<HStack spacing={3}>
+								<ChakraLink
+									fontSize="sm"
+									color="gray.300"
+									_hover={{ color: "cyan.400" }}
+									onClick={() => navigate("/customer/cart")}
+								>
+									Cart
+								</ChakraLink>
+								<ChakraLink
+									fontSize="sm"
+									color="gray.300"
+									_hover={{ color: "cyan.400" }}
+									onClick={() => navigate("/customer/wishlist")}
+								>
+									Wishlist
+								</ChakraLink>
+							</HStack>
+						)}
+					</HStack>
+
+					<Spacer display={{ base: "none", md: "block" }} />
+
+					{/* Desktop User Menu */}
+					<HStack
 						spacing={4}
 						display={{ base: "none", md: "flex" }}
 						align="center"
+						flexShrink={0}
 					>
 						<Text fontSize="sm" color="gray.300">
 							{user?.firstname && `Welcome, ${user.firstname}`}
@@ -84,25 +149,39 @@ export default function Navbar() {
 								color="gray.100"
 								_hover={{ bg: "whiteAlpha.200" }}
 								_active={{ bg: "whiteAlpha.300" }}
+								size="sm"
 							>
 								{user?.role === "admin"
 									? "👤 Admin"
 									: user?.role === "supplier"
-									? "🏪 Supplier"
-									: "👥 Customer"}
+										? "🏪 Supplier"
+										: "👥 Customer"}
 							</MenuButton>
 							<MenuList
-								// bg="#0B1220"
-								// border="1px solid"
 								borderColor="whiteAlpha.200"
+								bg="rgba(11,18,32,0.98)"
+								backdropFilter="blur(10px)"
 							>
-								<MenuItem _hover={{ bg: "whiteAlpha.200" }}>Profile</MenuItem>
-								<MenuItem _hover={{ bg: "whiteAlpha.200" }}>Settings</MenuItem>
+								<MenuItem
+									_hover={{ bg: "whiteAlpha.200" }}
+									fontSize="sm"
+									color="gray.200"
+								>
+									Profile
+								</MenuItem>
+								<MenuItem
+									_hover={{ bg: "whiteAlpha.200" }}
+									fontSize="sm"
+									color="gray.200"
+								>
+									Settings
+								</MenuItem>
 								<MenuDivider />
 								<MenuItem
 									onClick={handleLogout}
 									color="red.400"
 									_hover={{ bg: "red.900" }}
+									fontSize="sm"
 								>
 									Logout
 								</MenuItem>
@@ -116,6 +195,9 @@ export default function Navbar() {
 						onClick={onOpen}
 						variant="ghost"
 						icon={<HamburgerIcon />}
+						size="md"
+						flexShrink={0}
+						ml={4}
 					>
 						<HamburgerIcon />
 					</Button>
@@ -125,36 +207,130 @@ export default function Navbar() {
 			{/* Mobile Drawer */}
 			<Drawer isOpen={isOpen} placement="right" onClose={onClose} size="xs">
 				<DrawerOverlay />
-				<DrawerContent bg="#0B1220" color="gray.100">
-					<DrawerCloseButton />
+				<DrawerContent bg="rgba(11,18,32,0.98)" backdropFilter="blur(10px)" color="gray.100">
+					<DrawerCloseButton mt={2} />
 					<DrawerBody pt={8}>
-						<VStack spacing={4} align="stretch">
+						<VStack spacing={6} align="stretch">
+							{/* User Info */}
 							{user?.firstname && (
-								<Text fontWeight={600}>
-									{user.firstname} {user.lastname}
-								</Text>
+								<Box borderBottom="1px solid" borderColor="whiteAlpha.200" pb={4}>
+									<Text fontWeight={700} fontSize="md" color="cyan.400" mb={1}>
+										{user.firstname} {user.lastname}
+									</Text>
+									<Text fontSize="xs" color="gray.400">
+										{user?.role === "admin"
+											? "Admin Account"
+											: user?.role === "supplier"
+												? "Supplier Account"
+												: "Customer Account"}
+									</Text>
+								</Box>
 							)}
-							<Text fontSize="sm" color="gray.400">
-								Role:{" "}
-								{user?.role === "admin"
-									? "Admin"
-									: user?.role === "supplier"
-									? "Supplier"
-									: "Customer"}
-							</Text>
-							<Button variant="ghost" _hover={{ bg: "whiteAlpha.200" }}>
-								Profile
-							</Button>
-							<Button variant="ghost" _hover={{ bg: "whiteAlpha.200" }}>
-								Settings
-							</Button>
-							<Button
-								colorScheme="red"
-								variant="outline"
-								onClick={handleLogout}
-							>
-								Logout
-							</Button>
+
+							{/* Navigation Links */}
+							<VStack spacing={3} align="stretch">
+								<Text fontSize="xs" fontWeight="700" color="gray.400" textTransform="uppercase">
+									Navigation
+								</Text>
+								<Button
+									variant="ghost"
+									justifyContent="flex-start"
+									_hover={{ bg: "whiteAlpha.200" }}
+									onClick={() => {
+										navigate("/customer/products");
+										onClose();
+									}}
+									fontSize="sm"
+								>
+									🔍 Explore Products
+								</Button>
+								<Button
+									variant="ghost"
+									justifyContent="flex-start"
+									_hover={{ bg: "whiteAlpha.200" }}
+									onClick={() => onClose()}
+									fontSize="sm"
+								>
+									ℹ️ About Us
+								</Button>
+								<Button
+									variant="ghost"
+									justifyContent="flex-start"
+									_hover={{ bg: "whiteAlpha.200" }}
+									onClick={() => onClose()}
+									fontSize="sm"
+								>
+									📞 Contact Us
+								</Button>
+							</VStack>
+
+							{/* Customer Links */}
+							{user?.role === "customer" && (
+								<VStack spacing={3} align="stretch" borderTop="1px solid" borderColor="whiteAlpha.200" pt={4}>
+									<Text fontSize="xs" fontWeight="700" color="gray.400" textTransform="uppercase">
+										Shopping
+									</Text>
+									<Button
+										variant="ghost"
+										justifyContent="flex-start"
+										_hover={{ bg: "whiteAlpha.200" }}
+										onClick={() => {
+											navigate("/customer/cart");
+											onClose();
+										}}
+										fontSize="sm"
+									>
+										🛒 Shopping Cart
+									</Button>
+									<Button
+										variant="ghost"
+										justifyContent="flex-start"
+										_hover={{ bg: "whiteAlpha.200" }}
+										onClick={() => {
+											navigate("/customer/wishlist");
+											onClose();
+										}}
+										fontSize="sm"
+									>
+										❤️ My Wishlist
+									</Button>
+								</VStack>
+							)}
+
+							{/* Account */}
+							<VStack spacing={3} align="stretch" borderTop="1px solid" borderColor="whiteAlpha.200" pt={4}>
+								<Text fontSize="xs" fontWeight="700" color="gray.400" textTransform="uppercase">
+									Account
+								</Text>
+								<Button
+									variant="ghost"
+									justifyContent="flex-start"
+									_hover={{ bg: "whiteAlpha.200" }}
+									fontSize="sm"
+								>
+									👤 Profile
+								</Button>
+								<Button
+									variant="ghost"
+									justifyContent="flex-start"
+									_hover={{ bg: "whiteAlpha.200" }}
+									fontSize="sm"
+								>
+									⚙️ Settings
+								</Button>
+								<Button
+									colorScheme="red"
+									variant="outline"
+									w="100%"
+									onClick={() => {
+										handleLogout();
+										onClose();
+									}}
+									fontSize="sm"
+								>
+									Logout
+								</Button>
+							</VStack>
 						</VStack>
 					</DrawerBody>
 				</DrawerContent>

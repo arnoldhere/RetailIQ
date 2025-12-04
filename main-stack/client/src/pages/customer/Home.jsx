@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
 	Box,
 	Button,
@@ -11,6 +12,7 @@ import {
 	HStack,
 	Flex,
 	Icon,
+	Link,
 } from "@chakra-ui/react";
 import { ArrowRightIcon, CheckCircleIcon } from "@chakra-ui/icons";
 // import trust icon, tech icons from chkra ui
@@ -25,6 +27,8 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 
 export default function CustomerHome() {
+	const navigate = useNavigate();
+
 	const features = [
 		{
 			icon: FaBullseye,
@@ -75,15 +79,17 @@ export default function CustomerHome() {
 							smooth buying experience powered by real-time intelligence.
 						</Text>
 						<HStack justify="center" spacing={4}>
-							<Button
-								size="lg"
-								fontWeight="600"
-								bg="white"
-								color="gray.900"
-								_hover={{ bg: "gray.100" }}
-							>
-								Explore Products
-							</Button>
+							<Link onClick={() => navigate("/customer/products")}>
+								<Button
+									size="lg"
+									fontWeight="600"
+									bg="white"
+									color="gray.900"
+									_hover={{ bg: "gray.100" }}
+								>
+									Explore Products
+								</Button>
+							</Link>
 							{/* <Button
 								colorScheme="whiteAlpha"
 								variant="outline"
@@ -134,9 +140,7 @@ export default function CustomerHome() {
 									}}
 									transition="all 0.2s ease-out"
 								>
-									<Text fontSize="4xl" mb={3}>
-										{feature.icon}
-									</Text>
+									<Icon as={feature.icon} fontSize="4xl" mb={3} color="cyan.400" />
 									<Heading size="sm" mb={2} color="gray.100">
 										{feature.title}
 									</Heading>
@@ -197,9 +201,10 @@ export default function CustomerHome() {
 					borderColor="whiteAlpha.300"
 				>
 					<Container maxW="container.lg" textAlign="center" px={6}>
-						<Heading size="lg" mb={4} color="white">
-							Are not just the customer?
-							<br />
+						<VStack spacing={3}>
+							<Heading size="lg" mb={2} color="white">
+								Are you not just the customer?
+							</Heading>
 							<Heading
 								size="lg"
 								bgGradient="linear(to-r, red.400, teal.500)"
@@ -209,9 +214,10 @@ export default function CustomerHome() {
 							>
 								Need to manage or grow your retail business?
 							</Heading>
-							{/* <br /> */}
-							Ready to Transform Your Retail Business?
-						</Heading>
+							<Heading size="lg" color="white" fontWeight="600">
+								Ready to Transform Your Retail Business?
+							</Heading>
+						</VStack>
 						<Text color="whiteAlpha.800" mb={6} fontSize="md">
 							Start using RetailIQ today and see the difference AI-powered
 							analytics can make.

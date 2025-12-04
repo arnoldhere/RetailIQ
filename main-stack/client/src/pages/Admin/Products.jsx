@@ -80,9 +80,7 @@ function isBase64(str) {
 
 export default function ProductsPage() {
     const toast = useToast()
-    // const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:888'
-    const BACKEND_URL = 'http://localhost:8888'
-
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
     // -------------------------
     // Top-level theme tokens (ALL hooks here)
     // -------------------------

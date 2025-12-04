@@ -1,13 +1,12 @@
 const db = require('../config/db');
 const fs = require('fs');
 const path = require('path');
+
 // media products dir
 const MEDIA_PRODUCTS_DIR = path.join(__dirname, '..', 'media', 'products');
 if (!fs.existsSync(MEDIA_PRODUCTS_DIR)) {
   fs.mkdirSync(MEDIA_PRODUCTS_DIR, { recursive: true });
 }
-// const Categories = require('../models/sql/categories');
-// const Products = require('../models/sql/products');
 
 function normalizeCount(row) {
   if (!row) return 0;
@@ -41,7 +40,6 @@ function normalizeImages(images) {
 
   return [];
 }
-
 
 /**
  * Save base64 data URLs to disk and return an array of relative paths.
@@ -84,7 +82,6 @@ async function saveBase64Images(images, productName) {
 
   return savedPaths;
 }
-
 
 exports.overview = async (req, res) => {
   try {
@@ -133,7 +130,6 @@ exports.overview = async (req, res) => {
   }
 }
 
-// Categories CRUD
 exports.listCategories = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 100, 500);
@@ -267,7 +263,6 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-
 exports.deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
@@ -315,7 +310,6 @@ exports.deleteCategory = async (req, res) => {
     }
   }
 
-// Products CRUD
 exports.listProducts = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 100, 500);
@@ -420,7 +414,6 @@ exports.createProduct = async (req, res) => {
     return res.status(500).json({ message: 'Failed to create product' });
   }
 };
-
 
 exports.updateProduct = async (req, res) => {
   try {
