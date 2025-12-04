@@ -59,4 +59,44 @@ router.delete('/categories/:id', authMiddleware, async (req, res, next) => {
   }
 });
 
+// Products routes
+const upload = require('../middlewares/upload')
+
+router.get('/products', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.listProducts(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Accept optional multipart uploads (field name: images)
+router.post('/products', authMiddleware, upload.array('images', 5), async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.createProduct(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/products/:id', authMiddleware, upload.array('images', 5), async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.updateProduct(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/products/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.deleteProduct(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

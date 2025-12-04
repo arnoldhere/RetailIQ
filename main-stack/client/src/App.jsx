@@ -18,6 +18,7 @@ import CustomerHome from './pages/customer/Home'
 import NotFound from './pages/NotFound'
 import UsersList from './pages/Admin/UsersList'
 import Categories from './pages/Admin/Categories'
+import Products from './pages/Admin/Products'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -56,6 +57,7 @@ function AppRoutes() {
       {/* Other Admin Routes */}
       <Route path='/admin/users' element={user?.role === 'admin' ? <UsersList /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/categories' element={user?.role === 'admin' ? <Categories /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/admin/products' element={user?.role === 'admin' ? <Products /> : <Navigate to="/auth/login" replace />} />
       {/* 404 Catch All */}
       <Route path="*" element={<NotFound />} />
     </Routes>

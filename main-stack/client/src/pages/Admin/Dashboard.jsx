@@ -82,6 +82,7 @@ export default function AdminDashboard() {
 	const borderColor = useColorModeValue("gray.200", "gray.700");
 	const textMuted = useColorModeValue("gray.600", "gray.300");
 	const iconBg = useColorModeValue("gray.100", "gray.700");
+	const subtleCard = useColorModeValue("white", "gray.800");
 
 	const stats = [
 		{
@@ -131,7 +132,17 @@ export default function AdminDashboard() {
 
 			<Container maxW="container.xl" py={6} flex={1}>
 				<Flex gap={6} align="flex-start">
-					<Box flexShrink={0} display={{ base: "none", md: "block" }}>
+					{/* Sidebar */}
+					<Box
+						as="aside"
+						display={{ base: 'none', lg: 'block' }}
+						rounded="2xl"
+						overflow="hidden"
+						boxShadow="sm"
+						bg={subtleCard}
+						border="1px solid"
+						borderColor={borderColor}
+					>
 						<AdminSidebar />
 					</Box>
 
@@ -242,7 +253,7 @@ export default function AdminDashboard() {
 												<Box key={i} p={4} borderRadius="md">
 													<Text fontWeight="600">{a.title}</Text>
 													<Text fontSize="xs" color={textMuted}>
-														{a.type} • {new Date(a.created_at).toLocaleString()}
+														{a.type} • {new Date(a.created_at).toLocaleDateString()}
 													</Text>
 												</Box>
 											))}

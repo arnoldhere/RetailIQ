@@ -82,6 +82,8 @@ export default function UsersList() {
     const textMuted = useColorModeValue("gray.600", "gray.300");
     const tableHeaderBg = useColorModeValue("gray.100", "gray.800");
     const tableBorder = useColorModeValue("gray.200", "gray.700");
+    const borderColor = useColorModeValue("gray.200", "gray.700");
+    const subtleCard = useColorModeValue("white", "gray.800");
 
     // ---- Derived data: filtering + pagination ----
     const filteredUsers = useMemo(() => {
@@ -129,8 +131,14 @@ export default function UsersList() {
                 <Flex gap={6} align="flex-start" w="100%">
                     {/* sidebar */}
                     <Box
-                        flexShrink={0}
-                        display={{ base: "none", md: "block" }}
+                        as="aside"
+                        display={{ base: 'none', lg: 'block' }}
+                        rounded="2xl"
+                        overflow="hidden"
+                        boxShadow="sm"
+                        bg={subtleCard}
+                        border="1px solid"
+                        borderColor={borderColor}
                     >
                         <AdminSidebar />
                     </Box>

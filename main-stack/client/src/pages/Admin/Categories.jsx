@@ -96,6 +96,7 @@ export default function CategoriesPage() {
     const hoverBg = useColorModeValue('gray.50', 'gray.700')
     const tableHeadBg = useColorModeValue('gray.50', 'gray.800')
     // const searchBg = useColorModeValue('white', 'gray.700')
+    const subtleCard = useColorModeValue('white', 'gray.800')
 
     // Controls: search, sort, page
     const [query, setQuery] = useState('')
@@ -278,7 +279,17 @@ export default function CategoriesPage() {
                 px={{ base: 4, md: 6 }}
             >
                 {/* Sidebar (collapses visually on small screens) */}
-                <Box display={{ base: 'none', md: 'block' }} minW="220px">
+                {/* Sidebar */}
+                <Box
+                    as="aside"
+                    display={{ base: 'none', lg: 'block' }}
+                    rounded="2xl"
+                    overflow="hidden"
+                    boxShadow="sm"
+                    bg={subtleCard}
+                    border="1px solid"
+                    borderColor={borderColor}
+                >
                     <AdminSidebar />
                 </Box>
 
@@ -437,7 +448,7 @@ export default function CategoriesPage() {
                                                             />
                                                         </Tooltip>
 
-                                                        <Menu>
+                                                        {/* <Menu>
                                                             <MenuButton
                                                                 as={IconButton}
                                                                 size="sm"
@@ -453,7 +464,7 @@ export default function CategoriesPage() {
                                                                     Toggle active
                                                                 </MenuItem>
                                                             </MenuList>
-                                                        </Menu>
+                                                        </Menu> */}
                                                     </HStack>
                                                 </Td>
                                             </Tr>

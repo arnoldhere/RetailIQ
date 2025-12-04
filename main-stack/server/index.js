@@ -5,12 +5,13 @@ const cors = require("cors");
 const cookieParser = require('cookie-parser');
 const port = process.env.PORT || 8888;
 const host = process.env.HOST || "localhost";
+const path = require('path');
 
 // basic app configurations
 // parse json / urlencoded body and cookies
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(express.json({ limit: '10mb' }));          // adjust size as needed
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // CORS config - allow dev client by default, and allow cookies
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -23,6 +24,9 @@ app.use('/api/auth', authRoutes);
 // admin routes
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
+
+// serve media files (uploaded images)
+app.use('/media', express.static(path.join(__dirname, 'media')));
 
 app.get("/", (req, res) => {
 	res.send("Hello World!");
