@@ -32,6 +32,7 @@ export default function ContactUs() {
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
 
+
     const bgGradient = useColorModeValue(
         "linear(to-br, gray.50, blue.50)",
         "linear(to-br, gray.900, gray.800)"
@@ -126,20 +127,6 @@ export default function ContactUs() {
 
             }
             const response = await userApi.submitFeedback(dataPayload)
-            // const response = await fetch("/api/feedback", {
-            //     method: "POST",
-            //     headers: {
-            //         "Content-Type": "application/json",
-            //         Authorization: `Bearer ${localStorage.getItem("token")}`,
-            //     },
-            //     body: JSON.stringify({
-            //         message: message.trim(),
-            //         email: user?.email || "anonymous@retailiq.com",
-            //         name: user?.name || "Anonymous",
-            //     }),
-            // });
-
-            // const data = res
 
             if (!response) {
                 throw new Error(response.data.message || "Failed to send feedback");

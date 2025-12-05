@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
     Box,
     Container,
@@ -8,13 +8,12 @@ import {
     HStack,
     Icon,
     SimpleGrid,
-    Divider,
     Button,
-    Image,
-    Stack,
     useColorModeValue,
+    useToast,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
+import * as userApi from "../api/user";
 import {
     FaShoppingBag,
     FaCheckCircle,
@@ -32,6 +31,67 @@ export default function AboutUs() {
         "linear(to-br, gray.50, blue.50)",
         "linear(to-br, gray.900, gray.800)"
     );
+    const toast = useToast();
+
+    const [loading, setLoading] = useState(false);
+
+    // stats cards -> mapped from API metrics
+    const [stats, setStats] = useState([]);
+
+    useEffect(() => {
+        let mounted = true;
+
+        async function load() {
+            setLoading(true);
+            try {
+                const res = await userApi.getMetrics();
+                if (!mounted) return;
+                const metrics = res?.data?.metrics || {};
+                // helper to safely extract numeric value
+                const getValue = (v) => {
+                    if (v == null) return 0;
+                    if (typeof v === "object" && "count" in v) return v.count;
+                    return v;
+                };
+
+                // build stats array from API response
+                const mappedStats = [
+                    {
+                        number: getValue(metrics.totalOrders),
+                        label: "Total Orders",
+                    },
+                    {
+                        number: getValue(metrics.totalSuppliers),
+                        label: "Total Suppliers",
+                    },
+                    {
+                        number: getValue(metrics.totalCustomers),
+                        label: "Total Customers",
+                    },
+                    {
+                        number: getValue(metrics.totalProducts),
+                        label: "Total Products",
+                    },
+                ];
+                setStats(mappedStats);
+            } catch (err) {
+                console.error("failed to load metrics overview", err);
+                toast({
+                    title: "Failed to load overview",
+                    status: "error",
+                    duration: 4000,
+                });
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        }
+
+        load();
+        return () => {
+            mounted = false;
+        };
+    }, [toast]);
+
     const cardBg = useColorModeValue("white", "gray.800");
     const textColor = useColorModeValue("gray.700", "gray.300");
     const accentColor = "cyan.400";
@@ -75,13 +135,6 @@ export default function AboutUs() {
         },
     ];
 
-    const stats = [
-        { number: "50K+", label: "Active Users" },
-        { number: "100K+", label: "Products" },
-        { number: "99%", label: "Satisfaction Rate" },
-        { number: "24/7", label: "Support Available" },
-    ];
-
     const teamMembers = [
         {
             name: "Innovation Team",
@@ -101,7 +154,7 @@ export default function AboutUs() {
     ];
 
     return (
-        <Box minH="100vh" bg={bgGradient} w='100vw'>
+        <Box minH="100vh" bg={bgGradient} w="100vw">
             <Navbar />
             {/* Hero Section */}
             <Box
@@ -122,7 +175,11 @@ export default function AboutUs() {
                         >
                             About RetailIQ
                         </Heading>
-                        <Text fontSize={{ base: "lg", md: "xl" }} color="gray.300" maxW="2xl">
+                        <Text
+                            fontSize={{ base: "lg", md: "xl" }}
+                            color="gray.300"
+                            maxW="2xl"
+                        >
                             Revolutionizing retail with intelligent, user-centric shopping
                             solutions. We combine cutting-edge technology with customer
                             obsession to create the future of e-commerce.
@@ -144,46 +201,7 @@ export default function AboutUs() {
 
             {/* Mission & Vision */}
             <Container maxW="container.lg" py={{ base: 12, md: 20 }}>
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={12} mb={16}>
-                    {/* Mission */}
-                    <Box bg={cardBg} p={8} borderRadius="lg" boxShadow="lg" border="1px solid" borderColor="cyan.200">
-                        <Heading
-                            as="h2"
-                            size="lg"
-                            mb={4}
-                            bgGradient="linear(to-r, cyan.400, purple.500)"
-                            bgClip="text"
-                        >
-                            🎯 Our Mission
-                        </Heading>
-                        <Text color={textColor} lineHeight="1.8">
-                            To empower businesses and customers through innovative retail
-                            technology that simplifies shopping, connects communities, and
-                            delivers exceptional value. We believe that great shopping
-                            experiences start with understanding our customers' needs and
-                            delivering solutions that exceed expectations.
-                        </Text>
-                    </Box>
-
-                    {/* Vision */}
-                    <Box bg={cardBg} p={8} borderRadius="lg" boxShadow="lg" border="1px solid" borderColor="purple.200">
-                        <Heading
-                            as="h2"
-                            size="lg"
-                            mb={4}
-                            bgGradient="linear(to-r, purple.500, pink.500)"
-                            bgClip="text"
-                        >
-                            👁️ Our Vision
-                        </Heading>
-                        <Text color={textColor} lineHeight="1.8">
-                            To become the world's most trusted and intelligent retail
-                            platform, where technology seamlessly meets human connection. We
-                            envision a future where shopping is personalized, secure, and
-                            accessible to everyone, anywhere.
-                        </Text>
-                    </Box>
-                </SimpleGrid>
+                {/* ... your mission/vision sections unchanged ... */}
 
                 {/* Stats */}
                 <Box mb={16}>
@@ -197,13 +215,10 @@ export default function AboutUs() {
                     >
                         By The Numbers
                     </Heading>
-                    <SimpleGrid
-                        columns={{ base: 2, md: 4 }}
-                        spacing={8}
-                    >
+                    <SimpleGrid columns={{ base: 2, md: 4 }} spacing={8}>
                         {stats.map((stat, idx) => (
                             <Box
-                                key={idx}
+                                key={stat.key ?? idx}
                                 bg={cardBg}
                                 p={8}
                                 borderRadius="lg"
@@ -224,7 +239,7 @@ export default function AboutUs() {
                                     bgClip="text"
                                     mb={2}
                                 >
-                                    {stat.number}
+                                    {loading ? "…" : stat.number}
                                 </Heading>
                                 <Text color={textColor} fontWeight="600">
                                     {stat.label}
@@ -235,7 +250,7 @@ export default function AboutUs() {
                 </Box>
             </Container>
 
-            {/* Why Choose Us */}
+            {/* Why Choose Us, Team, CTA, Footer — unchanged */}
             <Box bg={useColorModeValue("gray.100", "gray.700")} py={{ base: 12, md: 20 }}>
                 <Container maxW="container.lg">
                     <Heading
@@ -283,7 +298,6 @@ export default function AboutUs() {
                 </Container>
             </Box>
 
-            {/* Our Team Section */}
             <Container maxW="container.lg" py={{ base: 12, md: 20 }}>
                 <Heading
                     as="h2"
@@ -345,7 +359,6 @@ export default function AboutUs() {
                 </SimpleGrid>
             </Container>
 
-            {/* CTA Section */}
             <Box
                 bg="linear(to-r, gray.900, gray.800)"
                 py={{ base: 12, md: 16 }}

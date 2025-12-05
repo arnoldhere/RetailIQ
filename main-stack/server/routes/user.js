@@ -23,4 +23,13 @@ router.get("/get-wishlist", authMiddleware, async (req, res) => {
     return res.status(500).json({ message: "internal server error" })
 })
 
+router.get('/getMetrics', authMiddleware, async (req, res) => {
+    try {
+        // if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+        return UserController.getMetrics(req, res);
+    } catch (err) {
+        next(err);
+    }
+});
+
 module.exports = router;

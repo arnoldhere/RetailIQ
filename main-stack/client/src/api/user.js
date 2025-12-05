@@ -12,4 +12,9 @@ export async function submitFeedback(data) {
     return client.post('/api/user/feedback', data);
 }
 
+export async function getMetrics() {
+    return client.get('/api/user/getMetrics');
+}
+
+
 export default client;
