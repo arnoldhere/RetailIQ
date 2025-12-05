@@ -33,6 +33,13 @@ app.use('/api', productRoutes);
 const userRoutes = require("./routes/user")
 app.use('/api/user', userRoutes);
 
+// cart routes (customer)
+const cartRoutes = require('./routes/cart');
+app.use('/api/cart', cartRoutes);
+
+// wishlist routes (customer)
+const wishlistRoutes = require('./routes/wishlist');
+app.use('/api/wishlist', wishlistRoutes);
 
 // serve media files (uploaded images)
 app.use('/media', express.static(path.join(__dirname, 'media')));

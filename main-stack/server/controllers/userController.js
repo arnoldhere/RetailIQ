@@ -18,3 +18,13 @@ exports.getProductCategories = async (req, res) => {
         return res.status(500).json({ message: 'Failed to load categories' });
     }
 }
+
+exports.getWishlist = async (req, res) => {
+    try {
+        // const wishlist = 
+        return res.json({ wishlist});
+    } catch (err) {
+        console.error('list categories error', err);
+        return res.status(500).json({ message: 'Failed to load categories' });
+    }
+}

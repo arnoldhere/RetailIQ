@@ -35,7 +35,6 @@ export default function CartPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const { cart, removeFromCart, updateQuantity, clearCart, getCartTotal } = useCart()
-
   const bgCard = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.700')
   const textMuted = useColorModeValue('gray.600', 'gray.400')
@@ -109,15 +108,15 @@ export default function CartPage() {
                           <Tr key={item.id} borderBottomColor={borderColor}>
                             <Td>
                               <HStack spacing={3}>
-                                {console.log(`${BACKEND_URL}/${item.image}`)}
-                                {console.log(item.image)}
-                                <ChakraImage
+                                {/* {console.log(`${BACKEND_URL}/${item.image}`)} */}
+                                {/* {console.log(item.image)} */}
+                                {/* <ChakraImage
                                   src={`${BACKEND_URL}/${item.image}`}
                                   alt={item.name}
                                   boxSize="50px"
                                   borderRadius="md"
                                   objectFit="cover"
-                                />
+                                /> */}
                                 <VStack align="start" spacing={0}>
                                   <Text fontWeight="600" fontSize="sm">{item.name}</Text>
                                   <Text color={textMuted} fontSize="xs">{item.category_name}</Text>
