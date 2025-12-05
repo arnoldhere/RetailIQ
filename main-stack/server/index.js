@@ -41,6 +41,10 @@ app.use('/api/cart', cartRoutes);
 const wishlistRoutes = require('./routes/wishlist');
 app.use('/api/wishlist', wishlistRoutes);
 
+// feedback routes
+const feedbackRoutes = require('./routes/feedback');
+app.use('/api/user/feedback', feedbackRoutes);
+
 // serve media files (uploaded images)
 app.use('/media', express.static(path.join(__dirname, 'media')));
 

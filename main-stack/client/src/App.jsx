@@ -28,6 +28,10 @@ import ProductDetail from './pages/customer/ProductDetail'
 import Cart from './pages/customer/Cart'
 import Wishlist from './pages/customer/Wishlist'
 
+// Public Pages
+import AboutUs from './pages/AboutUs'
+import ContactUs from './pages/ContactUs'
+
 function AppRoutes() {
   const { user, loading } = useAuth()
 
@@ -43,6 +47,10 @@ function AppRoutes() {
       <Route path="/auth/forgot-password" element={!user ? <RequestOTP /> : <Navigate to="/" replace />} />
       <Route path="/auth/verify-otp" element={!user ? <VerifyOTP /> : <Navigate to="/" replace />} />
       <Route path="/auth/reset-password" element={!user ? <ResetPassword /> : <Navigate to="/" replace />} />
+
+      {/* Public Pages - Accessible to all */}
+      <Route path="/about-us" element={<AboutUs />} />
+      <Route path="/contact-us" element={<ContactUs />} />
 
       {/* Protected Routes - Role Based */}
       <Route

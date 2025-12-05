@@ -1,8 +1,9 @@
 import React from 'react'
 import { Box, Container, Flex, Text, Link as ChakraLink, VStack, HStack, Divider, Icon } from '@chakra-ui/react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 export default function Footer() {
+  const navigate = useNavigate()
   const currentYear = new Date().getFullYear()
 
   return (
@@ -30,9 +31,25 @@ export default function Footer() {
 
             <VStack align="flex-start" spacing={2}>
               <Text fontSize="sm" fontWeight="600" color="gray.200">Company</Text>
-              <ChakraLink fontSize="sm" color="gray.400" _hover={{ color: 'gray.200' }}>About</ChakraLink>
+              <ChakraLink 
+                fontSize="sm" 
+                color="gray.400" 
+                _hover={{ color: 'gray.200' }}
+                onClick={() => navigate('/about-us')}
+                cursor="pointer"
+              >
+                About
+              </ChakraLink>
               <ChakraLink fontSize="sm" color="gray.400" _hover={{ color: 'gray.200' }}>Blog</ChakraLink>
-              <ChakraLink fontSize="sm" color="gray.400" _hover={{ color: 'gray.200' }}>Contact</ChakraLink>
+              <ChakraLink 
+                fontSize="sm" 
+                color="gray.400" 
+                _hover={{ color: 'gray.200' }}
+                onClick={() => navigate('/contact-us')}
+                cursor="pointer"
+              >
+                Contact
+              </ChakraLink>
             </VStack>
 
             <VStack align="flex-start" spacing={2}>

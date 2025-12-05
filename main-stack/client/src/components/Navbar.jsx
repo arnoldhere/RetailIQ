@@ -91,7 +91,8 @@ export default function Navbar() {
 							color="gray.300"
 							_hover={{ color: "cyan.400", textDecoration: "none" }}
 							transition="color 0.2s"
-							href="#about"
+							onClick={() => navigate("/about-us")}
+							cursor="pointer"
 						>
 							About Us
 						</ChakraLink>
@@ -100,7 +101,8 @@ export default function Navbar() {
 							color="gray.300"
 							_hover={{ color: "cyan.400", textDecoration: "none" }}
 							transition="color 0.2s"
-							href="#contact"
+							onClick={() => navigate("/contact-us")}
+							cursor="pointer"
 						>
 							Contact Us
 						</ChakraLink>
@@ -248,7 +250,10 @@ export default function Navbar() {
 									variant="ghost"
 									justifyContent="flex-start"
 									_hover={{ bg: "whiteAlpha.200" }}
-									onClick={() => onClose()}
+									onClick={() => {
+										navigate("/about-us");
+										onClose();
+									}}
 									fontSize="sm"
 								>
 									ℹ️ About Us
@@ -257,7 +262,10 @@ export default function Navbar() {
 									variant="ghost"
 									justifyContent="flex-start"
 									_hover={{ bg: "whiteAlpha.200" }}
-									onClick={() => onClose()}
+									onClick={() => {
+										navigate("/contact-us");
+										onClose();
+									}}
 									fontSize="sm"
 								>
 									📞 Contact Us

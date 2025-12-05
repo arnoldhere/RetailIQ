@@ -200,7 +200,7 @@ exports.addToCart = async (req, res) => {
         stock: item.stock,
         category_id: item.category_id,
         supplier_id: item.supplier_id,
-        images: normalizeImages(item.images),
+        images: normalizeImages(item.images)[0],
         created_at: item.created_at,
       }));
 
