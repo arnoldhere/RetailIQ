@@ -15,6 +15,7 @@ import {
 	Link as ChakraLink,
 	Stack,
 	Divider,
+	Image,
 } from "@chakra-ui/react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -172,7 +173,7 @@ function Signup() {
 							inventory, and make confident pricing decisions powered by data.
 						</Text>
 					</Box>
-
+					<Image rounded='lg' src='/logo_retailiq.png' alt ='RetailIQ' w='2xs'/>
 					<Box mt={8} position="relative">
 						<Text fontSize="xs" opacity={0.85} mb={1} fontWeight="medium">
 							Why join?

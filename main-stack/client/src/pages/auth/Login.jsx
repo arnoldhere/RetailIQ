@@ -15,6 +15,7 @@ import {
 	Link as ChakraLink,
 	Stack,
 	Divider,
+	Image,
 } from "@chakra-ui/react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -163,7 +164,7 @@ function Login() {
 							insights that help you make confident, data-driven decisions.
 						</Text>
 					</Box>
-
+					<Image rounded='lg' src='/logo_retailiq.png' alt ='RetailIQ' w='24'/>
 					<Box mt={8} position="relative">
 						<Text fontSize="xs" opacity={0.85} mb={1} fontWeight="medium">
 							Pro tip

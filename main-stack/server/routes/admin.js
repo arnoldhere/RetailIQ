@@ -13,8 +13,8 @@ router.get('/overview', authMiddleware, async (req, res, next) => {
   }
 });
 
-router.get("/get-users", authMiddleware, async(req,res,next)=>{
-    try {
+router.get("/get-users", authMiddleware, async (req, res, next) => {
+  try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
     return adminController.getUsers(req, res);
   } catch (err) {
@@ -98,5 +98,14 @@ router.delete('/products/:id', authMiddleware, async (req, res, next) => {
     next(err);
   }
 });
+
+router.get('/get-feedbacks', authMiddleware, async (req, res, nxt) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getFeedbacks(req, res);
+  } catch (err) {
+    next(err);
+  }
+})
 
 module.exports = router;

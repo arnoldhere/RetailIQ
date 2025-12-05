@@ -9,6 +9,10 @@ router.get('/', authMiddleware, async (req, res, next) => {
     if (!req.user || req.user.role !== 'customer') {
       return res.status(403).json({ message: 'Forbidden' });
     }
+
+    // if (!req.user) {
+    //   return res.status(403).json({ message: 'Forbidden' });
+    // }
     return cartController.getCart(req, res);
   } catch (err) {
     next(err);

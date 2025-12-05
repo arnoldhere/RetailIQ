@@ -8,8 +8,8 @@ const db = require('../config/db');
 async function createFeedback(req, res) {
   try {
     const { message } = req.body;
-    const userId = req.user?.id || null;
-
+    const userId = req.user?.id;
+    console
     // Validation
     if (!message || typeof message !== 'string') {
       return res.status(400).json({
