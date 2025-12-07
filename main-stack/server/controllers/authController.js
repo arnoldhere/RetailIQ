@@ -14,6 +14,7 @@ function safeUser(user) {
 }
 
 module.exports = {
+  // signup controller
   signup: async (req, res) => {
     try {
       const errors = validationResult(req);
@@ -22,26 +23,64 @@ module.exports = {
         return res.status(400).json({ errors: payload });
       }
 
-      const { firstname, lastname, email, password, phone } = req.body;
+      const { firstname, lastname, email, password, phone, role, address } = req.body;
 
       // check for existing email
       const byEmail = await db('users').where({ email }).first();
-      if (byEmail) return res.status(409).json({ errors: [{ field: 'email', msg: 'Email already registered' }] });
+      if (byEmail) {
+        return res
+          .status(409)
+          .json({ errors: [{ field: 'email', msg: 'Email already registered' }] });
+      }
 
       // check for existing phone
       if (phone) {
         const byPhone = await db('users').where({ phone }).first();
-        if (byPhone) return res.status(409).json({ errors: [{ field: 'phone', msg: 'Phone already registered' }] });
+        if (byPhone) {
+          return res
+            .status(409)
+            .json({ errors: [{ field: 'phone', msg: 'Phone already registered' }] });
+        }
       }
 
       const hashed = await bcrypt.hash(password, 10);
 
-      // Insert new user
-      const [id] = await db('users').insert({ firstname, lastname, email, password: hashed, phone });
-      const newUser = await db('users').where({ id }).first();
+      // Use a transaction so user + supplier are consistent
+      const newUser = await db.transaction(async (trx) => {
+        // Insert new user
+        const [id] = await trx('users').insert({
+          firstname,
+          lastname,
+          email,
+          password: hashed,
+          phone,
+          role: role || 'customer', // fallback if role isn't provided
+        });
+
+        const createdUser = await trx('users').where({ id }).first();
+
+        // If role is supplier, create supplier row
+        if (createdUser.role === 'supplier') {
+          // address is NOT NULL in suppliers table, so make sure you pass it from frontend
+          await trx('suppliers').insert({
+            cust_id: createdUser.id,
+            name: `${createdUser.firstname} ${createdUser.lastname}`,
+            email: createdUser.email,
+            phone: createdUser.phone,
+            address: address, // must be provided in req.body for suppliers
+            // other fields use defaults (is_active, rating, etc.)
+          });
+        }
+
+        return createdUser;
+      });
 
       // generate token
-      const token = jwt.sign({ userId: newUser.id, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign(
+        { userId: newUser.id, role: newUser.role },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
 
       // set cookie
       const isProd = process.env.NODE_ENV === 'production';
