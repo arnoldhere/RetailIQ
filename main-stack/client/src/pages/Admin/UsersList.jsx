@@ -47,10 +47,11 @@ export default function UsersList() {
     const [loading, setLoading] = useState(false);
     const [metrics, setMetrics] = useState({ totalUsers: 0 });
     const [users, setUsers] = useState([]);
-
+    const tableHeadBg = useColorModeValue('white', 'gray.800')
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+    const hoverBg = useColorModeValue('gray.50', 'gray.700')
 
     useEffect(() => {
         let mounted = true;
@@ -80,7 +81,6 @@ export default function UsersList() {
 
     const bgPage = useColorModeValue("gray.50", "gray.900");
     const textMuted = useColorModeValue("gray.600", "gray.300");
-    const tableHeaderBg = useColorModeValue("gray.100", "gray.800");
     const tableBorder = useColorModeValue("gray.200", "gray.700");
     const borderColor = useColorModeValue("gray.200", "gray.700");
     const subtleCard = useColorModeValue("white", "gray.800");
@@ -253,12 +253,15 @@ export default function UsersList() {
                                     overflowX="auto"
                                     maxH={{ base: "none", md: "70vh" }}
                                 >
-                                    <Table size="md" variant="simple">
+                                    <Table size="md" variant="outline">
                                         <Thead
-                                            bg={tableHeaderBg}
                                             position="sticky"
                                             top={0}
                                             zIndex={1}
+                                            bg={tableHeadBg}
+                                            bgGradient="linear(to-r, teal.500, purple.600)"
+                                            color="white.900"
+                                            boxShadow="sm"
                                         >
                                             <Tr>
                                                 <Th>Sr.</Th>
@@ -289,7 +292,14 @@ export default function UsersList() {
                                             )}
 
                                             {!loading && noDbRecords && (
-                                                <Tr>
+                                                <Tr
+                                                    _hover={{
+                                                        bg: hoverBg,
+                                                        transform: "translateY(-2px)",
+                                                        boxShadow: "md",
+                                                    }}
+                                                    transition="all 0.15s ease-out"
+                                                >
                                                     <Td colSpan={6}>
                                                         <Center py={10} flexDir="column">
                                                             <Text fontWeight="semibold">

@@ -49,8 +49,10 @@ import {
     Flex,
     Divider,
     Avatar,
+    InputGroup,
+    InputLeftElement,
 } from '@chakra-ui/react'
-import { DeleteIcon, EditIcon, AddIcon } from '@chakra-ui/icons'
+import { DeleteIcon, EditIcon, AddIcon, SearchIcon } from '@chakra-ui/icons'
 import gsap from 'gsap'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
@@ -108,6 +110,15 @@ export default function ProductsPage() {
     const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(false)
     const [submitting, setSubmitting] = useState(false)
+    const [total, setTotal] = useState(0)
+    const [filters, setFilters] = useState({
+        search: '',
+        category_id: '',
+        sort: 'created_at',
+        order: 'desc',
+    })
+    const [limit] = useState(12)
+    const [offset, setOffset] = useState(0)
     const [form, setForm] = useState({
         name: '',
         description: '',
@@ -134,9 +145,13 @@ export default function ProductsPage() {
     // -------------------------
     useEffect(() => {
         fetchCategories()
-        fetchProducts()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
+    useEffect(() => {
+        fetchProducts()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filters, offset, limit])
 
     useEffect(() => {
         if (tableRef.current && products.length > 0) {
@@ -160,16 +175,31 @@ export default function ProductsPage() {
     async function fetchProducts() {
         setLoading(true)
         try {
-            const res = await productsApi.listProducts(100, 0)
+            const res = await productsApi.listProducts(limit, offset, filters)
             setProducts(res.data.products || [])
+            setTotal(res.data.total || 0)
         } catch (err) {
             console.error('Failed to fetch products:', err)
             toast({ title: 'Failed to load products', status: 'error', duration: 3000 })
             setProducts([])
+            setTotal(0)
         } finally {
             setLoading(false)
         }
     }
+
+    const handleFilterChange = (key, value) => {
+        setOffset(0)
+        setFilters((prev) => ({ ...prev, [key]: value }))
+    }
+
+    const handleResetFilters = () => {
+        setOffset(0)
+        setFilters({ search: '', category_id: '', sort: 'created_at', order: 'desc' })
+    }
+
+    const totalPages = Math.ceil(total / limit)
+    const currentPage = Math.floor(offset / limit) + 1
 
     // -------------------------
     // Validation & handlers (unchanged)
@@ -386,6 +416,102 @@ export default function ProductsPage() {
 
                             <Divider mb={5} />
 
+                            {/* Filters */}
+                            <Box bg={subtleCard} p={{ base: 4, md: 6 }} borderRadius="xl" boxShadow="sm" mb={6} border="1px solid" borderColor={borderColor}>
+                                <SimpleGrid columns={{ base: 1, md: 5 }} spacing={4} alignItems="end">
+                                    <FormControl>
+                                        <FormLabel fontSize="sm" fontWeight="600" color={mutedText}>
+                                            Search
+                                        </FormLabel>
+                                        <InputGroup>
+                                            <InputLeftElement pointerEvents="none">
+                                                <SearchIcon color={mutedText} />
+                                            </InputLeftElement>
+                                            <Input
+                                                placeholder="Search products..."
+                                                value={filters.search}
+                                                onChange={(e) => handleFilterChange('search', e.target.value)}
+                                                borderRadius="lg"
+                                                bg={useColorModeValue('white', 'gray.700')}
+                                                borderColor={borderColor}
+                                                _focus={{
+                                                    borderColor: accent,
+                                                    boxShadow: `0 0 0 1px ${accent}`,
+                                                }}
+                                            />
+                                        </InputGroup>
+                                    </FormControl>
+
+                                    <FormControl>
+                                        <FormLabel fontSize="sm" fontWeight="600" color={mutedText}>
+                                            Category
+                                        </FormLabel>
+                                        <Select
+                                            value={filters.category_id}
+                                            onChange={(e) => handleFilterChange('category_id', e.target.value)}
+                                            borderRadius="lg"
+                                            bg={useColorModeValue('white', 'gray.700')}
+                                            borderColor={borderColor}
+                                        >
+                                            <option value="">All categories</option>
+                                            {categories.map((cat) => (
+                                                <option key={cat.id} value={cat.id}>
+                                                    {cat.name}
+                                                </option>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+
+                                    <FormControl>
+                                        <FormLabel fontSize="sm" fontWeight="600" color={mutedText}>
+                                            Sort
+                                        </FormLabel>
+                                        <Select
+                                            value={filters.sort}
+                                            onChange={(e) => handleFilterChange('sort', e.target.value)}
+                                            borderRadius="lg"
+                                            bg={useColorModeValue('white', 'gray.700')}
+                                            borderColor={borderColor}
+                                        >
+                                            <option value="name">Name</option>
+                                            <option value="sell_price">Price</option>
+                                            <option value="created_at">Date</option>
+                                            <option value="stock_available">Stock</option>
+                                        </Select>
+                                    </FormControl>
+
+                                    <FormControl>
+                                        <FormLabel fontSize="sm" fontWeight="600" color={mutedText}>
+                                            Order
+                                        </FormLabel>
+                                        <Select
+                                            value={filters.order}
+                                            onChange={(e) => handleFilterChange('order', e.target.value)}
+                                            borderRadius="lg"
+                                            bg={useColorModeValue('white', 'gray.700')}
+                                            borderColor={borderColor}
+                                        >
+                                            <option value="asc">Ascending</option>
+                                            <option value="desc">Descending</option>
+                                        </Select>
+                                    </FormControl>
+
+                                    <Flex alignItems="center" justifyContent="flex-end">
+                                        <Button variant="outline" onClick={handleResetFilters} borderRadius="lg" size="md">
+                                            Reset
+                                        </Button>
+                                    </Flex>
+                                </SimpleGrid>
+
+                                {/* Active filter chips */}
+                                {(filters.search || filters.category_id) && (
+                                    <HStack mt={3} spacing={3} flexWrap="wrap">
+                                        {filters.search && <Badge colorScheme="blue">Search: {filters.search}</Badge>}
+                                        {filters.category_id && <Badge colorScheme="purple">Category: {categories.find((c) => c.id == filters.category_id)?.name}</Badge>}
+                                    </HStack>
+                                )}
+                            </Box>
+
                             {/* Table / states */}
                             {loading ? (
                                 <Box textAlign="center" py={12} display="flex" flexDirection="column" alignItems="center">
@@ -442,7 +568,7 @@ export default function ProductsPage() {
                                                     >
                                                         <Td fontWeight="600" color="white.800" maxW="260px">
                                                             <HStack spacing={3} align="center">
-                                                                {console.log(`${BACKEND_URL}/` + product.images[0])}
+                                                                {/* {console.log(`${BACKEND_URL}/` + product.images[0])} */}
                                                                 <Avatar
                                                                     size="sm"
                                                                     name={product.name}
@@ -466,7 +592,7 @@ export default function ProductsPage() {
                                                             )}
                                                         </Td>
 
-                                                        <Td isNumeric color="gray.600" fontSize="sm">{product.cost_price != null ? `$${product.cost_price.toFixed(2)}` : <Text as="span" color="gray.400">-</Text>}</Td>
+                                                        <Td isNumeric color="gray.600" fontSize="sm">{product.cost_price != null ? `$${product.cost_price}` : <Text as="span" color="gray.400">-</Text>}</Td>
 
                                                         <Td isNumeric fontWeight="700" color="green.600" fontSize="sm">${product.sell_price}</Td>
 
@@ -513,6 +639,33 @@ export default function ProductsPage() {
                                         </Table>
                                     </TableContainer>
                                 </Box>
+                            )}
+
+                            {/* Pagination */}
+                            {!loading && products.length > 0 && totalPages > 1 && (
+                                <Flex justify="center" gap={4} align="center" mt={6}>
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => setOffset(Math.max(0, offset - limit))}
+                                        isDisabled={offset === 0}
+                                        borderRadius="md"
+                                    >
+                                        Previous
+                                    </Button>
+
+                                    <Text fontWeight="600" color={mutedText}>
+                                        Page {currentPage} of {totalPages} ({total} total)
+                                    </Text>
+
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => setOffset(offset + limit)}
+                                        isDisabled={currentPage === totalPages}
+                                        borderRadius="md"
+                                    >
+                                        Next
+                                    </Button>
+                                </Flex>
                             )}
                         </Box>
                     </SimpleGrid>

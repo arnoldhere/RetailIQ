@@ -320,24 +320,202 @@ exports.getFeedbacks = async (req, res) => {
   }
 }
 
+exports.listSuppliers = async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 12, 500);
+    const offset = parseInt(req.query.offset) || 0;
+    const search = req.query.search;
+
+    let query = db('suppliers').select('*');
+
+    if (search) {
+      query = query.where(function() {
+        this.where('name', 'like', `%${search}%`)
+          .orWhere('email', 'like', `%${search}%`)
+          .orWhere('phone', 'like', `%${search}%`);
+      });
+    }
+
+    const countQuery = query.clone();
+    const countResult = await countQuery
+      .clearSelect()
+      .clearOrder()
+      .count({ count: 'suppliers.id' })
+      .first();
+
+    const total = Number(countResult.count || 0);
+
+    const suppliers = await query
+      .orderBy('created_at', 'desc')
+      .limit(limit)
+      .offset(offset);
+
+    return res.json({ suppliers, total, limit, offset });
+  } catch (err) {
+    console.error('list suppliers error', err);
+    return res.status(500).json({ message: 'Failed to load suppliers' });
+  }
+};
+
+exports.listCustomerOrders = async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 12, 500);
+    const offset = parseInt(req.query.offset) || 0;
+    const search = req.query.search;
+    const status = req.query.status;
+
+    let query = db('customer_orders')
+      .select(
+        'customer_orders.*',
+        'users.firstname',
+        'users.lastname',
+        'users.email as customer_email',
+        'stores.name as store_name'
+      )
+      .leftJoin('users', 'customer_orders.cust_id', 'users.id')
+      .leftJoin('stores', 'customer_orders.store_id', 'stores.id');
+
+    if (search) {
+      query = query.where(function() {
+        this.where('customer_orders.order_no', 'like', `%${search}%`)
+          .orWhere('users.firstname', 'like', `%${search}%`)
+          .orWhere('users.lastname', 'like', `%${search}%`)
+          .orWhere('users.email', 'like', `%${search}%`);
+      });
+    }
+
+    if (status) {
+      query = query.where('customer_orders.status', status);
+    }
+
+    const countQuery = query.clone();
+    const countResult = await countQuery
+      .clearSelect()
+      .clearOrder()
+      .count({ count: 'customer_orders.id' })
+      .first();
+
+    const total = Number(countResult.count || 0);
+
+    const orders = await query
+      .orderBy('customer_orders.created_at', 'desc')
+      .limit(limit)
+      .offset(offset);
+
+    return res.json({ orders, total, limit, offset });
+  } catch (err) {
+    console.error('list customer orders error', err);
+    return res.status(500).json({ message: 'Failed to load customer orders' });
+  }
+};
+
+exports.listSupplierOrders = async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 12, 500);
+    const offset = parseInt(req.query.offset) || 0;
+    const search = req.query.search;
+    const status = req.query.status;
+
+    let query = db('supply_orders')
+      .select(
+        'supply_orders.*',
+        'suppliers.name as supplier_name',
+        'suppliers.email as supplier_email',
+        'stores.name as store_name',
+        'users.firstname as ordered_by_firstname',
+        'users.lastname as ordered_by_lastname'
+      )
+      .leftJoin('suppliers', 'supply_orders.supplier_id', 'suppliers.id')
+      .leftJoin('stores', 'supply_orders.store_id', 'stores.id')
+      .leftJoin('users', 'supply_orders.ordered_by', 'users.id');
+
+    if (search) {
+      query = query.where(function() {
+        this.where('supply_orders.order_no', 'like', `%${search}%`)
+          .orWhere('suppliers.name', 'like', `%${search}%`)
+          .orWhere('stores.name', 'like', `%${search}%`);
+      });
+    }
+
+    if (status) {
+      query = query.where('supply_orders.status', status);
+    }
+
+    const countQuery = query.clone();
+    const countResult = await countQuery
+      .clearSelect()
+      .clearOrder()
+      .count({ count: 'supply_orders.id' })
+      .first();
+
+    const total = Number(countResult.count || 0);
+
+    const orders = await query
+      .orderBy('supply_orders.created_at', 'desc')
+      .limit(limit)
+      .offset(offset);
+
+    return res.json({ orders, total, limit, offset });
+  } catch (err) {
+    console.error('list supplier orders error', err);
+    return res.status(500).json({ message: 'Failed to load supplier orders' });
+  }
+};
+
 exports.listProducts = async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const limit = Math.min(parseInt(req.query.limit) || 12, 500);
     const offset = parseInt(req.query.offset) || 0;
-    const filters = {
-      category_id: req.query.category_id,
-      search: req.query.search,
-    };
+    const categoryId = req.query.category_id;
+    const search = req.query.search;
+    const sort = req.query.sort || 'created_at';
+    const order = (req.query.order || 'desc').toUpperCase();
 
-    // const products = await Products.listAll(limit, offset, filters);
-    const products = await db('products')
-      .select('id', 'name', 'sell_price', 'created_at', 'images') // only what you really need
+    // Validate sort field
+    const validSortFields = ['name', 'sell_price', 'cost_price', 'created_at', 'stock_available'];
+    const sortField = validSortFields.includes(sort) ? sort : 'created_at';
+    const sortCol = sortField === 'price' || sortField === 'sell_price' ? 'products.sell_price' : `products.${sortField}`;
+    const orderDir = order === 'DESC' ? 'desc' : 'asc';
+
+    let query = db('products')
+      .select(
+        'products.id',
+        'products.name',
+        'products.description',
+        'products.category_id',
+        'products.supplier_id',
+        'products.cost_price',
+        'products.sell_price',
+        'products.stock_available',
+        'products.images',
+        'products.created_at',
+        'categories.name as category_name'
+      )
+      .leftJoin('categories', 'products.category_id', 'categories.id');
+
+    // Apply filters
+    if (categoryId) {
+      query = query.where('products.category_id', categoryId);
+    }
+    if (search) {
+      query = query.where('products.name', 'like', `%${search}%`);
+    }
+
+    // Count total before pagination
+    const countQuery = query.clone();
+    const countResult = await countQuery
+      .clearSelect()
+      .clearOrder()
+      .count({ count: 'products.id' })
+      .first();
+
+    const total = Number(countResult.count || 0);
+
+    // Apply sorting and pagination
+    const products = await query
+      .orderBy(sortCol, orderDir)
       .limit(limit)
-      .offset(offset)
-      .orderBy('created_at', 'desc');
-
-    // const total = await Products.count();
-    const total = await db('products').count('id as count').first();
+      .offset(offset);
 
     // Parse images JSON for each product
     const formattedProducts = products.map((p) => ({

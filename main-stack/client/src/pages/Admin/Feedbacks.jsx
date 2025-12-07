@@ -58,6 +58,8 @@ export default function FeedbacksPage() {
     const [feedbacks, setFeedbacks] = useState([])
     const [loading, setLoading] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
+    const [limit] = useState(10)
+    const [currentPage, setCurrentPage] = useState(1)
 
     // const { isOpen, onOpen, onClose } = useDisclosure()
     // const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
@@ -71,6 +73,18 @@ export default function FeedbacksPage() {
         const query = searchQuery.toLowerCase()
         return fullName.includes(query) || message.includes(query)
     })
+
+    // Pagination
+    const totalPages = Math.ceil(filteredFeedbacks.length / limit)
+    const startIndex = (currentPage - 1) * limit
+    const endIndex = startIndex + limit
+    const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, endIndex)
+
+    useEffect(() => {
+        if (searchQuery) {
+            setCurrentPage(1)
+        }
+    }, [searchQuery])
 
     async function fetchFeedbacks() {
         setLoading(true)
@@ -258,7 +272,7 @@ export default function FeedbacksPage() {
                                             </Thead>
 
                                             <Tbody>
-                                                {feedbacks.map((f, idx) => (
+                                                {paginatedFeedbacks.map((f, idx) => (
                                                     <Tr
                                                         key={f.id}
                                                         borderBottom="1px"
@@ -341,6 +355,33 @@ export default function FeedbacksPage() {
                                     </TableContainer>
 
                                 </Box>
+                            )}
+
+                            {/* Pagination */}
+                            {!loading && filteredFeedbacks.length > 0 && totalPages > 1 && (
+                                <Flex justify="center" gap={4} align="center" mt={6}>
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                        isDisabled={currentPage === 1}
+                                        borderRadius="md"
+                                    >
+                                        Previous
+                                    </Button>
+
+                                    <Text fontWeight="600" color={mutedText}>
+                                        Page {currentPage} of {totalPages} ({filteredFeedbacks.length} total)
+                                    </Text>
+
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                        isDisabled={currentPage === totalPages}
+                                        borderRadius="md"
+                                    >
+                                        Next
+                                    </Button>
+                                </Flex>
                             )}
                         </Box>
                     </SimpleGrid>

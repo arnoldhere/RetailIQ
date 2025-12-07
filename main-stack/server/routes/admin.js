@@ -108,4 +108,31 @@ router.get('/get-feedbacks', authMiddleware, async (req, res, nxt) => {
   }
 })
 
+router.get('/suppliers', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.listSuppliers(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/customer-orders', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.listCustomerOrders(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/supplier-orders', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.listSupplierOrders(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
