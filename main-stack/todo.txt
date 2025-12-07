@@ -10,7 +10,5 @@
     - wishlist and cart management @ customer
 
 -- now next
-    - save token and user id in local storage while login
-    - bug fixes in feedback listing @ admin
+    - send assurance email for feedback @ admin
     - order management,chekout and payment @ customer 
-    - 

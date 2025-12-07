@@ -31,6 +31,7 @@ import Wishlist from './pages/customer/Wishlist'
 // Public Pages
 import AboutUs from './pages/AboutUs'
 import ContactUs from './pages/ContactUs'
+import FeedbacksPage from './pages/Admin/Feedbacks'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -74,6 +75,8 @@ function AppRoutes() {
       <Route path='/admin/users' element={user?.role === 'admin' ? <UsersList /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/categories' element={user?.role === 'admin' ? <Categories /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/products' element={user?.role === 'admin' ? <Products /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/admin/feedbacks' element={user?.role === 'admin' ? <FeedbacksPage /> : <Navigate to="/auth/login" replace />} />
+
 
       {/* Customer Routes */}
       <Route path='/customer/products' element={user?.role === 'customer' ? <CustomerProducts /> : <Navigate to="/auth/login" replace />} />

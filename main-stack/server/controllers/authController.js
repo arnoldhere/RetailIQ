@@ -52,7 +52,7 @@ module.exports = {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      return res.status(201).json({ user: safeUser(newUser) });
+      return res.status(201).json({ user: safeUser(newUser), token });
     } catch (err) {
       console.error('signup error', err);
       return res.status(500).json({ message: 'Internal Server Error' });
@@ -91,7 +91,7 @@ module.exports = {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      return res.json({ user: safeUser(user) });
+      return res.json({ user: safeUser(user), token });
     } catch (err) {
       console.error('login error', err);
       return res.status(500).json({ message: 'Internal Server Error' });

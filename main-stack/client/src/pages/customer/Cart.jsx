@@ -44,8 +44,6 @@ export default function CartPage() {
     toast({ title: 'Item removed from cart', status: 'info', duration: 2000 })
   }
 
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
   const handleClear = () => {
     if (window.confirm('Clear entire cart?')) {
       clearCart()

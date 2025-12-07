@@ -117,14 +117,14 @@ export default function ContactUs() {
         }
 
         setLoading(true);
-
+        const stored_user_id = localStorage.getItem('retailiq_user_id');
+        // console.log(stored_user_id)
         try {
             const dataPayload = {
                 message: message.trim(),
                 email: user?.email || "abc@gmail.com",
                 name: user?.name || "Intersteller",
-                id: user?.id || null,
-
+                id: stored_user_id || null,
             }
             const response = await userApi.submitFeedback(dataPayload)
 

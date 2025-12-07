@@ -104,7 +104,7 @@ router.get('/get-feedbacks', authMiddleware, async (req, res, nxt) => {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
     return adminController.getFeedbacks(req, res);
   } catch (err) {
-    next(err);
+    nxt(err);
   }
 })
 

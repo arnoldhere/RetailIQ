@@ -8,6 +8,6 @@ export async function getUsers(){
   return client.get("/api/admin/get-users")
 }
 
-// export async function getFeedbacks(){
-//   return client.get("/api/admin/get-feedbacks")
-// }
+export async function getFeedbacks(){
+  return client.get("/api/admin/get-feedbacks")
+}

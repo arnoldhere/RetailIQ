@@ -8,49 +8,24 @@ import {
     Tr,
     Th,
     Td,
-    IconButton,
     VStack,
     HStack,
     Heading,
     Text,
-    Modal,
-    ModalOverlay,
-    ModalContent,
-    ModalHeader,
-    ModalBody,
-    ModalFooter,
-    ModalCloseButton,
-    useDisclosure,
     useToast,
-    FormControl,
-    FormLabel,
     Input,
-    Textarea,
     Spinner,
-    Badge,
-    AlertDialog,
-    AlertDialogBody,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogOverlay,
     TableContainer,
     Select,
     SimpleGrid,
-    Image as ChakraImage,
-    CloseButton,
-    NumberInput,
-    NumberInputField,
-    NumberInputStepper,
-    NumberIncrementStepper,
-    NumberDecrementStepper,
-    AlertDialogContent,
     useColorModeValue,
     Tooltip,
     Flex,
     Divider,
-    Avatar,
+    InputGroup,
+    InputLeftElement,
 } from '@chakra-ui/react'
-import { DeleteIcon, EditIcon, AddIcon } from '@chakra-ui/icons'
+import { DeleteIcon, EditIcon, AddIcon, SearchIcon } from '@chakra-ui/icons'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import AdminSidebar from '../../components/AdminSidebar'
@@ -82,21 +57,30 @@ export default function FeedbacksPage() {
     // -------------------------
     const [feedbacks, setFeedbacks] = useState([])
     const [loading, setLoading] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
 
     // const { isOpen, onOpen, onClose } = useDisclosure()
     // const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
     // const [deleteId, setDeleteId] = useState(null)
     const tableRef = useRef(null)
 
+    // Filter feedbacks based on search query
+    const filteredFeedbacks = feedbacks.filter((f) => {
+        const fullName = `${f.firstname} ${f.lastname}`.toLowerCase()
+        const message = (f.message || '').toLowerCase()
+        const query = searchQuery.toLowerCase()
+        return fullName.includes(query) || message.includes(query)
+    })
+
     async function fetchFeedbacks() {
         setLoading(true)
         try {
             const res = await adminApi.getFeedbacks()
             setFeedbacks(res.data.feedbacks || [])
-            console.log(feedbacks)
+            // console.log(feedbacks)
         } catch (err) {
-            console.error('Failed to fetch categories:', err)
-            toast({ title: 'Failed to load categories', status: 'error', duration: 3000 })
+            console.error('Failed to fetch feedbacks:', err)
+            toast({ title: 'Failed to load feedbacks', status: 'error', duration: 3000 })
             setFeedbacks([])
         }
         finally {
@@ -110,7 +94,10 @@ export default function FeedbacksPage() {
     }, [])
 
 
-
+    const msgToolBg = useColorModeValue("gray.800", "gray.700");
+    const tableBg = useColorModeValue("white", "gray.900");
+    const msgBg = useColorModeValue("gray.700", "gray.100");
+    // const 
     // -------------------------
     // Render
     // -------------------------
@@ -159,6 +146,32 @@ export default function FeedbacksPage() {
 
                             <Divider mb={5} />
 
+                            {/* Search Bar */}
+                            <Box mb={6}>
+                                <InputGroup size="md" maxW="400px">
+                                    <InputLeftElement pointerEvents="none">
+                                        <SearchIcon color={mutedText} />
+                                    </InputLeftElement>
+                                    <Input
+                                        placeholder="Search by name or message..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        bg={useColorModeValue('white', 'gray.700')}
+                                        borderColor={borderColor}
+                                        _focus={{
+                                            borderColor: accent,
+                                            boxShadow: `0 0 0 1px ${accent}`,
+                                        }}
+                                        borderRadius="lg"
+                                    />
+                                </InputGroup>
+                                {searchQuery && (
+                                    <Text mt={2} fontSize="sm" color={mutedText}>
+                                        Showing {filteredFeedbacks.length} of {feedbacks.length} feedbacks
+                                    </Text>
+                                )}
+                            </Box>
+
                             {/* Table / states */}
                             {loading ? (
                                 <Box textAlign="center" py={12} display="flex" flexDirection="column" alignItems="center">
@@ -183,41 +196,141 @@ export default function FeedbacksPage() {
                                 </Box>
                             ) : (
                                 <Box borderRadius="xl" overflow="hidden" border="1px solid" borderColor={borderColor} bg={tableStripe} ref={tableRef}>
-                                    <TableContainer maxH="62vh" overflowY="auto">
-                                        <Table variant="simple" size="sm">
-                                            <Thead position="sticky" top={0} zIndex={1} bg={tableHeadBg}>
+                                    <TableContainer
+                                        maxH="62vh"
+                                        overflowY="auto"
+                                        borderWidth="1px"
+                                        borderRadius="xl"
+                                        boxShadow="lg"
+                                        bg={tableBg}
+                                        sx={{
+                                            // subtle custom scrollbar
+                                            "&::-webkit-scrollbar": {
+                                                width: "8px",
+                                            },
+                                            "&::-webkit-scrollbar-thumb": {
+                                                borderRadius: "full",
+                                            },
+                                        }}
+                                    >
+                                        <Table variant="outline" size="sm" >
+                                            <Thead
+                                                position="sticky"
+                                                top={0}
+                                                zIndex={1}
+                                                bg={tableHeadBg}
+                                                bgGradient="linear(to-r, teal.500, purple.600)"
+                                                color="white"
+                                                boxShadow="sm"
+                                            >
                                                 <Tr>
-                                                    <Th fontWeight="700" color="white.700">User</Th>
-                                                    <Th fontWeight="700" color="white.700">Message</Th>
-                                                    <Th fontWeight="700" color="orange.700" textAlign="center" w="140px">Actions</Th>
+                                                    <Th
+                                                        fontWeight="700"
+                                                        fontSize="xs"
+                                                        textTransform="uppercase"
+                                                        letterSpacing="wider"
+                                                        borderColor="transparent"
+                                                    >
+                                                        User
+                                                    </Th>
+                                                    <Th
+                                                        fontWeight="700"
+                                                        fontSize="xs"
+                                                        textTransform="uppercase"
+                                                        letterSpacing="wider"
+                                                        borderColor="transparent"
+                                                    >
+                                                        Message
+                                                    </Th>
+                                                    <Th
+                                                        fontWeight="700"
+                                                        fontSize="xs"
+                                                        textTransform="uppercase"
+                                                        letterSpacing="wider"
+                                                        textAlign="center"
+                                                        w="140px"
+                                                        color="orange.100"
+                                                        borderColor="transparent"
+                                                    >
+                                                        Actions
+                                                    </Th>
                                                 </Tr>
                                             </Thead>
 
                                             <Tbody>
                                                 {feedbacks.map((f, idx) => (
                                                     <Tr
-                                                        key={f.cust_id}
+                                                        key={f.id}
                                                         borderBottom="1px"
                                                         borderColor={borderColor}
-                                                        bg={idx % 2 === 0 ? 'transparent' : tableStripe}
-                                                        _hover={{ bg: hoverBg, transform: 'translateY(-1px)', boxShadow: 'sm' }}
+                                                        bg={idx % 2 === 0 ? "transparent" : tableStripe}
+                                                        _hover={{
+                                                            bg: hoverBg,
+                                                            transform: "translateY(-2px)",
+                                                            boxShadow: "md",
+                                                        }}
                                                         transition="all 0.15s ease-out"
                                                     >
+                                                        {/* Name cell */}
+                                                        <Td
+                                                            fontWeight="600"
+                                                            color="green.500"
+                                                            fontSize="sm"
+                                                            maxW="220px"
+                                                            whiteSpace="nowrap"
+                                                            textOverflow="ellipsis"
+                                                            overflow="hidden"
+                                                        >
+                                                            {`${f.firstname} ${f.lastname}`}
+                                                        </Td>
 
-                                                        <Td isNumeric fontWeight="700" color="green.600" fontSize="sm">${f.message}</Td>
+                                                        {/* Message cell */}
+                                                        <Td
+                                                            fontWeight="500"
+                                                            color={msgBg}
+                                                            fontSize="sm"
+                                                            maxW="480px"
+                                                        >
+                                                            <Tooltip
+                                                                label={f.message}
+                                                                hasArrow
+                                                                placement="top-start"
+                                                                bg={msgToolBg}
+                                                                color="white"
+                                                            >
+                                                                <Box
+                                                                    noOfLines={2}
+                                                                    wordBreak="break-word"
+                                                                >
+                                                                    {f.message}
+                                                                </Box>
+                                                            </Tooltip>
+                                                        </Td>
 
-
+                                                        {/* Actions */}
                                                         <Td>
                                                             <HStack justify="center" spacing={1} whiteSpace="nowrap">
-                                                                <Tooltip label="Assure">
+                                                                <Tooltip label="Send assurance email" hasArrow>
                                                                     <Button
-                                                                        icon={<FiMail />}
                                                                         size="sm"
-                                                                        colorScheme="red"
-                                                                        variant="ghost"
-                                                                        aria-label="assure"
+                                                                        w="100%"
                                                                         borderRadius="full"
-                                                                    />
+                                                                        leftIcon={<FiMail />}
+                                                                        bgGradient="linear(to-r, red.500, orange.500)"
+                                                                        color="white"
+                                                                        fontWeight="600"
+                                                                        _hover={{
+                                                                            bgGradient: "linear(to-r, cyan.500, purple.600)",
+                                                                            transform: "translateY(-2px)",
+                                                                            boxShadow: "lg",
+                                                                        }}
+                                                                        _active={{
+                                                                            transform: "translateY(0)",
+                                                                            boxShadow: "sm",
+                                                                        }}
+                                                                    >
+                                                                        Assure
+                                                                    </Button>
                                                                 </Tooltip>
                                                             </HStack>
                                                         </Td>
@@ -226,6 +339,7 @@ export default function FeedbacksPage() {
                                             </Tbody>
                                         </Table>
                                     </TableContainer>
+
                                 </Box>
                             )}
                         </Box>

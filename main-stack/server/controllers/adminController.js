@@ -310,6 +310,16 @@ exports.deleteCategory = async (req, res) => {
     }
   }
 
+exports.getFeedbacks = async (req, res) => {
+  try {
+    const feedbacks = await db('feedbacks').join('users', 'feedbacks.cust_id', 'users.id').select('feedbacks.id', 'feedbacks.message', 'feedbacks.created_at', 'users.firstname as firstname', 'users.lastname as lastname', 'users.email as user_email');
+    return res.json({ feedbacks });
+  } catch (err) {
+    console.error('get feedbacks error', err);
+    return res.status(500).json({ message: 'Failed to load feedbacks' });
+  }
+}
+
 exports.listProducts = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 100, 500);
