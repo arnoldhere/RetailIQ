@@ -148,16 +148,35 @@ export default function ProductDetailPage() {
         : 'red'
 
   const handleAddToCart = () => {
-    if (quantity > 0) {
-      addToCart(product, quantity)
+    // ✅ FIX 2: Validate quantity doesn't exceed stock
+    if (quantity <= 0) {
       toast({
-        title: 'Added to cart',
-        description: `${quantity} × ${product.name}`,
-        status: 'success',
+        title: 'Invalid quantity',
+        description: 'Please select at least 1 item',
+        status: 'error',
         duration: 2000,
       })
-      setQuantity(1)
+      return
     }
+
+    if (quantity > product.stock_available) {
+      toast({
+        title: 'Insufficient stock',
+        description: `Only ${product.stock_available} item(s) available in stock.`,
+        status: 'error',
+        duration: 2000,
+      })
+      return
+    }
+
+    addToCart(product, quantity)
+    toast({
+      title: 'Added to cart',
+      description: `${quantity} × ${product.name}`,
+      status: 'success',
+      duration: 2000,
+    })
+    setQuantity(1)
   }
 
   const handleToggleWishlist = () => {
@@ -366,7 +385,7 @@ export default function ProductDetailPage() {
                       <Heading size="lg" color="green.500">
                         ${product.sell_price}
                       </Heading>
-                      {product.cost_price > 0 && (
+                      {/* {product.cost_price > 0 && (
                         <Text
                           fontSize="sm"
                           color={textMuted}
@@ -374,7 +393,7 @@ export default function ProductDetailPage() {
                         >
                           ${product.cost_price}
                         </Text>
-                      )}
+                      )} */}
                     </HStack>
                     <Text fontSize="xs" color={textMuted}>
                       Inclusive of all taxes

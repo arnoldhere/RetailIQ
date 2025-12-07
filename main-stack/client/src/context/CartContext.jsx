@@ -126,14 +126,38 @@ export function CartProvider({ children }) {
             }
           } catch (err) {
             console.error('Failed to sync add to cart:', err)
-            const errorMessage = err.response?.data?.message || err.message || 'Failed to sync with server'
-            toast({
-              title: 'Warning',
-              description: `Item added locally. ${errorMessage}`,
-              status: 'warning',
-              duration: 3000,
-              isClosable: true,
-            })
+            // ✅ FIX 2: Check for stock validation errors
+            if (err.response?.status === 400) {
+              const errorMessage = err.response?.data?.message || 'Cannot add this quantity'
+              // Revert optimistic update if validation failed
+              setCart(prev => {
+                const existing = prev.find(item => item.id === product.id)
+                if (existing) {
+                  return prev.map(item =>
+                    item.id === product.id
+                      ? { ...item, quantity: Math.max(0, item.quantity - quantity) }
+                      : item
+                  ).filter(item => item.quantity > 0)
+                }
+                return prev.filter(item => item.id !== product.id)
+              })
+              toast({
+                title: 'Stock limit error',
+                description: errorMessage,
+                status: 'error',
+                duration: 3000,
+                isClosable: true,
+              })
+            } else {
+              const errorMessage = err.response?.data?.message || err.message || 'Failed to sync with server'
+              toast({
+                title: 'Warning',
+                description: `Item added locally. ${errorMessage}`,
+                status: 'warning',
+                duration: 3000,
+                isClosable: true,
+              })
+            }
           }
         }
       } catch (err) {

@@ -107,6 +107,15 @@ exports.addToCart = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
+    // ✅ FIX 2: Check if requested quantity exceeds available stock
+    const availableStock = parseInt(product.stock_available) || 0;
+    if (quantity > availableStock) {
+      return res.status(400).json({ 
+        message: `Insufficient stock. Only ${availableStock} item(s) available.`,
+        available: availableStock
+      });
+    }
+
     // Get or create cart
     const cart = await getOrCreateCart(userId);
 
@@ -120,8 +129,17 @@ exports.addToCart = async (req, res) => {
     const totalAmount = unitPrice * qty;
 
     if (existingItem) {
-      // Update existing item quantity
+      // ✅ FIX 2: Validate new total quantity doesn't exceed stock
       const newQty = existingItem.qty + qty;
+      if (newQty > availableStock) {
+        return res.status(400).json({ 
+          message: `Cannot add ${qty} more item(s). Current cart has ${existingItem.qty}. Only ${availableStock} available in total.`,
+          available: availableStock,
+          currentQty: existingItem.qty,
+          canAdd: Math.max(0, availableStock - existingItem.qty)
+        });
+      }
+
       const newTotalAmount = unitPrice * newQty;
 
       await db('customer_cart_items')
@@ -156,6 +174,7 @@ exports.addToCart = async (req, res) => {
         sell_price: parseFloat(item.sell_price) || 0,
         cost_price: parseFloat(item.cost_price) || 0,
         stock: item.stock,
+        stock_available: item.stock_available,
         category_id: item.category_id,
         supplier_id: item.supplier_id,
         images: normalizeImages(item.images)[0],
@@ -198,6 +217,7 @@ exports.addToCart = async (req, res) => {
         sell_price: parseFloat(item.sell_price) || 0,
         cost_price: parseFloat(item.cost_price) || 0,
         stock: item.stock,
+        stock_available: item.stock_available,
         category_id: item.category_id,
         supplier_id: item.supplier_id,
         images: normalizeImages(item.images)[0],
@@ -318,8 +338,17 @@ exports.updateCartItemQuantity = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    const unitPrice = parseFloat(product.sell_price) || 0;
+    // ✅ FIX 2: Validate new quantity doesn't exceed available stock
+    const availableStock = parseInt(product.stock_available) || 0;
     const qty = parseInt(quantity) || 1;
+    if (qty > availableStock) {
+      return res.status(400).json({ 
+        message: `Insufficient stock. Only ${availableStock} item(s) available.`,
+        available: availableStock
+      });
+    }
+
+    const unitPrice = parseFloat(product.sell_price) || 0;
     const totalAmount = unitPrice * qty;
 
     // Update quantity and total

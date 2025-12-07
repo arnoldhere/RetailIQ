@@ -18,8 +18,10 @@ import {
 	Avatar,
 	Badge,
 	useColorModeValue,
+	Textarea,
 } from '@chakra-ui/react';
-import { ArrowBackIcon, EditIcon, CheckIcon } from '@chakra-ui/icons';
+import { ArrowBackIcon, EditIcon, CheckIcon, SmallCloseIcon } from '@chakra-ui/icons';
+import { FaMapMarkerAlt, FaSpinner } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -36,9 +38,11 @@ export default function Profile() {
 		lastname: '',
 		email: '',
 		phone: '',
+		address: '',
 	});
 	const [isSaving, setIsSaving] = useState(false);
 	const [errors, setErrors] = useState({});
+	const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
 	// Colors for dark/light mode
 	const bgCard = useColorModeValue('gray.50', 'rgba(11,18,32,0.8)');
@@ -54,6 +58,7 @@ export default function Profile() {
 				lastname: user.lastname || '',
 				email: user.email || '',
 				phone: user.phone || '',
+				address: user.address || '',
 			});
 		}
 	}, [user]);
@@ -97,6 +102,80 @@ export default function Profile() {
 
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
+	};
+
+	// Detect current location using Geolocation API
+	const detectLocation = async () => {
+		if (!navigator.geolocation) {
+			toast({
+				title: 'Geolocation not supported',
+				description: 'Your browser does not support geolocation. Please enter address manually.',
+				status: 'warning',
+				duration: 3000,
+				isClosable: true,
+				position: 'top-right',
+			});
+			return;
+		}
+
+		setIsDetectingLocation(true);
+		try {
+			navigator.geolocation.getCurrentPosition(
+				async (position) => {
+					const { latitude, longitude } = position.coords;
+					
+					// Try to reverse geocode coordinates to address
+					try {
+						const response = await fetch(
+							`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+						);
+						const data = await response.json();
+						const address = data.address?.road ? 
+							`${data.address.road}, ${data.address.city || ''}, ${data.address.postcode || ''}`.trim() :
+							`Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`;
+						
+						setFormData(prev => ({ ...prev, address }));
+						toast({
+							title: 'Location detected',
+							description: 'Address updated from your current location',
+							status: 'success',
+							duration: 2000,
+							isClosable: true,
+							position: 'top-right',
+						});
+					} catch (err) {
+						// Fallback to coordinates only
+						setFormData(prev => ({ 
+							...prev, 
+							address: `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`
+						}));
+						toast({
+							title: 'Location detected (coordinates only)',
+							description: 'Could not retrieve street address. Saved as coordinates.',
+							status: 'info',
+							duration: 2000,
+							isClosable: true,
+							position: 'top-right',
+						});
+					}
+				},
+				(error) => {
+					console.error('Geolocation error:', error);
+					toast({
+						title: 'Location access denied',
+						description: 'Please enter address manually or enable location access.',
+						status: 'warning',
+						duration: 3000,
+						isClosable: true,
+						position: 'top-right',
+					});
+				}
+			);
+		} catch (err) {
+			console.error('Geolocation error:', err);
+		} finally {
+			setIsDetectingLocation(false);
+		}
 	};
 
 	const handleSave = async () => {
@@ -351,6 +430,54 @@ export default function Profile() {
 											</Text>
 										)}
 									</FormControl>
+
+									{/* Address */}
+									<FormControl isInvalid={!!errors.address} gridColumn={{ base: '1', md: '1 / -1' }}>
+										<HStack justify="space-between" align="center" mb={2}>
+											<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} m={0}>
+												Address
+											</FormLabel>
+											{isEditing && (
+												<Button
+													leftIcon={<FaMapMarkerAlt />}
+													size="xs"
+													colorScheme="cyan"
+													variant="ghost"
+													onClick={detectLocation}
+													isLoading={isDetectingLocation}
+													spinner={<FaSpinner />}
+													_hover={{ bg: 'whiteAlpha.100' }}
+												>
+													Detect GPS Location
+												</Button>
+											)}
+										</HStack>
+										<Textarea
+											name="address"
+											value={formData.address}
+											onChange={handleInputChange}
+											isReadOnly={!isEditing}
+											placeholder="Enter your full address (street, city, state, zip code)"
+											bg={isEditing ? 'whiteAlpha.50' : 'transparent'}
+											border="1px solid"
+											borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'}
+											_hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }}
+											_focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }}
+											color={textPrimary}
+											_placeholder={{ color: textSecondary }}
+											transition="all 0.2s"
+											minH="80px"
+											resize="vertical"
+										/>
+										{errors.address && (
+											<Text color="red.400" fontSize="xs" mt={1}>
+												{errors.address}
+											</Text>
+										)}
+										<Text fontSize="xs" color={textSecondary} mt={1}>
+											💡 Click "Detect GPS Location" to auto-fill from your current location, or type manually
+										</Text>
+									</FormControl>
 								</Grid>
 							</VStack>
 
@@ -406,6 +533,7 @@ export default function Profile() {
 											lastname: user.lastname || '',
 											email: user.email || '',
 											phone: user.phone || '',
+											address: user.address || '',
 										});
 										setErrors({});
 									}}
