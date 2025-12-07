@@ -357,6 +357,85 @@ exports.listSuppliers = async (req, res) => {
   }
 };
 
+exports.createSupplier = async (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { firstname, lastname, email, phone, password } = req.body;
+
+    // Validation
+    if (!firstname || !firstname.trim()) {
+      return res.status(400).json({ errors: [{ field: 'firstname', msg: 'First name is required' }] });
+    }
+    if (!lastname || !lastname.trim()) {
+      return res.status(400).json({ errors: [{ field: 'lastname', msg: 'Last name is required' }] });
+    }
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ errors: [{ field: 'email', msg: 'Valid email is required' }] });
+    }
+    if (!phone || phone.length < 7) {
+      return res.status(400).json({ errors: [{ field: 'phone', msg: 'Valid phone is required' }] });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ errors: [{ field: 'password', msg: 'Password must be at least 8 characters' }] });
+    }
+
+    // Check if email already exists
+    const existingEmail = await db('users').where({ email }).first();
+    if (existingEmail) {
+      return res.status(409).json({ errors: [{ field: 'email', msg: 'Email already exists' }] });
+    }
+
+    // Check if phone already exists
+    const existingPhone = await db('users').where({ phone }).first();
+    if (existingPhone) {
+      return res.status(409).json({ errors: [{ field: 'phone', msg: 'Phone already exists' }] });
+    }
+
+    // Hash password
+    const hashed = await bcrypt.hash(password, 10);
+
+    // Create user and supplier in transaction
+    const result = await db.transaction(async (trx) => {
+      // 1. Insert user with role='supplier'
+      const [userId] = await trx('users').insert({
+        firstname: firstname.trim(),
+        lastname: lastname.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        password: hashed,
+        role: 'supplier',
+      });
+
+      // 2. Insert supplier record
+      await trx('suppliers').insert({
+        cust_id: userId,
+        name: `${firstname.trim()} ${lastname.trim()}`,
+        email: email.trim(),
+        phone: phone.trim(),
+        is_active: true,
+      });
+
+      // Return created user (without password)
+      const user = await trx('users').where({ id: userId }).first();
+      return user;
+    });
+
+    // Format response (exclude password)
+    const safeUser = { ...result };
+    delete safeUser.password;
+    delete safeUser.otp;
+    delete safeUser.otpGeneratedAt;
+
+    return res.status(201).json({
+      message: 'Supplier created successfully',
+      supplier: safeUser,
+    });
+  } catch (err) {
+    console.error('create supplier error', err);
+    return res.status(500).json({ message: 'Failed to create supplier' });
+  }
+};
+
 exports.listCustomerOrders = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 12, 500);

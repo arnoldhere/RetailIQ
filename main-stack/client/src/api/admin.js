@@ -29,3 +29,7 @@ export async function getSupplierOrders(limit = 12, offset = 0, filters = {}) {
     params: { limit, offset, ...filters }
   })
 }
+
+export async function createSupplier(data) {
+  return client.post('/api/admin/suppliers', data)
+}

@@ -180,6 +180,7 @@ export default function ProductDetailPage() {
       minH="100vh"
       display="flex"
       flexDirection="column"
+      w='100vw'
       bgGradient={pageBgGradient}  // ✅ uses precomputed value
     >
       <Navbar />

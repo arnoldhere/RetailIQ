@@ -23,8 +23,18 @@ import {
     Badge,
     InputGroup,
     InputLeftElement,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalFooter,
+    ModalBody,
+    ModalCloseButton,
+    useDisclosure,
+    FormControl,
+    FormLabel,
 } from '@chakra-ui/react'
-import { SearchIcon } from '@chakra-ui/icons'
+import { SearchIcon, AddIcon } from '@chakra-ui/icons'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import AdminSidebar from '../../components/AdminSidebar'
@@ -32,6 +42,7 @@ import * as adminApi from '../../api/admin'
 
 export default function SuppliersPage() {
     const toast = useToast()
+    const { isOpen, onOpen, onClose } = useDisclosure()
     
     const pageBg = useColorModeValue('gray.50', 'gray.900')
     const subtleCard = useColorModeValue('white', 'gray.800')
@@ -54,6 +65,17 @@ export default function SuppliersPage() {
     })
     const [limit] = useState(12)
     const [offset, setOffset] = useState(0)
+
+    // Form state for adding supplier
+    const [formData, setFormData] = useState({
+        firstname: '',
+        lastname: '',
+        email: '',
+        phone: '',
+        password: '',
+    })
+    const [formErrors, setFormErrors] = useState({})
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     useEffect(() => {
         fetchSuppliers()
@@ -79,6 +101,71 @@ export default function SuppliersPage() {
     const handleFilterChange = (key, value) => {
         setOffset(0)
         setFilters((prev) => ({ ...prev, [key]: value }))
+    }
+
+    const handleFormChange = (e) => {
+        const { name, value } = e.target
+        setFormData((prev) => ({ ...prev, [name]: value }))
+        if (formErrors[name]) {
+            setFormErrors((prev) => ({ ...prev, [name]: '' }))
+        }
+    }
+
+    const validateForm = () => {
+        const errors = {}
+        if (!formData.firstname.trim()) errors.firstname = 'First name is required'
+        if (!formData.lastname.trim()) errors.lastname = 'Last name is required'
+        if (!formData.email.trim()) errors.email = 'Email is required'
+        if (formData.email && !formData.email.includes('@')) errors.email = 'Invalid email'
+        if (!formData.phone.trim()) errors.phone = 'Phone is required'
+        if (formData.phone.trim().length < 7) errors.phone = 'Invalid phone number'
+        if (!formData.password || formData.password.length < 8) errors.password = 'Password must be at least 8 characters'
+        
+        setFormErrors(errors)
+        return Object.keys(errors).length === 0
+    }
+
+    const handleSubmitSupplier = async () => {
+        if (!validateForm()) return
+
+        try {
+            setIsSubmitting(true)
+            await adminApi.createSupplier(formData)
+            
+            toast({
+                title: 'Success',
+                description: 'Supplier added successfully!',
+                status: 'success',
+                duration: 3000,
+                isClosable: true,
+            })
+            
+            // Reset form and close modal
+            setFormData({
+                firstname: '',
+                lastname: '',
+                email: '',
+                phone: '',
+                password: '',
+            })
+            setFormErrors({})
+            onClose()
+            
+            // Refresh suppliers list
+            fetchSuppliers()
+        } catch (err) {
+            console.error('Failed to create supplier:', err)
+            const errorMsg = err?.response?.data?.message || err?.message || 'Failed to add supplier'
+            toast({
+                title: 'Error',
+                description: errorMsg,
+                status: 'error',
+                duration: 3000,
+                isClosable: true,
+            })
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     const totalPages = Math.ceil(total / limit)
@@ -122,6 +209,16 @@ export default function SuppliersPage() {
                                         Manage supplier information and relationships.
                                     </Text>
                                 </VStack>
+                                <Button
+                                    leftIcon={<AddIcon />}
+                                    colorScheme="blue"
+                                    size="sm"
+                                    onClick={onOpen}
+                                    _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
+                                    transition="all 0.2s"
+                                >
+                                    Add Supplier
+                                </Button>
                             </Flex>
 
                             <Divider mb={5} />
@@ -245,6 +342,123 @@ export default function SuppliersPage() {
                     </SimpleGrid>
                 </Box>
             </Box>
+
+            {/* Add Supplier Modal */}
+            <Modal isOpen={isOpen} onClose={onClose} size="lg" isCentered>
+                <ModalOverlay backdropFilter="blur(10px)" />
+                <ModalContent bg={subtleCard} border="1px solid" borderColor={borderColor}>
+                    <ModalHeader>
+                        <Heading size="md">Add New Supplier</Heading>
+                    </ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <VStack spacing={4}>
+                            <HStack spacing={4} w="100%">
+                                <FormControl isInvalid={!!formErrors.firstname}>
+                                    <FormLabel fontSize="sm">First Name</FormLabel>
+                                    <Input
+                                        name="firstname"
+                                        value={formData.firstname}
+                                        onChange={handleFormChange}
+                                        placeholder="First name"
+                                        borderColor={borderColor}
+                                        _focus={{ borderColor: accent }}
+                                    />
+                                    {formErrors.firstname && (
+                                        <Text color="red.400" fontSize="xs" mt={1}>
+                                            {formErrors.firstname}
+                                        </Text>
+                                    )}
+                                </FormControl>
+                                <FormControl isInvalid={!!formErrors.lastname}>
+                                    <FormLabel fontSize="sm">Last Name</FormLabel>
+                                    <Input
+                                        name="lastname"
+                                        value={formData.lastname}
+                                        onChange={handleFormChange}
+                                        placeholder="Last name"
+                                        borderColor={borderColor}
+                                        _focus={{ borderColor: accent }}
+                                    />
+                                    {formErrors.lastname && (
+                                        <Text color="red.400" fontSize="xs" mt={1}>
+                                            {formErrors.lastname}
+                                        </Text>
+                                    )}
+                                </FormControl>
+                            </HStack>
+
+                            <FormControl isInvalid={!!formErrors.email} w="100%">
+                                <FormLabel fontSize="sm">Email Address</FormLabel>
+                                <Input
+                                    type="email"
+                                    name="email"
+                                    value={formData.email}
+                                    onChange={handleFormChange}
+                                    placeholder="supplier@example.com"
+                                    borderColor={borderColor}
+                                    _focus={{ borderColor: accent }}
+                                />
+                                {formErrors.email && (
+                                    <Text color="red.400" fontSize="xs" mt={1}>
+                                        {formErrors.email}
+                                    </Text>
+                                )}
+                            </FormControl>
+
+                            <FormControl isInvalid={!!formErrors.phone} w="100%">
+                                <FormLabel fontSize="sm">Phone Number</FormLabel>
+                                <Input
+                                    type="tel"
+                                    name="phone"
+                                    value={formData.phone}
+                                    onChange={handleFormChange}
+                                    placeholder="Phone number"
+                                    borderColor={borderColor}
+                                    _focus={{ borderColor: accent }}
+                                />
+                                {formErrors.phone && (
+                                    <Text color="red.400" fontSize="xs" mt={1}>
+                                        {formErrors.phone}
+                                    </Text>
+                                )}
+                            </FormControl>
+
+                            <FormControl isInvalid={!!formErrors.password} w="100%">
+                                <FormLabel fontSize="sm">Password</FormLabel>
+                                <Input
+                                    type="password"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleFormChange}
+                                    placeholder="Minimum 8 characters"
+                                    borderColor={borderColor}
+                                    _focus={{ borderColor: accent }}
+                                />
+                                {formErrors.password && (
+                                    <Text color="red.400" fontSize="xs" mt={1}>
+                                        {formErrors.password}
+                                    </Text>
+                                )}
+                            </FormControl>
+                        </VStack>
+                    </ModalBody>
+
+                    <ModalFooter gap={3}>
+                        <Button variant="ghost" onClick={onClose}>
+                            Cancel
+                        </Button>
+                        <Button
+                            colorScheme="blue"
+                            onClick={handleSubmitSupplier}
+                            isLoading={isSubmitting}
+                            loadingText="Adding..."
+                        >
+                            Add Supplier
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
 
             <Footer />
         </Box>

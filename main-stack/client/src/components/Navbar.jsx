@@ -76,38 +76,40 @@ export default function Navbar() {
 						align="center"
 						ml={12}
 					>
-						{/* Navigation Links */}
-						<ChakraLink
-							fontSize="sm"
-							color="gray.300"
-							_hover={{ color: "cyan.400", textDecoration: "none" }}
-							transition="color 0.2s"
-							onClick={() => navigate("/customer/products")}
-						>
-							Explore
-						</ChakraLink>
-						<ChakraLink
-							fontSize="sm"
-							color="gray.300"
-							_hover={{ color: "cyan.400", textDecoration: "none" }}
-							transition="color 0.2s"
-							onClick={() => navigate("/about-us")}
-							cursor="pointer"
-						>
-							About Us
-						</ChakraLink>
-						<ChakraLink
-							fontSize="sm"
-							color="gray.300"
-							_hover={{ color: "cyan.400", textDecoration: "none" }}
-							transition="color 0.2s"
-							onClick={() => navigate("/contact-us")}
-							cursor="pointer"
-						>
-							Contact Us
-						</ChakraLink>
-
-						{/* Cart & Wishlist Icons (for customers) */}
+					{/* Navigation Links */}
+					<ChakraLink
+						fontSize="sm"
+						color="gray.300"
+						_hover={{ color: "cyan.400", textDecoration: "none" }}
+						transition="color 0.2s"
+						onClick={() => navigate("/customer/products")}
+					>
+						Explore
+					</ChakraLink>
+					{user?.role !== 'admin' && (
+						<>
+							<ChakraLink
+								fontSize="sm"
+								color="gray.300"
+								_hover={{ color: "cyan.400", textDecoration: "none" }}
+								transition="color 0.2s"
+								onClick={() => navigate("/about-us")}
+								cursor="pointer"
+							>
+								About Us
+							</ChakraLink>
+							<ChakraLink
+								fontSize="sm"
+								color="gray.300"
+								_hover={{ color: "cyan.400", textDecoration: "none" }}
+								transition="color 0.2s"
+								onClick={() => navigate("/contact-us")}
+								cursor="pointer"
+							>
+								Contact Us
+							</ChakraLink>
+						</>
+					)}						{/* Cart & Wishlist Icons (for customers) */}
 						{user?.role === "customer" && (
 							<HStack spacing={3}>
 								<ChakraLink
@@ -132,66 +134,92 @@ export default function Navbar() {
 
 					<Spacer display={{ base: "none", md: "block" }} />
 
-					{/* Desktop User Menu */}
-					<HStack
-						spacing={4}
-						display={{ base: "none", md: "flex" }}
-						align="center"
-						flexShrink={0}
-					>
-						<Text fontSize="sm" color="gray.300">
-							{user?.firstname && `Welcome, ${user.firstname}`}
-						</Text>
+				{/* Desktop User Menu */}
+				<HStack
+					spacing={4}
+					display={{ base: "none", md: "flex" }}
+					align="center"
+					flexShrink={0}
+				>
+					{user ? (
+						<>
+							<Text fontSize="sm" color="gray.300">
+								{user?.firstname && `Welcome, ${user.firstname}`}
+							</Text>
 
-						<Menu>
-							<MenuButton
-								as={Button}
-								rightIcon={<ChevronDownIcon />}
-								bg="whiteAlpha.100"
-								color="gray.100"
-								_hover={{ bg: "whiteAlpha.200" }}
-								_active={{ bg: "whiteAlpha.300" }}
+							<Menu>
+								<MenuButton
+									as={Button}
+									rightIcon={<ChevronDownIcon />}
+									bg="whiteAlpha.100"
+									color="gray.100"
+									_hover={{ bg: "whiteAlpha.200" }}
+									_active={{ bg: "whiteAlpha.300" }}
+									size="sm"
+								>
+									{user?.role === "admin"
+										? "👤 Admin"
+										: user?.role === "supplier"
+											? "🏪 Supplier"
+											: "👥 Customer"}
+								</MenuButton>
+								<MenuList
+									borderColor="whiteAlpha.200"
+									bg="rgba(11,18,32,0.98)"
+									backdropFilter="blur(10px)"
+								>
+									<MenuItem
+										onClick={() => navigate("/profile")}
+										_hover={{ bg: "whiteAlpha.200" }}
+										fontSize="sm"
+										color="gray.200"
+									>
+										Profile
+									</MenuItem>
+									<MenuItem
+										_hover={{ bg: "whiteAlpha.200" }}
+										fontSize="sm"
+										color="gray.200"
+									>
+										Settings
+									</MenuItem>
+									<MenuDivider />
+									<MenuItem
+										onClick={handleLogout}
+										color="red.400"
+										_hover={{ bg: "red.900" }}
+										fontSize="sm"
+									>
+										Logout
+									</MenuItem>
+								</MenuList>
+							</Menu>
+						</>
+					) : (
+						<HStack spacing={2}>
+							<Button
+								onClick={() => navigate("/auth/login")}
+								variant="outline"
+								colorScheme="cyan"
 								size="sm"
+								fontSize="sm"
+								_hover={{ bg: "cyan.900" }}
 							>
-								{user?.role === "admin"
-									? "👤 Admin"
-									: user?.role === "supplier"
-										? "🏪 Supplier"
-										: "👥 Customer"}
-							</MenuButton>
-							<MenuList
-								borderColor="whiteAlpha.200"
-								bg="rgba(11,18,32,0.98)"
-								backdropFilter="blur(10px)"
+								Login
+							</Button>
+							<Button
+								onClick={() => navigate("/auth/signup")}
+								bgGradient="linear(to-r, cyan.400, purple.500)"
+								color="white"
+								size="sm"
+								fontSize="sm"
+								_hover={{ opacity: 0.9 }}
 							>
-								<MenuItem
-									_hover={{ bg: "whiteAlpha.200" }}
-									fontSize="sm"
-									color="gray.200"
-								>
-									Profile
-								</MenuItem>
-								<MenuItem
-									_hover={{ bg: "whiteAlpha.200" }}
-									fontSize="sm"
-									color="gray.200"
-								>
-									Settings
-								</MenuItem>
-								<MenuDivider />
-								<MenuItem
-									onClick={handleLogout}
-									color="red.400"
-									_hover={{ bg: "red.900" }}
-									fontSize="sm"
-								>
-									Logout
-								</MenuItem>
-							</MenuList>
-						</Menu>
-					</HStack>
-
-					{/* Mobile Hamburger */}
+								Sign Up
+							</Button>
+						</HStack>
+					)}
+				</HStack>					{/* Mobile Hamburger */}
 					<Button
 						display={{ base: "flex", md: "none" }}
 						onClick={onOpen}
@@ -314,6 +342,10 @@ export default function Navbar() {
 									variant="ghost"
 									justifyContent="flex-start"
 									_hover={{ bg: "whiteAlpha.200" }}
+									onClick={() => {
+										navigate("/profile");
+										onClose();
+									}}
 									fontSize="sm"
 								>
 									👤 Profile
@@ -340,9 +372,94 @@ export default function Navbar() {
 								</Button>
 							</VStack>
 						</VStack>
-					</DrawerBody>
-				</DrawerContent>
-			</Drawer>
+					) : (
+						<VStack spacing={6} align="stretch">
+							{/* Not Logged In - Show Auth Options */}
+							<Box borderBottom="1px solid" borderColor="whiteAlpha.200" pb={4}>
+								<Text fontWeight={700} fontSize="md" color="cyan.400" mb={1}>
+									RetailIQ
+								</Text>
+								<Text fontSize="xs" color="gray.400">
+									Welcome to our platform
+								</Text>
+							</Box>
+
+							{/* Navigation Links */}
+							<VStack spacing={3} align="stretch">
+								<Text fontSize="xs" fontWeight="700" color="gray.400" textTransform="uppercase">
+									Navigation
+								</Text>
+								<Button
+									variant="ghost"
+									justifyContent="flex-start"
+									_hover={{ bg: "whiteAlpha.200" }}
+									onClick={() => {
+										navigate("/customer/products");
+										onClose();
+									}}
+									fontSize="sm"
+								>
+									🔍 Explore Products
+								</Button>
+								<Button
+									variant="ghost"
+									justifyContent="flex-start"
+									_hover={{ bg: "whiteAlpha.200" }}
+									onClick={() => {
+										navigate("/about-us");
+										onClose();
+									}}
+									fontSize="sm"
+								>
+									ℹ️ About Us
+								</Button>
+								<Button
+									variant="ghost"
+									justifyContent="flex-start"
+									_hover={{ bg: "whiteAlpha.200" }}
+									onClick={() => {
+										navigate("/contact-us");
+										onClose();
+									}}
+									fontSize="sm"
+								>
+									📞 Contact Us
+								</Button>
+							</VStack>
+
+							{/* Auth Buttons */}
+							<VStack spacing={3} align="stretch" borderTop="1px solid" borderColor="whiteAlpha.200" pt={4}>
+								<Button
+									onClick={() => {
+										navigate("/auth/login");
+										onClose();
+									}}
+									variant="outline"
+									colorScheme="cyan"
+									w="100%"
+									fontSize="sm"
+								>
+									Login
+								</Button>
+								<Button
+									onClick={() => {
+										navigate("/auth/signup");
+										onClose();
+									}}
+									bgGradient="linear(to-r, cyan.400, purple.500)"
+									color="white"
+									w="100%"
+									fontSize="sm"
+									_hover={{ opacity: 0.9 }}
+								>
+									Sign Up
+								</Button>
+							</VStack>
+						</VStack>
+					)
+				</DrawerBody>
+			</DrawerContent>
+		</Drawer>
 		</>
 	);
 }

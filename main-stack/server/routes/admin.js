@@ -117,6 +117,15 @@ router.get('/suppliers', authMiddleware, async (req, res, next) => {
   }
 });
 
+router.post('/suppliers', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.createSupplier(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/customer-orders', authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });

@@ -27,6 +27,7 @@ import CustomerProducts from './pages/customer/Products'
 import ProductDetail from './pages/customer/ProductDetail'
 import Cart from './pages/customer/Cart'
 import Wishlist from './pages/customer/Wishlist'
+import Profile from './pages/Profile'
 
 // Public Pages
 import AboutUs from './pages/AboutUs'
@@ -56,7 +57,7 @@ function AppRoutes() {
       <Route path="/about-us" element={<AboutUs />} />
       <Route path="/contact-us" element={<ContactUs />} />
 
-      {/* Protected Routes - Role Based */}
+      {/* Public Routes - Home page accessible to all (redirects based on role) */}
       <Route
         path="/"
         element={
@@ -65,10 +66,13 @@ function AppRoutes() {
               user.role === 'supplier' ? <Navigate to="/supplier/dashboard" replace /> :
                 <Navigate to="/customer/home" replace />
           ) : (
-            <Navigate to="/auth/login" replace />
+            <Navigate to="/customer/home" replace />
           )
         }
       />
+
+      {/* Profile Route - Protected for all logged-in users */}
+      <Route path="/profile" element={user ? <Profile /> : <Navigate to="/auth/login" replace />} />
 
       <Route path="/admin/dashboard" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/dashboard" element={user?.role === 'supplier' ? <SupplierDashboard /> : <Navigate to="/auth/login" replace />} />
