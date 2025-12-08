@@ -16,5 +16,9 @@ export async function getMetrics() {
     return client.get('/api/user/getMetrics');
 }
 
+export async function editProfile(data, id) {
+    return client.post(`/api/user/edit-profile/${id}`, data)
+}
+
 
 export default client;

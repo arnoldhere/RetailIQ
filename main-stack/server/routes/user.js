@@ -32,4 +32,13 @@ router.get('/getMetrics', authMiddleware, async (req, res) => {
     }
 });
 
+router.post('/edit-profile/:id', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user) return res.status(403).json({ message: 'Forbidden' });
+        return UserController.editProfile(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
 module.exports = router;

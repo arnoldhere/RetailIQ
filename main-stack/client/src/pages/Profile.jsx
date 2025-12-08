@@ -26,7 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-
+import * as userApi from "../api/user"
 export default function Profile() {
 	const { user, loading } = useAuth();
 	const navigate = useNavigate();
@@ -123,17 +123,17 @@ export default function Profile() {
 			navigator.geolocation.getCurrentPosition(
 				async (position) => {
 					const { latitude, longitude } = position.coords;
-					
+
 					// Try to reverse geocode coordinates to address
 					try {
 						const response = await fetch(
 							`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
 						);
 						const data = await response.json();
-						const address = data.address?.road ? 
+						const address = data.address?.road ?
 							`${data.address.road}, ${data.address.city || ''}, ${data.address.postcode || ''}`.trim() :
 							`Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`;
-						
+
 						setFormData(prev => ({ ...prev, address }));
 						toast({
 							title: 'Location detected',
@@ -144,9 +144,10 @@ export default function Profile() {
 							position: 'top-right',
 						});
 					} catch (err) {
+						console.error(err)
 						// Fallback to coordinates only
-						setFormData(prev => ({ 
-							...prev, 
+						setFormData(prev => ({
+							...prev,
 							address: `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`
 						}));
 						toast({
@@ -184,8 +185,26 @@ export default function Profile() {
 		try {
 			setIsSaving(true);
 			// TODO: Implement profile update API call
-			// const response = await updateProfile(formData);
-			
+			// console.log(formData);
+			const userId = localStorage.getItem("retailiq_user_id")
+			// Add userId safely
+			// setFormData(prev => ({
+			// 	...prev,
+			// 	id: userId,
+			// }));
+			const res = await userApi.editProfile(formData, userId);
+			if (!res) {
+				toast({
+					title: 'Error in profile update... Try again',
+					description: 'error found in profile update.',
+					status: 'error',
+					duration: 3000,
+					isClosable: true,
+					position: 'top-right',
+				});
+				throw new Error("Profile update failed..");
+
+			}
 			// For now, show success
 			toast({
 				title: 'Profile Updated',

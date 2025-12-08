@@ -19,16 +19,6 @@ exports.getProductCategories = async (req, res) => {
     }
 }
 
-// exports.getWishlist = async (req, res) => {
-//     try {
-//         const wishlist = await db('customer_wishlist')
-//         return res.json({ wishlist});
-//     } catch (err) {
-//         console.error('list categories error', err);
-//         return res.status(500).json({ message: 'Failed to load categories' });
-//     }
-// }
-
 exports.getMetrics = async (req, res) => {
     try {
         // basic metrics
@@ -75,5 +65,31 @@ exports.getMetrics = async (req, res) => {
     } catch (err) {
         console.error('admin overview error', err);
         return res.status(500).json({ message: 'Failed to load admin overview' });
+    }
+}
+
+exports.editProfile = async (req, res) => {
+    try {
+        console.log(req.body);
+        const { firstname, lastname, email, phone, address } = req.body;
+        const id = req.params.id;
+        if (!id || !firstname || !lastname || !email || !phone || !address) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        const user = await db('users').where('id', id).first();
+        if (!user) return res.status(404).json({ message: "User not found... Invalid authentication" });
+
+        const save = await db('users').where('id', id).update({
+            firstname, lastname, email, phone, address
+        })
+
+        if (save)
+            return res.json({ message: "Profile updated sucessfully.." })
+        else
+            return res.json({ message: "Try again" })
+    } catch (error) {
+        console.error('Profile update failed..', err);
+        return res.status(500).json({ message: 'Failed to update profile' });
     }
 }

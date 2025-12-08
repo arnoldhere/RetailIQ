@@ -25,6 +25,7 @@ import {
 import { HamburgerIcon, ChevronDownIcon } from "@chakra-ui/icons";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { FiUsers } from "react-icons/fi";
 
 export default function Navbar() {
 	const { user, logout } = useAuth();
@@ -76,40 +77,40 @@ export default function Navbar() {
 						align="center"
 						ml={12}
 					>
-					{/* Navigation Links */}
-					<ChakraLink
-						fontSize="sm"
-						color="gray.300"
-						_hover={{ color: "cyan.400", textDecoration: "none" }}
-						transition="color 0.2s"
-						onClick={() => navigate("/customer/products")}
-					>
-						Explore
-					</ChakraLink>
-					{user?.role !== 'admin' && (
-						<>
-							<ChakraLink
-								fontSize="sm"
-								color="gray.300"
-								_hover={{ color: "cyan.400", textDecoration: "none" }}
-								transition="color 0.2s"
-								onClick={() => navigate("/about-us")}
-								cursor="pointer"
-							>
-								About Us
-							</ChakraLink>
-							<ChakraLink
-								fontSize="sm"
-								color="gray.300"
-								_hover={{ color: "cyan.400", textDecoration: "none" }}
-								transition="color 0.2s"
-								onClick={() => navigate("/contact-us")}
-								cursor="pointer"
-							>
-								Contact Us
-							</ChakraLink>
-						</>
-					)}						{/* Cart & Wishlist Icons (for customers) */}
+						{/* Navigation Links */}
+						<ChakraLink
+							fontSize="sm"
+							color="gray.300"
+							_hover={{ color: "cyan.400", textDecoration: "none" }}
+							transition="color 0.2s"
+							onClick={() => navigate("/customer/products")}
+						>
+							Explore
+						</ChakraLink>
+						{user?.role !== 'admin' && (
+							<>
+								<ChakraLink
+									fontSize="sm"
+									color="gray.300"
+									_hover={{ color: "cyan.400", textDecoration: "none" }}
+									transition="color 0.2s"
+									onClick={() => navigate("/about-us")}
+									cursor="pointer"
+								>
+									About Us
+								</ChakraLink>
+								<ChakraLink
+									fontSize="sm"
+									color="gray.300"
+									_hover={{ color: "cyan.400", textDecoration: "none" }}
+									transition="color 0.2s"
+									onClick={() => navigate("/contact-us")}
+									cursor="pointer"
+								>
+									Contact Us
+								</ChakraLink>
+							</>
+						)}						{/* Cart & Wishlist Icons (for customers) */}
 						{user?.role === "customer" && (
 							<HStack spacing={3}>
 								<ChakraLink
@@ -134,92 +135,92 @@ export default function Navbar() {
 
 					<Spacer display={{ base: "none", md: "block" }} />
 
-				{/* Desktop User Menu */}
-				<HStack
-					spacing={4}
-					display={{ base: "none", md: "flex" }}
-					align="center"
-					flexShrink={0}
-				>
-					{user ? (
-						<>
-							<Text fontSize="sm" color="gray.300">
-								{user?.firstname && `Welcome, ${user.firstname}`}
-							</Text>
+					{/* Desktop User Menu */}
+					<HStack
+						spacing={4}
+						display={{ base: "none", md: "flex" }}
+						align="center"
+						flexShrink={0}
+					>
+						{user ? (
+							<>
+								<Text fontSize="sm" color="gray.300">
+									{user?.firstname && `Welcome, ${user.firstname}`}
+								</Text>
 
-							<Menu>
-								<MenuButton
-									as={Button}
-									rightIcon={<ChevronDownIcon />}
-									bg="whiteAlpha.100"
-									color="gray.100"
-									_hover={{ bg: "whiteAlpha.200" }}
-									_active={{ bg: "whiteAlpha.300" }}
+								<Menu>
+									<MenuButton
+										as={Button}
+										rightIcon={<ChevronDownIcon />}
+										bg="whiteAlpha.100"
+										color="gray.100"
+										_hover={{ bg: "whiteAlpha.200" }}
+										_active={{ bg: "whiteAlpha.300" }}
+										size="sm"
+									>
+										{user?.role === "admin"
+											? "👤 Admin"
+											: user?.role === "supplier"
+												? "🏪 Supplier"
+												: <FiUsers />}
+									</MenuButton>
+									<MenuList
+										borderColor="whiteAlpha.200"
+										bg="rgba(11,18,32,0.98)"
+										backdropFilter="blur(10px)"
+									>
+										<MenuItem
+											onClick={() => navigate("/profile")}
+											_hover={{ bg: "whiteAlpha.200" }}
+											fontSize="sm"
+											color="gray.200"
+										>
+											Profile
+										</MenuItem>
+										<MenuItem
+											_hover={{ bg: "whiteAlpha.200" }}
+											fontSize="sm"
+											color="gray.200"
+										>
+											Settings
+										</MenuItem>
+										<MenuDivider />
+										<MenuItem
+											onClick={handleLogout}
+											color="red.400"
+											_hover={{ bg: "red.900" }}
+											fontSize="sm"
+										>
+											Logout
+										</MenuItem>
+									</MenuList>
+								</Menu>
+							</>
+						) : (
+							<HStack spacing={2}>
+								<Button
+									onClick={() => navigate("/auth/login")}
+									variant="outline"
+									colorScheme="cyan"
 									size="sm"
+									fontSize="sm"
+									_hover={{ bg: "cyan.900" }}
 								>
-									{user?.role === "admin"
-										? "👤 Admin"
-										: user?.role === "supplier"
-											? "🏪 Supplier"
-											: "👥 Customer"}
-								</MenuButton>
-								<MenuList
-									borderColor="whiteAlpha.200"
-									bg="rgba(11,18,32,0.98)"
-									backdropFilter="blur(10px)"
+									Login
+								</Button>
+								<Button
+									onClick={() => navigate("/auth/signup")}
+									bgGradient="linear(to-r, cyan.400, purple.500)"
+									color="white"
+									size="sm"
+									fontSize="sm"
+									_hover={{ opacity: 0.9 }}
 								>
-									<MenuItem
-										onClick={() => navigate("/profile")}
-										_hover={{ bg: "whiteAlpha.200" }}
-										fontSize="sm"
-										color="gray.200"
-									>
-										Profile
-									</MenuItem>
-									<MenuItem
-										_hover={{ bg: "whiteAlpha.200" }}
-										fontSize="sm"
-										color="gray.200"
-									>
-										Settings
-									</MenuItem>
-									<MenuDivider />
-									<MenuItem
-										onClick={handleLogout}
-										color="red.400"
-										_hover={{ bg: "red.900" }}
-										fontSize="sm"
-									>
-										Logout
-									</MenuItem>
-								</MenuList>
-							</Menu>
-						</>
-					) : (
-						<HStack spacing={2}>
-							<Button
-								onClick={() => navigate("/auth/login")}
-								variant="outline"
-								colorScheme="cyan"
-								size="sm"
-								fontSize="sm"
-								_hover={{ bg: "cyan.900" }}
-							>
-								Login
-							</Button>
-							<Button
-								onClick={() => navigate("/auth/signup")}
-								bgGradient="linear(to-r, cyan.400, purple.500)"
-								color="white"
-								size="sm"
-								fontSize="sm"
-								_hover={{ opacity: 0.9 }}
-							>
-								Sign Up
-							</Button>
-						</HStack>
-					)}
-				</HStack>					{/* Mobile Hamburger */}
+									Sign Up
+								</Button>
+							</HStack>
+						)}
+					</HStack>					{/* Mobile Hamburger */}
 					<Button
 						display={{ base: "flex", md: "none" }}
 						onClick={onOpen}
@@ -372,7 +373,7 @@ export default function Navbar() {
 								</Button>
 							</VStack>
 						</VStack>
-					) : (
+						) : (
 						<VStack spacing={6} align="stretch">
 							{/* Not Logged In - Show Auth Options */}
 							<Box borderBottom="1px solid" borderColor="whiteAlpha.200" pb={4}>
@@ -456,10 +457,10 @@ export default function Navbar() {
 								</Button>
 							</VStack>
 						</VStack>
-					)
-				</DrawerBody>
-			</DrawerContent>
-		</Drawer>
+						)
+					</DrawerBody>
+				</DrawerContent>
+			</Drawer>
 		</>
 	);
 }
