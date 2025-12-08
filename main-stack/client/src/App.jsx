@@ -28,6 +28,8 @@ import ProductDetail from './pages/customer/ProductDetail'
 import Cart from './pages/customer/Cart'
 import Wishlist from './pages/customer/Wishlist'
 import Profile from './pages/Profile'
+import OrderConfirmation from './pages/customer/OrderConfirmation'
+import MyOrders from './pages/customer/MyOrders'
 
 // Public Pages
 import AboutUs from './pages/AboutUs'
@@ -93,6 +95,8 @@ function AppRoutes() {
       <Route path='/customer/products/:id' element={user?.role === 'customer' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
       <Route path='/customer/cart' element={user?.role === 'customer' ? <Cart /> : <Navigate to="/auth/login" replace />} />
       <Route path='/customer/wishlist' element={user?.role === 'customer' ? <Wishlist /> : <Navigate to="/auth/login" replace />} />
+        <Route path='/customer/order-confirmation/:orderId' element={user?.role === 'customer' ? <OrderConfirmation /> : <Navigate to="/auth/login" replace />} />
+        <Route path='/customer/my-orders' element={user?.role === 'customer' ? <MyOrders /> : <Navigate to="/auth/login" replace />} />
 
       {/* 404 Catch All */}
       <Route path="*" element={<NotFound />} />

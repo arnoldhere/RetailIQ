@@ -129,6 +129,14 @@ export default function Navbar() {
 								>
 									Wishlist
 								</ChakraLink>
+								<ChakraLink
+									fontSize="sm"
+									color="gray.300"
+									_hover={{ color: "cyan.400" }}
+									onClick={() => navigate("/customer/my-orders")}
+								>
+									Orders
+								</ChakraLink>
 							</HStack>
 						)}
 					</HStack>
@@ -330,6 +338,18 @@ export default function Navbar() {
 										fontSize="sm"
 									>
 										❤️ My Wishlist
+									</Button>
+									<Button
+										variant="ghost"
+										justifyContent="flex-start"
+										_hover={{ bg: "whiteAlpha.200" }}
+										onClick={() => {
+											navigate("/customer/my-orders");
+											onClose();
+										}}
+										fontSize="sm"
+									>
+										📦 My Orders
 									</Button>
 								</VStack>
 							)}

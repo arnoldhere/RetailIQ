@@ -30,11 +30,13 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import { useCart } from '../../context/CartContext'
+import CheckoutModal from '../../components/CheckoutModal'
 
 export default function CartPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const { cart, removeFromCart, updateQuantity, clearCart, getCartTotal } = useCart()
+  const [isCheckoutOpen, setIsCheckoutOpen] = React.useState(false)
   const bgCard = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.700')
   const textMuted = useColorModeValue('gray.600', 'gray.400')
@@ -56,10 +58,38 @@ export default function CartPage() {
       toast({ title: 'Cart is empty', status: 'warning', duration: 2000 })
       return
     }
-    toast({ title: 'Proceeding to checkout...', status: 'info', duration: 2000 })
-    // TODO: Implement checkout flow
+      // ✅ Open checkout modal instead of showing TODO
+      setIsCheckoutOpen(true)
   }
 
+    /**
+     * Handle successful payment
+     * Navigate to order confirmation page with order details
+     */
+    const handleCheckoutSuccess = (orderId, orderNo, totalAmount) => {
+      // Close checkout modal
+      setIsCheckoutOpen(false)
+    
+      // Show success notification
+      toast({
+        title: 'Order Placed Successfully! 🎉',
+        description: `Order ${orderNo} has been confirmed`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      })
+
+      // Redirect to order confirmation page after brief delay
+      setTimeout(() => {
+        navigate(`/customer/order-confirmation/${orderId}`, {
+          state: {
+            orderId,
+            orderNo,
+            totalAmount,
+          },
+        })
+      }, 500)
+    }
   return (
     <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')} w='100vw'>
       <Navbar />
@@ -218,6 +248,13 @@ export default function CartPage() {
       </Box>
 
       <Footer />
+      
+        {/* ✅ Checkout Modal - Opens when user clicks "Proceed to Checkout" */}
+        <CheckoutModal
+          isOpen={isCheckoutOpen}
+          onClose={() => setIsCheckoutOpen(false)}
+          onSuccess={handleCheckoutSuccess}
+        />
     </Box>
   )
 }
