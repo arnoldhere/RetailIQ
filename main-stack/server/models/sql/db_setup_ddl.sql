@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS customer_orders (
   total_amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
   payment_status ENUM('pending','paid','failed','refunded') NOT NULL DEFAULT 'pending',
   payment_method ENUM('cash','card','upi','online','other') DEFAULT 'cash',
-  payment_id INT NULL,
+  payment_id INT FOREIGN KEY REFERENCES customer_payments(id),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_custorders_cust (cust_id),

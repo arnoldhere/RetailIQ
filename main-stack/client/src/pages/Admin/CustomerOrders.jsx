@@ -55,6 +55,8 @@ export default function CustomerOrdersPage() {
     const [filters, setFilters] = useState({
         search: '',
         status: '',
+        sort: 'created_at',
+        order: 'desc',
     })
     const [limit] = useState(12)
     const [offset, setOffset] = useState(0)
@@ -153,7 +155,7 @@ export default function CustomerOrdersPage() {
 
                             {/* Filters */}
                             <Box bg={subtleCard} p={{ base: 4, md: 6 }} borderRadius="xl" boxShadow="sm" mb={6} border="1px solid" borderColor={borderColor}>
-                                <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} alignItems="end">
+                                <SimpleGrid columns={{ base: 1, md: 5 }} spacing={4} alignItems="end">
                                     <FormControl>
                                         <FormLabel fontSize="sm" fontWeight="600" color={mutedText}>
                                             Search
@@ -194,6 +196,41 @@ export default function CustomerOrdersPage() {
                                             <option value="completed">Completed</option>
                                             <option value="cancelled">Cancelled</option>
                                             <option value="returned">Returned</option>
+                                        </Select>
+                                    </FormControl>
+
+                                    <FormControl>
+                                        <FormLabel fontSize="sm" fontWeight="600" color={mutedText}>
+                                            Sort By
+                                        </FormLabel>
+                                        <Select
+                                            value={filters.sort}
+                                            onChange={(e) => handleFilterChange('sort', e.target.value)}
+                                            borderRadius="lg"
+                                            bg={useColorModeValue('white', 'gray.700')}
+                                            borderColor={borderColor}
+                                        >
+                                            <option value="created_at">Date</option>
+                                            <option value="total_amount">Amount</option>
+                                            <option value="order_no">Order No</option>
+                                            <option value="status">Status</option>
+                                            <option value="payment_status">Payment Status</option>
+                                        </Select>
+                                    </FormControl>
+
+                                    <FormControl>
+                                        <FormLabel fontSize="sm" fontWeight="600" color={mutedText}>
+                                            Order
+                                        </FormLabel>
+                                        <Select
+                                            value={filters.order}
+                                            onChange={(e) => handleFilterChange('order', e.target.value)}
+                                            borderRadius="lg"
+                                            bg={useColorModeValue('white', 'gray.700')}
+                                            borderColor={borderColor}
+                                        >
+                                            <option value="desc">Descending</option>
+                                            <option value="asc">Ascending</option>
                                         </Select>
                                     </FormControl>
                                 </SimpleGrid>

@@ -11,23 +11,17 @@ import {
 	Stat,
 	StatLabel,
 	StatNumber,
-	StatHelpText,
 	Badge,
 	Flex,
 	useToast,
 	useColorModeValue,
 	Icon,
-	IconButton,
-	Menu,
-	MenuButton,
-	MenuList,
-	MenuItem,
 	Stack,
+	StackDivider,
+	Spinner,
 } from "@chakra-ui/react";
 
 import {
-	FiArrowUpRight,
-	FiArrowDownLeft,
 	FiAlertTriangle,
 	FiUsers,
 	FiPackage,
@@ -135,7 +129,7 @@ export default function AdminDashboard() {
 					{/* Sidebar */}
 					<Box
 						as="aside"
-						display={{ base: 'none', lg: 'block' }}
+						display={{ base: "none", lg: "block" }}
 						rounded="2xl"
 						overflow="hidden"
 						boxShadow="sm"
@@ -212,13 +206,9 @@ export default function AdminDashboard() {
 												</Box>
 											</Flex>
 
-											{/* Sparkline */}
+											{/* Sparkline placeholder */}
 											<svg width="100%" height="40">
-												<path
-													fill="none"
-													stroke={s.positive ? "#22c55e" : "#ef4444"}
-													strokeWidth="2"
-												/>
+												<path fill="none" stroke={s.positive ? "#22c55e" : "#ef4444"} strokeWidth="2" />
 											</svg>
 										</Box>
 									);
@@ -238,26 +228,57 @@ export default function AdminDashboard() {
 								>
 									<Flex justify="space-between" mb={4}>
 										<Heading size="md">Recent Activity</Heading>
-										<Button size="sm" variant="ghost">
+										{/* <Button size="sm" variant="ghost">
 											View all
-										</Button>
+										</Button> */}
 									</Flex>
 
-									<VStack align="stretch" spacing={4}>
-										{loading && <Text>Loading activities...</Text>}
-										{!loading && activitiesState.length === 0 && (
-											<Text color={textMuted}>No recent activity</Text>
-										)}
-										{!loading &&
-											activitiesState.map((a, i) => (
-												<Box key={i} p={4} borderRadius="md">
-													<Text fontWeight="600">{a.title}</Text>
-													<Text fontSize="xs" color={textMuted}>
-														{a.type} • {new Date(a.created_at).toLocaleDateString()}
-													</Text>
-												</Box>
-											))}
-									</VStack>
+									{/* Constrain height and make scrollable when content overflows */}
+									<Box
+										maxH={{ base: "220px", md: "320px" }}
+										overflowY="auto"
+										pr={2} // space for scrollbar so text doesn't jump
+										sx={{
+											// optional nicer scrollbar for webkit browsers
+											"&::-webkit-scrollbar": { width: "8px" },
+											"&::-webkit-scrollbar-thumb": { borderRadius: "24px", background: "rgba(0,0,0,0.12)" },
+										}}
+									>
+										<Stack spacing={3} divider={<StackDivider />}>
+											{loading && (
+												<Flex align="center" justify="center" py={6}>
+													<Spinner />
+												</Flex>
+											)}
+
+											{!loading && activitiesState.length === 0 && (
+												<Text color={textMuted}>No recent activity</Text>
+											)}
+
+											{!loading &&
+												activitiesState.map((a, i) => (
+													<Box key={i} p={3} borderRadius="md">
+														<Flex justify="space-between" align="start">
+															<Box>
+																<Text fontWeight="600">{a.title}</Text>
+																<Text fontSize="sm" color={textMuted} mt={1}>
+																	{a.type} •{" "}
+																	{a.created_at ? new Date(a.created_at).toLocaleString() : "—"}
+																</Text>
+															</Box>
+
+															{/* optional small badge or icon area */}
+															<Box ml={3} textAlign="right">
+																{/* example: show a short status or time */}
+																<Text fontSize="xs" color={textMuted}>
+																	{a.short_status || ""}
+																</Text>
+															</Box>
+														</Flex>
+													</Box>
+												))}
+										</Stack>
+									</Box>
 								</Box>
 
 								{/* Quick actions */}
@@ -276,49 +297,32 @@ export default function AdminDashboard() {
 										{actions.map((ac, i) => (
 											<Button
 												key={i}
-												leftIcon={<ac.icon />}
+												leftIcon={<Icon as={ac.icon} />}
 												variant="outline"
 												size="sm"
-												onClick={() =>
-													toast({ title: ac.label, status: "info" })
-												}
+												onClick={() => toast({ title: ac.label, status: "info" })}
 											>
 												{ac.label}
 											</Button>
 										))}
 									</VStack>
 								</Box>
-							</SimpleGrid>
 
-							{/* Info Banner */}
-							{/* <Box
-						bg={useColorModeValue("blue.50", "blue.900")}
-						p={6}
-						borderRadius="lg"
-						border="1px solid"
-						borderColor={useColorModeValue("blue.200", "blue.700")}
-					>
-						<Flex
-							justify="space-between"
-							align="center"
-							direction={{ base: "column", md: "row" }}
-							gap={3}
-						>
-							<Box>
-								<Heading
-									size="sm"
-									color={useColorModeValue("blue.800", "white")}
+								{/* Placeholder 3rd column (kept empty intentionally) */}
+								<Box
+									bg={bgCard}
+									p={6}
+									borderRadius="lg"
+									border="1px solid"
+									borderColor={borderColor}
+									boxShadow="md"
 								>
-									📊 System Status
-								</Heading>
-								<Text color={textMuted}>
-									All systems operational — Last backup: 2 hours ago
-								</Text>
-							</Box>
-
-							<Button colorScheme="blue">View Details</Button>
-						</Flex>
-					</Box> */}
+									<Heading size="md" mb={2}>
+										Summary
+									</Heading>
+									<Text color={textMuted}>Quick summary or KPIs can go here.</Text>
+								</Box>
+							</SimpleGrid>
 						</VStack>
 					</Box>
 				</Flex>

@@ -377,19 +377,19 @@ export default function MyOrders() {
                                                     })}
                                                 </Td>
                                                 <Td isNumeric fontWeight="700" color="green.600">
-                                                    ₹{order.totalAmount.toFixed(2)}
+                                                    ₹{order.totalAmount}
                                                 </Td>
                                                 <Td>
                                                     <HStack spacing={2}>
                                                         {getStatusIcon(order.status)}
                                                         <Badge colorScheme={getStatusColor(order.status)}>
-                                                            {order.status.toUpperCase()}
+                                                            {order.status}
                                                         </Badge>
                                                     </HStack>
                                                 </Td>
                                                 <Td>
                                                     <Badge colorScheme={getPaymentStatusColor(order.paymentStatus)}>
-                                                        {order.paymentStatus.toUpperCase()}
+                                                        {order.paymentStatus}
                                                     </Badge>
                                                 </Td>
                                                 <Td>

@@ -19,9 +19,12 @@ export async function getSuppliers(limit = 12, offset = 0, filters = {}) {
 }
 
 export async function getCustomerOrders(limit = 12, offset = 0, filters = {}) {
-  return client.get('/api/admin/customer-orders', {
-    params: { limit, offset, ...filters }
-  })
+  const params = { limit, offset }
+  if (filters.search) params.search = filters.search
+  if (filters.status) params.status = filters.status
+  if (filters.sort) params.sort = filters.sort
+  if (filters.order) params.order = filters.order
+  return client.get('/api/admin/customer-orders', { params })
 }
 
 export async function getSupplierOrders(limit = 12, offset = 0, filters = {}) {

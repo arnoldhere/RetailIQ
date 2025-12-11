@@ -442,6 +442,14 @@ exports.listCustomerOrders = async (req, res) => {
     const offset = parseInt(req.query.offset) || 0;
     const search = req.query.search;
     const status = req.query.status;
+    const sort = req.query.sort || 'created_at';
+    const order = (req.query.order || 'desc').toUpperCase();
+
+    // Validate sort field
+    const validSortFields = ['created_at', 'total_amount', 'order_no', 'status', 'payment_status'];
+    const sortField = validSortFields.includes(sort) ? sort : 'created_at';
+    const sortCol = `customer_orders.${sortField}`;
+    const orderDir = order === 'DESC' ? 'desc' : 'asc';
 
     let query = db('customer_orders')
       .select(
@@ -477,7 +485,7 @@ exports.listCustomerOrders = async (req, res) => {
     const total = Number(countResult.count || 0);
 
     const orders = await query
-      .orderBy('customer_orders.created_at', 'desc')
+      .orderBy(sortCol, orderDir)
       .limit(limit)
       .offset(offset);
 

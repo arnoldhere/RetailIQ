@@ -158,21 +158,22 @@ exports.verifyPayment = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized access to order' });
     }
 
-    // ✅ Payment verified - update order status to 'processing'
-    await db('customer_orders').where({ id: orderId }).update({
-      payment_status: 'paid',
-      status: 'processing',
-      // Optionally save razorpay_payment_id for reference
-    });
-
-    // ✅ Save payment record
-    await db('customer_payments').insert({
+    // ✅ Save payment record first to get payment_id
+    const [paymentId] = await db('customer_payments').insert({
       customer_order_id: orderId,
       cust_id: userId,
       amount: order.total_amount,
       payment_date: new Date(),
       method: 'online',
       payment_ref: razorpay_payment_id,
+    });
+
+    // ✅ Payment verified - update order status to 'processing' with payment_id reference
+    await db('customer_orders').where({ id: orderId }).update({
+      payment_status: 'paid',
+      status: 'processing',
+      payment_method: 'online',
+      payment_id: paymentId, // Link payment record
     });
 
     // ✅ Update product stock (reduce by order quantity)
@@ -316,7 +317,7 @@ exports.getUserOrders = async (req, res) => {
 };
 
 /**
- * Cancel order (only if payment not completed)
+ * Cancel order (only within 7 days and if payment completed)
  * PUT /api/orders/:orderId/cancel
  * Requires: authentication
  */
@@ -329,7 +330,7 @@ exports.cancelOrder = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // ✅ Get order
+    // ✅ Get order with items
     const order = await db('customer_orders')
       .where({ id: orderId, cust_id: userId })
       .first();
@@ -338,22 +339,66 @@ exports.cancelOrder = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // ✅ Check if order can be cancelled (only pending orders)
-    if (order.payment_status === 'paid') {
+    // ✅ Check if order is already cancelled
+    if (order.status === 'cancelled') {
       return res.status(400).json({
-        message: 'Cannot cancel paid orders. Please contact support for refund.',
+        message: 'Order is already cancelled',
       });
     }
 
-    // ✅ Cancel the order
-    await db('customer_orders').where({ id: orderId }).update({
-      status: 'cancelled',
-      payment_status: 'failed',
+    // ✅ Check if order can be cancelled (must be paid)
+    if (order.payment_status !== 'paid') {
+      return res.status(400).json({
+        message: 'Only paid orders can be cancelled',
+      });
+    }
+
+    // ✅ Check if order is within 7 days
+    const orderDate = new Date(order.created_at);
+    const currentDate = new Date();
+    const daysDifference = Math.floor((currentDate - orderDate) / (1000 * 60 * 60 * 24));
+
+    if (daysDifference > 7) {
+      return res.status(400).json({
+        message: 'Orders can only be cancelled within 7 days of placement',
+        daysSinceOrder: daysDifference,
+      });
+    }
+
+    // ✅ Use transaction to ensure data consistency
+    await db.transaction(async (trx) => {
+      // Get order items for stock restoration
+      const orderItems = await trx('customer_order_items')
+        .where({ customer_order_id: orderId });
+
+      // ✅ Restore stock for each item
+      for (const item of orderItems) {
+        await trx('products')
+          .where({ id: item.product_id })
+          .increment('stock_available', item.qty);
+      }
+
+      // ✅ Update payment status to refunded
+      if (order.payment_id) {
+        await trx('customer_payments')
+          .where({ id: order.payment_id })
+          .update({
+            payment_ref: `${order.payment_id}_REFUNDED_${Date.now()}`,
+          });
+      }
+
+      // ✅ Cancel the order
+      await trx('customer_orders')
+        .where({ id: orderId })
+        .update({
+          status: 'cancelled',
+          payment_status: 'refunded',
+        });
     });
 
     return res.json({
       success: true,
-      message: 'Order cancelled successfully',
+      message: 'Order cancelled successfully. Stock has been restored.',
       orderId: orderId,
     });
   } catch (err) {

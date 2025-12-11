@@ -114,15 +114,31 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
     if (!window.Razorpay) {
       toast({
         title: 'Payment Gateway Error',
-        description: 'Razorpay payment gateway failed to load',
+        description: 'Razorpay payment gateway failed to load. Please refresh the page.',
         status: 'error',
         duration: 3000,
+        isClosable: true,
+      });
+      setIsLoading(false);
+      return;
+    }
+
+
+    // console.log(orderResponse.logoUrl)
+
+    if (!orderResponse || !orderResponse.razorpayKeyId || !orderResponse.razorpayOrderId) {
+      console.error('Missing Razorpay config in orderResponse', orderResponse);
+      toast({
+        title: 'Payment Gateway Error',
+        description: 'Invalid payment configuration. Please try again later.',
+        status: 'error',
+        duration: 4000,
         isClosable: true,
       });
       return;
     }
 
-    // ✅ Create Razorpay options
+    // ✅ Create Razorpay options with proper configuration for test mode
     const options = {
       key: orderResponse.razorpayKeyId, // Razorpay Key ID
       amount: orderResponse.amountInPaise, // Amount in paise (smallest unit)
@@ -130,12 +146,21 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
       name: 'RetailIQ', // Business name
       description: `Order #${orderResponse.orderNo}`,
       order_id: orderResponse.razorpayOrderId, // Razorpay order ID
-      
       // User contact details
       prefill: {
-        name: orderResponse.userName,
-        email: orderResponse.userEmail,
-        contact: '9999999999', // Customer phone (can be empty or from user profile)
+        // name: orderResponse.userName || 'Test User',
+        email: orderResponse.userEmail || 'test@example.com',
+      },
+
+      // Theme configuration for better UX
+      theme: {
+        color: '#FF5722',
+      },
+
+      // Test mode configuration - allows card input
+      notes: {
+        order_id: orderResponse.orderId,
+        order_no: orderResponse.orderNo,
       },
 
       // Callback when payment is successful
@@ -146,6 +171,7 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
       // Callback when payment modal is closed
       modal: {
         ondismiss: () => {
+          setPaymentInProgress(false);
           toast({
             title: 'Payment Cancelled',
             description: 'You closed the payment modal',
@@ -155,12 +181,45 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
           });
         },
       },
+
+      // Enable retry on payment failure
+      retry: {
+        enabled: true,
+        max_count: 3,
+      },
     };
 
-    // ✅ Open Razorpay payment modal
-    setPaymentInProgress(true);
-    const razorpay = new window.Razorpay(options);
-    razorpay.open();
+    try {
+      // ✅ Open Razorpay payment modal
+      setPaymentInProgress(true);
+      const razorpay = new window.Razorpay(options);
+
+      // Ensure modal is properly initialized
+      razorpay.on('payment.failed', function (response) {
+        console.error('Payment failed:', response.error);
+        setPaymentInProgress(false);
+        toast({
+          title: 'Payment Failed',
+          description: response.error.description || 'Payment could not be processed',
+          status: 'error',
+          duration: 4000,
+          isClosable: true,
+        });
+      });
+
+      razorpay.open();
+    } catch (error) {
+      console.error('Error initializing Razorpay:', error);
+      setPaymentInProgress(false);
+      setIsLoading(false);
+      toast({
+        title: 'Payment Gateway Error',
+        description: 'Failed to initialize payment gateway. Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   /**
@@ -222,10 +281,12 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
 
   /**
    * Load Razorpay script if not already loaded
+   * Enhanced loading with proper error handling
    */
   useEffect(() => {
     // ✅ Check if script already loaded
     if (window.Razorpay) {
+      // console.log('✅ Razorpay script already loaded');
       return;
     }
 
@@ -233,19 +294,29 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
+    script.crossOrigin = 'anonymous';
+
     script.onload = () => {
       console.log('✅ Razorpay script loaded successfully');
+      // Verify Razorpay is accessible
+      if (window.Razorpay) {
+        console.log('✅ Razorpay object is available');
+      } else {
+        console.error('❌ Razorpay object not found after script load');
+      }
     };
-    script.onerror = () => {
-      console.error('❌ Failed to load Razorpay script');
+
+    script.onerror = (error) => {
+      console.error('❌ Failed to load Razorpay script:', error);
       toast({
         title: 'Payment Gateway Error',
-        description: 'Unable to load payment gateway. Please refresh the page.',
+        description: 'Unable to load payment gateway. Please check your internet connection and refresh the page.',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     };
+
     document.body.appendChild(script);
 
     return () => {

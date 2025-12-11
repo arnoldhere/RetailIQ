@@ -114,7 +114,7 @@ export default function OrderConfirmation() {
 
   // ✅ Error state
   if (error || !order) {
-    return (
+    return (  
       <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')} w="100vw">
         <Navbar />
         <Box flex={1} display="flex" justifyContent="center" alignItems="center">
@@ -199,7 +199,7 @@ export default function OrderConfirmation() {
                       {order.order.paymentStatus.toUpperCase()}
                     </Badge>
                     <Text fontSize="sm" color={textMuted}>
-                      Amount: ₹{order.order.totalAmount.toFixed(2)}
+                      Amount: ₹{order.order.totalAmount}
                     </Text>
                   </VStack>
                 </CardBody>
@@ -248,11 +248,11 @@ export default function OrderConfirmation() {
                           {item.name}
                         </Text>
                         <Text fontSize="xs" color={textMuted}>
-                          Qty: {item.qty} × ₹{item.unit_price.toFixed(2)}
+                          Qty: {item.qty} × ₹{item.unit_price}
                         </Text>
                       </VStack>
                       <Text fontWeight="700" color="green.600">
-                        ₹{item.total_amount.toFixed(2)}
+                        ₹{item.total_amount}
                       </Text>
                     </HStack>
                   ))}
@@ -263,7 +263,7 @@ export default function OrderConfirmation() {
                 <HStack justify="space-between">
                   <Heading size="sm">Total Amount</Heading>
                   <Heading size="sm" color="green.600">
-                    ₹{order.order.totalAmount.toFixed(2)}
+                    ₹{order.order.totalAmount}
                   </Heading>
                 </HStack>
               </CardBody>
