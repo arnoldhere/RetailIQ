@@ -36,3 +36,7 @@ export async function getSupplierOrders(limit = 12, offset = 0, filters = {}) {
 export async function createSupplier(data) {
   return client.post('/api/admin/suppliers', data)
 }
+
+export async function sendAssuranceMail(id) {
+  return client.post(`/api/admin/sendAssurance/${id}`)
+}

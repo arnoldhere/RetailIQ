@@ -30,17 +30,16 @@ export default function OrderConfirmation() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // --- ALL hooks (including useColorModeValue) must be called unconditionally here ---
+  // Colors for light/dark mode
   const bgCard = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const textMuted = useColorModeValue('gray.600', 'gray.400');
   const bgSuccess = useColorModeValue('green.50', 'green.900');
   const borderSuccess = useColorModeValue('green.200', 'green.700');
 
-  // Replace inline calls with dedicated variables so the hook count/order never changes.
-  const pageBg = useColorModeValue('gray.50', 'gray.900');
-  const itemBg = useColorModeValue('gray.50', 'gray.700');
-
+  /**
+   * Fetch order details on component mount
+   */
   useEffect(() => {
     const fetchOrder = async () => {
       try {
@@ -61,6 +60,9 @@ export default function OrderConfirmation() {
     }
   }, [orderId]);
 
+  /**
+   * Get status badge color
+   */
   const getStatusColor = (status) => {
     switch (status) {
       case 'processing':
@@ -76,6 +78,9 @@ export default function OrderConfirmation() {
     }
   };
 
+  /**
+   * Get payment status color
+   */
   const getPaymentStatusColor = (status) => {
     switch (status) {
       case 'paid':
@@ -91,10 +96,10 @@ export default function OrderConfirmation() {
     }
   };
 
-  // Loading
+  // ✅ Loading state
   if (loading) {
     return (
-      <Box minH="100vh" display="flex" flexDirection="column" bg={pageBg} w="100vw">
+      <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')} w="100vw">
         <Navbar />
         <Box flex={1} display="flex" justifyContent="center" alignItems="center">
           <VStack spacing={4}>
@@ -107,10 +112,10 @@ export default function OrderConfirmation() {
     );
   }
 
-  // Error
+  // ✅ Error state
   if (error || !order) {
     return (
-      <Box minH="100vh" display="flex" flexDirection="column" bg={pageBg} w="100vw">
+      <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')} w="100vw">
         <Navbar />
         <Box flex={1} display="flex" justifyContent="center" alignItems="center">
           <Container maxW="container.md">
@@ -136,14 +141,15 @@ export default function OrderConfirmation() {
     );
   }
 
-  // Success render
   return (
-    <Box minH="100vh" display="flex" flexDirection="column" bg={pageBg} w="100vw">
+    <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')} w="100vw">
       <Navbar />
 
       <Box flex={1} py={{ base: 6, md: 12 }}>
         <Container maxW="container.lg">
+          {/* ✅ Success Header */}
           <VStack spacing={6} align="stretch">
+            {/* Success Banner */}
             <Box
               bg={bgSuccess}
               borderWidth="2px"
@@ -163,6 +169,7 @@ export default function OrderConfirmation() {
               </VStack>
             </Box>
 
+            {/* Order Number & Details */}
             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
               <Card bg={bgCard} borderWidth="1px" borderColor={borderColor}>
                 <CardBody>
@@ -192,7 +199,7 @@ export default function OrderConfirmation() {
                       {order.order.paymentStatus.toUpperCase()}
                     </Badge>
                     <Text fontSize="sm" color={textMuted}>
-                      Amount: ₹{order.order.totalAmount}
+                      Amount: ₹{order.order.totalAmount.toFixed(2)}
                     </Text>
                   </VStack>
                 </CardBody>
@@ -221,6 +228,7 @@ export default function OrderConfirmation() {
               </Card>
             </SimpleGrid>
 
+            {/* Order Items */}
             <Card bg={bgCard} borderWidth="1px" borderColor={borderColor}>
               <CardBody>
                 <Heading size="sm" mb={4}>
@@ -233,18 +241,18 @@ export default function OrderConfirmation() {
                       justify="space-between"
                       p={3}
                       borderRadius="md"
-                      bg={itemBg}
+                      bg={useColorModeValue('gray.50', 'gray.700')}
                     >
                       <VStack align="start" spacing={0}>
                         <Text fontWeight="600" fontSize="sm">
                           {item.name}
                         </Text>
                         <Text fontSize="xs" color={textMuted}>
-                          Qty: {item.qty} × ₹{item.unit_price}
+                          Qty: {item.qty} × ₹{item.unit_price.toFixed(2)}
                         </Text>
                       </VStack>
                       <Text fontWeight="700" color="green.600">
-                        ₹{item.total_amount}
+                        ₹{item.total_amount.toFixed(2)}
                       </Text>
                     </HStack>
                   ))}
@@ -255,12 +263,13 @@ export default function OrderConfirmation() {
                 <HStack justify="space-between">
                   <Heading size="sm">Total Amount</Heading>
                   <Heading size="sm" color="green.600">
-                    ₹{order.order.totalAmount}
+                    ₹{order.order.totalAmount.toFixed(2)}
                   </Heading>
                 </HStack>
               </CardBody>
             </Card>
 
+            {/* Payment Details (if available) */}
             {order.payment && (
               <Card bg={bgCard} borderWidth="1px" borderColor={borderColor}>
                 <CardBody>
@@ -291,6 +300,7 @@ export default function OrderConfirmation() {
               </Card>
             )}
 
+            {/* What's Next */}
             <Card bg="blue.50" borderWidth="2px" borderColor="blue.200">
               <CardBody>
                 <Heading size="sm" mb={3} color="blue.700">
@@ -310,6 +320,7 @@ export default function OrderConfirmation() {
               </CardBody>
             </Card>
 
+            {/* Action Buttons */}
             <HStack spacing={4} justify="center" pt={4}>
               <Button
                 leftIcon={<ArrowBackIcon />}

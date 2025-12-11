@@ -144,4 +144,13 @@ router.get('/supplier-orders', authMiddleware, async (req, res, next) => {
   }
 });
 
+router.post('/sendAssurance/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.sendAssuranceEmail(req, res);
+  } catch (err) {
+    next(err);
+  }
+})
+
 module.exports = router;

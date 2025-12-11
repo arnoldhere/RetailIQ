@@ -86,5 +86,4 @@ router.put('/:orderId/cancel', authMiddleware, async (req, res, next) => {
   }
 });
 
-
 module.exports = router;

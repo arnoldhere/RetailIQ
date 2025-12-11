@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const fs = require('fs');
 const path = require('path');
+const emailService = require("../services/mailService")
 
 // media products dir
 const MEDIA_PRODUCTS_DIR = path.join(__dirname, '..', 'media', 'products');
@@ -329,7 +330,7 @@ exports.listSuppliers = async (req, res) => {
     let query = db('suppliers').select('*');
 
     if (search) {
-      query = query.where(function() {
+      query = query.where(function () {
         this.where('name', 'like', `%${search}%`)
           .orWhere('email', 'like', `%${search}%`)
           .orWhere('phone', 'like', `%${search}%`);
@@ -463,7 +464,7 @@ exports.listCustomerOrders = async (req, res) => {
       .leftJoin('stores', 'customer_orders.store_id', 'stores.id');
 
     if (search) {
-      query = query.where(function() {
+      query = query.where(function () {
         this.where('customer_orders.order_no', 'like', `%${search}%`)
           .orWhere('users.firstname', 'like', `%${search}%`)
           .orWhere('users.lastname', 'like', `%${search}%`)
@@ -517,7 +518,7 @@ exports.listSupplierOrders = async (req, res) => {
       .leftJoin('users', 'supply_orders.ordered_by', 'users.id');
 
     if (search) {
-      query = query.where(function() {
+      query = query.where(function () {
         this.where('supply_orders.order_no', 'like', `%${search}%`)
           .orWhere('suppliers.name', 'like', `%${search}%`)
           .orWhere('stores.name', 'like', `%${search}%`);
@@ -801,5 +802,96 @@ exports.deleteProduct = async (req, res) => {
   } catch (err) {
     console.error('delete product error', err);
     return res.status(500).json({ message: 'Failed to delete product' });
+  }
+}
+
+exports.sendAssuranceEmail = async (req, res) => {
+
+  try {
+    const id = req.params.id;
+    console.log(`feedback id is ${id}`);
+
+    //fetch single feedback by id, with user info
+    const feedback = await db('feedbacks')
+      .join('users', 'feedbacks.cust_id', 'users.id')
+      .where('feedbacks.id', id)
+      .select(
+        'feedbacks.id',
+        'feedbacks.message',
+        'feedbacks.created_at',
+        'users.firstname as firstname',
+        'users.lastname as lastname',
+        'users.email as user_email'
+      )
+      .first(); // important: get single row (object) or undefined
+
+
+    if (!feedback)
+      return res.status(500).json({ message: "feedback not found.." })
+
+    // defensive check: ensure recipient exists
+    const from = process.env.GMAIL_EMAIL || 'no-reply@example.com';
+    const to = feedback.user_email;
+    if (!to) {
+      console.error('No recipient email found for feedback id', id);
+      return res.status(400).json({ message: "Recipient email not available." });
+    }
+    const sub = "Your Feedback Has Been Received - RetailIQ";
+    const htmlContent = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 0;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">✓ Feedback Received</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">We're actively working on your feedback</p>
+        </div>
+
+        <!-- Content -->
+        <div style="background-color: #ffffff; padding: 30px 20px; border: 1px solid #e0e0e0; border-radius: 0 0 8px 8px;">
+          <p style="color: #333; font-size: 16px; margin: 0 0 20px 0;">Hi ${feedback.firstname},</p>
+          
+          <div style="background-color: #f8f9fa; padding: 20px; border-left: 4px solid #667eea; border-radius: 4px; margin: 20px 0;">
+            <p style="color: #555; font-size: 14px; line-height: 1.6; margin: 0;">
+              Thank you for sharing your valuable feedback with RetailIQ. We truly appreciate you taking the time to help us improve our platform. 
+              Your insights are important to us and help us deliver better solutions.
+            </p>
+          </div>
+
+          <div style="background-color: #f0f7ff; padding: 20px; border-radius: 4px; margin: 20px 0;">
+            <h3 style="color: #667eea; font-size: 14px; margin: 0 0 10px 0;">What happens next?</h3>
+            <ul style="color: #555; font-size: 14px; margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;">Our team has received your feedback and is reviewing it</li>
+              <li style="margin-bottom: 8px;">We're analyzing the suggestions and potential improvements</li>
+              <li>You can expect updates or improvements based on your feedback</li>
+            </ul>
+          </div>
+
+          <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 20px 0;">
+            If you have any urgent concerns or additional information to share, please feel free to contact our support team.
+          </p>
+          
+          <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 20px 0;">
+            Your Feedback message was: ${feedback.message}
+          </p>
+
+          <!-- Footer -->
+          <div style="border-top: 1px solid #e0e0e0; padding-top: 20px; margin-top: 30px;">
+            <p style="color: #999; font-size: 12px; margin: 0; text-align: center;">
+              <strong>RetailIQ</strong> - Smart Retail Analytics Platform<br/>
+              We're committed to delivering excellence
+            </p>
+            <p style="color: #bbb; font-size: 11px; margin: 10px 0 0 0; text-align: center;">
+              © 2024 RetailIQ. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    await emailService(from, to, sub, htmlContent)
+    return res.json({ message: "Assurance sent..." })
+  }
+  catch (err) {
+    console.error("failed to fetch users", err);
+    return res.status(500).json({ message: "Internal server error" })
   }
 }

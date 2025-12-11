@@ -78,17 +78,17 @@ export default function Navbar() {
 						ml={12}
 					>
 						{/* Navigation Links */}
+						<ChakraLink
+							fontSize="sm"
+							color="gray.300"
+							_hover={{ color: "cyan.400", textDecoration: "none" }}
+							transition="color 0.2s"
+							onClick={() => navigate("/customer/products")}
+						>
+							Explore
+						</ChakraLink>
 						{user?.role !== 'admin' && (
 							<>
-								<ChakraLink
-									fontSize="sm"
-									color="gray.300"
-									_hover={{ color: "cyan.400", textDecoration: "none" }}
-									transition="color 0.2s"
-									onClick={() => navigate("/customer/products")}
-								>
-									Explore
-								</ChakraLink>
 								<ChakraLink
 									fontSize="sm"
 									color="gray.300"

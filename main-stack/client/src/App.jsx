@@ -30,7 +30,6 @@ import Wishlist from './pages/customer/Wishlist'
 import Profile from './pages/Profile'
 import OrderConfirmation from './pages/customer/OrderConfirmation'
 import MyOrders from './pages/customer/MyOrders'
-import Orders from './pages/customer/Orders'
 
 // Public Pages
 import AboutUs from './pages/AboutUs'
@@ -98,8 +97,6 @@ function AppRoutes() {
       <Route path='/customer/wishlist' element={user?.role === 'customer' ? <Wishlist /> : <Navigate to="/auth/login" replace />} />
         <Route path='/customer/order-confirmation/:orderId' element={user?.role === 'customer' ? <OrderConfirmation /> : <Navigate to="/auth/login" replace />} />
         <Route path='/customer/my-orders' element={user?.role === 'customer' ? <MyOrders /> : <Navigate to="/auth/login" replace />} />
-        <Route path='/customer/orders' element={user?.role === 'customer' ? <Orders /> : <Navigate to="/auth/login" replace />} />
-        <Route path='/customer/orders/:orderId' element={user?.role === 'customer' ? <OrderConfirmation /> : <Navigate to="/auth/login" replace />} />
 
       {/* 404 Catch All */}
       <Route path="*" element={<NotFound />} />

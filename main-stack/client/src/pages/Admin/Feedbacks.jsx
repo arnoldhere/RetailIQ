@@ -24,6 +24,17 @@ import {
     Divider,
     InputGroup,
     InputLeftElement,
+    AlertDialog,
+    AlertDialogBody,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogContent,
+    AlertDialogOverlay,
+    useDisclosure,
+    Alert,
+    AlertIcon,
+    AlertTitle,
+    AlertDescription,
 } from '@chakra-ui/react'
 import { DeleteIcon, EditIcon, AddIcon, SearchIcon } from '@chakra-ui/icons'
 import Navbar from '../../components/Navbar'
@@ -53,17 +64,17 @@ export default function FeedbacksPage() {
     const tableHeadBg = useColorModeValue('white', 'gray.800')
 
     // -------------------------
-    // State & refs (unchanged)
+    // State & refs
     // -------------------------
     const [feedbacks, setFeedbacks] = useState([])
     const [loading, setLoading] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [limit] = useState(10)
     const [currentPage, setCurrentPage] = useState(1)
-
-    // const { isOpen, onOpen, onClose } = useDisclosure()
-    // const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
-    // const [deleteId, setDeleteId] = useState(null)
+    const [sendingAssuranceId, setSendingAssuranceId] = useState(null)
+    const [selectedFeedback, setSelectedFeedback] = useState(null)
+    const { isOpen, onOpen, onClose } = useDisclosure()
+    const cancelRef = useRef()
     const tableRef = useRef(null)
 
     // Filter feedbacks based on search query
@@ -107,6 +118,74 @@ export default function FeedbacksPage() {
         fetchFeedbacks();
     }, [])
 
+
+    // ✅ Handle sending assurance email with loading state per feedback
+    async function handleSendAssurance(feedbackId) {
+        if (!feedbackId) {
+            toast({
+                title: 'Error',
+                description: 'Invalid feedback ID',
+                status: 'error',
+                duration: 3000,
+                isClosable: true
+            })
+            return
+        }
+
+        try {
+            setSendingAssuranceId(feedbackId)
+            
+            const response = await adminApi.sendAssuranceMail(feedbackId);
+
+            if (response && response.status === 200) {
+                // ✅ Success
+                toast({
+                    title: 'Success',
+                    description: 'Assurance email sent successfully',
+                    status: 'success',
+                    duration: 4000,
+                    isClosable: true,
+                    position: 'top-right'
+                })
+                // Refresh feedbacks to show updated status
+                await fetchFeedbacks()
+            } else {
+                // ✅ Unexpected response
+                toast({
+                    title: 'Warning',
+                    description: response?.data?.message || 'Failed to send assurance email',
+                    status: 'warning',
+                    duration: 3000,
+                    isClosable: true
+                })
+            }
+        } catch (error) {
+            console.error('Error sending assurance:', error);
+            
+            // ✅ Better error messaging
+            const errorMessage = error?.response?.data?.message || 
+                                error?.message || 
+                                'Failed to send assurance email. Please try again.'
+            
+            toast({
+                title: 'Error',
+                description: errorMessage,
+                status: 'error',
+                duration: 4000,
+                isClosable: true,
+                position: 'top-right'
+            })
+        } finally {
+            setSendingAssuranceId(null)
+            onClose()
+        }
+    }
+
+    // ✅ Open confirmation dialog
+    const openConfirmation = (feedback) => {
+        setSelectedFeedback(feedback)
+        onOpen()
+    }
 
     const msgToolBg = useColorModeValue("gray.800", "gray.700");
     const tableBg = useColorModeValue("white", "gray.900");
@@ -329,10 +408,12 @@ export default function FeedbacksPage() {
                                                                         size="sm"
                                                                         w="100%"
                                                                         borderRadius="full"
-                                                                        leftIcon={<FiMail />}
+                                                                        leftIcon={sendingAssuranceId === f.id ? undefined : <FiMail />}
                                                                         bgGradient="linear(to-r, red.500, orange.500)"
                                                                         color="white"
                                                                         fontWeight="600"
+                                                                        isLoading={sendingAssuranceId === f.id}
+                                                                        loadingText="Sending..."
                                                                         _hover={{
                                                                             bgGradient: "linear(to-r, cyan.500, purple.600)",
                                                                             transform: "translateY(-2px)",
@@ -342,8 +423,10 @@ export default function FeedbacksPage() {
                                                                             transform: "translateY(0)",
                                                                             boxShadow: "sm",
                                                                         }}
+                                                                        isDisabled={sendingAssuranceId !== null}
+                                                                        onClick={() => openConfirmation(f)}
                                                                     >
-                                                                        Assure
+                                                                        {sendingAssuranceId === f.id ? 'Sending' : 'Assure'}
                                                                     </Button>
                                                                 </Tooltip>
                                                             </HStack>
@@ -387,6 +470,93 @@ export default function FeedbacksPage() {
                     </SimpleGrid>
                 </Box>
             </Box>
+
+            {/* ✅ Confirmation Dialog for Assurance Email */}
+            <AlertDialog
+                isOpen={isOpen}
+                leastDestructiveRef={cancelRef}
+                onClose={onClose}
+                isCentered
+                motionPreset="slideInBottom"
+            >
+                <AlertDialogOverlay>
+                    <AlertDialogContent
+                        bg={subtleCard}
+                        borderColor={borderColor}
+                        borderWidth="1px"
+                        boxShadow="dark-lg"
+                    >
+                        <AlertDialogHeader
+                            fontSize="lg"
+                            fontWeight="700"
+                            color="green.400"
+                            display="flex"
+                            alignItems="center"
+                            gap={2}
+                        >
+                            <FiMail size={20} />
+                            Send Assurance Email
+                        </AlertDialogHeader>
+
+                        <AlertDialogBody py={4}>
+                            {selectedFeedback && (
+                                <VStack align="stretch" spacing={4}>
+                                    <Box
+                                        p={4}
+                                        bg={msgToolBg}
+                                        borderRadius="md"
+                                        borderLeft="4px"
+                                        borderColor="green.400"
+                                    >
+                                        <Text fontWeight="600" color="green.300" mb={2}>
+                                            Customer: {selectedFeedback.firstname} {selectedFeedback.lastname}
+                                        </Text>
+                                        <Text fontSize="sm" color="gray.300">
+                                            Email: {selectedFeedback.email}
+                                        </Text>
+                                        <Divider my={3} borderColor="whiteAlpha.200" />
+                                        <Text fontSize="sm" color={msgBg} fontWeight="500">
+                                            {selectedFeedback.message}
+                                        </Text>
+                                    </Box>
+
+                                    <Alert status="info" borderRadius="md">
+                                        <AlertIcon />
+                                        <Box>
+                                            <AlertTitle>Ready to send</AlertTitle>
+                                            <AlertDescription fontSize="sm">
+                                                An assurance email will be sent to the customer's registered email address.
+                                            </AlertDescription>
+                                        </Box>
+                                    </Alert>
+                                </VStack>
+                            )}
+                        </AlertDialogBody>
+
+                        <AlertDialogFooter gap={3}>
+                            <Button
+                                ref={cancelRef}
+                                onClick={onClose}
+                                variant="ghost"
+                                borderRadius="md"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                bgGradient="linear(to-r, green.500, teal.500)"
+                                color="white"
+                                onClick={() => selectedFeedback && handleSendAssurance(selectedFeedback.id)}
+                                isLoading={sendingAssuranceId === selectedFeedback?.id}
+                                loadingText="Sending..."
+                                borderRadius="md"
+                                fontWeight="600"
+                            >
+                                Send Assurance
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialogOverlay>
+            </AlertDialog>
 
             <Footer />
         </Box>
