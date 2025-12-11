@@ -23,6 +23,7 @@ import {
 } from '@chakra-ui/react';
 import { createRazorpayOrder, verifyPayment } from '../api/orders';
 import { useCart } from '../context/CartContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
   const toast = useToast();
@@ -265,6 +266,7 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
 
       // ✅ Close checkout modal
       onClose();
+      useNavigate('/customer/my-orders');
     } catch (error) {
       console.error('Payment verification error:', error);
       toast({

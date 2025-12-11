@@ -13,4 +13,3 @@
     - send mail of joining/adding of supplier
     - send assurance email for feedback @ admin
     - order management,chekout and payment @ customer -> need enhancement
-    - add fk to storeid, cashier id in orders

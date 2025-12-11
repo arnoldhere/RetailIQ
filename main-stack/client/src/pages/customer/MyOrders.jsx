@@ -366,18 +366,19 @@ export default function MyOrders() {
                                         </Tr>
                                     </Thead>
                                     <Tbody>
+                                    {console.log(orders)}
                                         {orders.map((order) => (
                                             <Tr key={order.id} _hover={{ bg: hoverBg }} cursor="pointer">
-                                                <Td fontWeight="600">{order.orderNo}</Td>
+                                                <Td fontWeight="600">{order.order_no}</Td>
                                                 <Td>
-                                                    {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                                                    {new Date(order.created_at).toLocaleDateString('en-IN', {
                                                         year: 'numeric',
-                                                        month: 'short',
+                                                        month: 'numeric',
                                                         day: 'numeric',
                                                     })}
                                                 </Td>
                                                 <Td isNumeric fontWeight="700" color="green.600">
-                                                    ₹{order.totalAmount}
+                                                    ₹{order.total_amount}
                                                 </Td>
                                                 <Td>
                                                     <HStack spacing={2}>
@@ -389,7 +390,7 @@ export default function MyOrders() {
                                                 </Td>
                                                 <Td>
                                                     <Badge colorScheme={getPaymentStatusColor(order.paymentStatus)}>
-                                                        {order.paymentStatus}
+                                                        {order.payment_status}
                                                     </Badge>
                                                 </Td>
                                                 <Td>
