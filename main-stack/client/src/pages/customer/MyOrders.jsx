@@ -368,28 +368,28 @@ export default function MyOrders() {
                                     <Tbody>
                                         {orders.map((order) => (
                                             <Tr key={order.id} _hover={{ bg: hoverBg }} cursor="pointer">
-                                                <Td fontWeight="600">{order.orderNo}</Td>
+                                                <Td fontWeight="600">{order.order_no}</Td>
                                                 <Td>
-                                                    {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                                                    {new Date(order.created_at).toLocaleDateString('en-IN', {
                                                         year: 'numeric',
-                                                        month: 'short',
+                                                        month: 'numeric',
                                                         day: 'numeric',
                                                     })}
                                                 </Td>
                                                 <Td isNumeric fontWeight="700" color="green.600">
-                                                    ₹{order.totalAmount.toFixed(2)}
+                                                    ₹{order.total_amount}
                                                 </Td>
                                                 <Td>
                                                     <HStack spacing={2}>
                                                         {getStatusIcon(order.status)}
                                                         <Badge colorScheme={getStatusColor(order.status)}>
-                                                            {order.status.toUpperCase()}
+                                                            {order.status}
                                                         </Badge>
                                                     </HStack>
                                                 </Td>
                                                 <Td>
-                                                    <Badge colorScheme={getPaymentStatusColor(order.paymentStatus)}>
-                                                        {order.paymentStatus.toUpperCase()}
+                                                    <Badge colorScheme={getPaymentStatusColor(order.payment_status)}>
+                                                        {order.payment_status}
                                                     </Badge>
                                                 </Td>
                                                 <Td>
