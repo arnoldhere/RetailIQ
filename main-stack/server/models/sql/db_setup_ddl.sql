@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   otpGeneratedAt TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+  is_active TINYINT NOT NULL DEFAULT 1,
   INDEX idx_users_store (store_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -131,7 +132,7 @@ CREATE TABLE IF NOT EXISTS customer_orders (
   cust_id INT NULL,
   store_id INT NOT NULL,
   cashier_id INT NULL,
-  status ENUM('pending','processing','completed','cancelled','returned') NOT NULL DEFAULT 'pending',
+  status ENUM('pending','processing','completed','cancelled','returned' , 'shipped') NOT NULL DEFAULT 'pending',
   discount FLOAT DEFAULT 0.0,
   total_amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
   payment_status ENUM('pending','paid','failed','refunded') NOT NULL DEFAULT 'pending',
@@ -298,3 +299,100 @@ ALTER TABLE feedbacks
 --- 
 
 ALTER TABLE products ADD FULLTEXT idx_products_fulltext (name, description);
+
+---------------------------
+
+-- INVOICES (Sales Invoice)
+CREATE TABLE IF NOT EXISTS invoices (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+
+  invoice_no VARCHAR(100) NOT NULL UNIQUE,
+  invoice_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  customer_order_id INT NOT NULL,
+  store_id INT NOT NULL,
+  cust_id INT NULL,
+  cashier_id INT NULL,
+
+  subtotal DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+  discount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+  tax DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+  grand_total DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+
+  payment_status ENUM('pending','paid','partial','refunded') NOT NULL DEFAULT 'pending',
+  invoice_status ENUM('generated','cancelled','returned') NOT NULL DEFAULT 'generated',
+
+  notes TEXT NULL,
+
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX idx_invoice_order (customer_order_id),
+  INDEX idx_invoice_store (store_id),
+  INDEX idx_invoice_customer (cust_id),
+  INDEX idx_invoice_date (invoice_date)
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- INVOICE ITEMS
+CREATE TABLE IF NOT EXISTS invoice_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+
+  invoice_id INT NOT NULL,
+  product_id INT NOT NULL,
+
+  product_name VARCHAR(255) NOT NULL,   -- snapshot
+  sku VARCHAR(100) NULL,
+
+  qty INT NOT NULL DEFAULT 1,
+  unit_price DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  discount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  tax DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  total_amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX idx_invoiceitems_invoice (invoice_id),
+  INDEX idx_invoiceitems_product (product_id)
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- invoices foreign keys
+ALTER TABLE invoices
+  ADD CONSTRAINT fk_invoices_order
+    FOREIGN KEY (customer_order_id) REFERENCES customer_orders(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+
+  ADD CONSTRAINT fk_invoices_store
+    FOREIGN KEY (store_id) REFERENCES stores(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+
+  ADD CONSTRAINT fk_invoices_customer
+    FOREIGN KEY (cust_id) REFERENCES users(id)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+
+  ADD CONSTRAINT fk_invoices_cashier
+    FOREIGN KEY (cashier_id) REFERENCES users(id)
+    ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- invoice_items foreign keys
+ALTER TABLE invoice_items
+  ADD CONSTRAINT fk_invoiceitems_invoice
+    FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+
+  ADD CONSTRAINT fk_invoiceitems_product
+    FOREIGN KEY (product_id) REFERENCES products(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE customer_payments
+  ADD invoice_id INT NULL,
+  ADD CONSTRAINT fk_payments_invoice
+    FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+    ON DELETE SET NULL ON UPDATE CASCADE;
+
+
+ALTER TABLE invoices
+  ADD cgst DECIMAL(12,2) DEFAULT 0.00,
+  ADD sgst DECIMAL(12,2) DEFAULT 0.00,
+  ADD igst DECIMAL(12,2) DEFAULT 0.00;

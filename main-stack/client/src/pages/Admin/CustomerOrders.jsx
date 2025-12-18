@@ -26,6 +26,14 @@ import {
     InputLeftElement,
     FormControl,
     FormLabel,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalFooter,
+    ModalCloseButton,
+    useDisclosure,
 } from '@chakra-ui/react'
 import { SearchIcon } from '@chakra-ui/icons'
 import Navbar from '../../components/Navbar'
@@ -35,7 +43,7 @@ import * as adminApi from '../../api/admin'
 
 export default function CustomerOrdersPage() {
     const toast = useToast()
-    
+
     const pageBg = useColorModeValue('gray.50', 'gray.900')
     const subtleCard = useColorModeValue('white', 'gray.800')
     const mutedText = useColorModeValue('gray.600', 'gray.300')
@@ -61,6 +69,11 @@ export default function CustomerOrdersPage() {
     const [limit] = useState(12)
     const [offset, setOffset] = useState(0)
 
+    // Order details modal
+    const { isOpen: isDetailsOpen, onOpen: onDetailsOpen, onClose: onDetailsClose } = useDisclosure()
+    const [selectedOrderDetails, setSelectedOrderDetails] = useState(null)
+    const [detailsLoading, setDetailsLoading] = useState(false)
+
     useEffect(() => {
         fetchOrders()
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,6 +95,38 @@ export default function CustomerOrdersPage() {
         }
     }
 
+    // Open order details modal and fetch items
+    async function openOrderDetails(order) {
+        setDetailsLoading(true)
+        try {
+            const res = await adminApi.getCustomerOrderDetails(order.id)
+            setSelectedOrderDetails(res.data)
+            onDetailsOpen()
+        } catch (err) {
+            console.error('Failed to load order details:', err)
+            toast({ title: 'Failed to load order details', status: 'error', duration: 3000 })
+        } finally {
+            setDetailsLoading(false)
+        }
+    }
+
+    // Quick status update
+    async function handleChangeStatus(orderId, newStatus) {
+        const ok = window.confirm(`Change order status to ${newStatus}?`)
+        if (!ok) return
+        try {
+            setLoading(true)
+            await adminApi.updateOrderStatus(orderId, newStatus)
+            toast({ title: 'Order updated', status: 'success', duration: 3000 })
+            await fetchOrders()
+        } catch (err) {
+            console.error('Failed to update order status:', err)
+            toast({ title: 'Failed to update order', status: 'error', duration: 3000 })
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const handleFilterChange = (key, value) => {
         setOffset(0)
         setFilters((prev) => ({ ...prev, [key]: value }))
@@ -94,6 +139,7 @@ export default function CustomerOrdersPage() {
             completed: 'green',
             cancelled: 'red',
             returned: 'orange',
+            'shipped': 'teal',
         }
         return colors[status] || 'gray'
     }
@@ -196,6 +242,7 @@ export default function CustomerOrdersPage() {
                                             <option value="completed">Completed</option>
                                             <option value="cancelled">Cancelled</option>
                                             <option value="returned">Returned</option>
+                                            <option value="shipped">shipped</option>
                                         </Select>
                                     </FormControl>
 
@@ -286,8 +333,8 @@ export default function CustomerOrdersPage() {
                                                         >
                                                             <Td fontWeight="600" color="white.800" fontSize="sm">{order.order_no}</Td>
                                                             <Td fontSize="sm" color={mutedText}>
-                                                                {order.firstname && order.lastname 
-                                                                    ? `${order.firstname} ${order.lastname}` 
+                                                                {order.firstname && order.lastname
+                                                                    ? `${order.firstname} ${order.lastname}`
                                                                     : order.customer_email || 'Guest'}
                                                             </Td>
                                                             <Td fontSize="sm" color={mutedText}>{order.store_name || '-'}</Td>
@@ -306,6 +353,24 @@ export default function CustomerOrdersPage() {
                                                             </Td>
                                                             <Td fontSize="sm" color={mutedText}>
                                                                 {new Date(order.created_at).toLocaleDateString()}
+                                                            </Td>
+
+                                                            {/* Actions */}
+                                                            <Td textAlign="center">
+                                                                <HStack justifyContent="center" spacing={2}>
+                                                                    <Button size="sm" onClick={() => openOrderDetails(order)}>
+                                                                        View
+                                                                    </Button>
+
+                                                                    <Select size="sm" value={order.status} onChange={(e) => handleChangeStatus(order.id, e.target.value)} width="160px">
+                                                                        <option value="pending">pending</option>
+                                                                        <option value="processing">processing</option>
+                                                                        <option value="completed">completed</option>
+                                                                        <option value="cancelled">cancelled</option>
+                                                                        <option value="returned">returned</option>
+                                                                        <option value="shipped">shipped</option>
+                                                                    </Select>
+                                                                </HStack>
                                                             </Td>
                                                         </Tr>
                                                     ))}
@@ -340,6 +405,45 @@ export default function CustomerOrdersPage() {
                                             </Button>
                                         </Flex>
                                     )}
+
+                                    {/* Order details modal */}
+                                    <Modal isOpen={isDetailsOpen} onClose={onDetailsClose} size="lg" isCentered>
+                                        <ModalOverlay />
+                                        <ModalContent>
+                                            <ModalHeader>Order Details</ModalHeader>
+                                            <ModalCloseButton />
+                                            <ModalBody>
+                                                {detailsLoading ? (
+                                                    <Box textAlign="center" py={6}>
+                                                        <Spinner />
+                                                    </Box>
+                                                ) : selectedOrderDetails ? (
+                                                    <Box>
+                                                        <Text fontWeight="600">Order: {selectedOrderDetails.order.order_no}</Text>
+                                                        <Text mb={3}>Customer: {selectedOrderDetails.order.firstname} {selectedOrderDetails.order.lastname} ({selectedOrderDetails.order.customer_email})</Text>
+                                                        <Divider mb={3} />
+                                                        <Box>
+                                                            <Heading size="sm" mb={2}>Items</Heading>
+                                                            {selectedOrderDetails.items.map((it) => (
+                                                                <HStack key={it.id} justify="space-between" py={2}>
+                                                                    <Text>{it.product_name || 'Product'} x {it.qty}</Text>
+                                                                    <Text>${Number(it.total_amount || 0).toFixed(2)}</Text>
+                                                                </HStack>
+                                                            ))}
+                                                        </Box>
+                                                        <Divider my={3} />
+                                                        <Text fontWeight="700">Total: ${Number(selectedOrderDetails.order.total_amount || 0).toFixed(2)}</Text>
+                                                    </Box>
+                                                ) : (
+                                                    <Text>No details to show</Text>
+                                                )}
+                                            </ModalBody>
+
+                                            <ModalFooter>
+                                                <Button onClick={onDetailsClose}>Close</Button>
+                                            </ModalFooter>
+                                        </ModalContent>
+                                    </Modal>
                                 </>
                             )}
                         </Box>

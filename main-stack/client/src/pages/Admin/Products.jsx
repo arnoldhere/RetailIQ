@@ -62,7 +62,7 @@ import * as categoriesApi from '../../api/categories'
 
 const MAX_IMAGES = 5
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 function _parseImageData(imageStr) {
     if (!imageStr) return []
     try {
@@ -140,17 +140,24 @@ export default function ProductsPage() {
     const tableRef = useRef(null)
     const fileInputRef = useRef(null)
 
+    // Product view modal
+    const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure()
+    const [selectedProduct, setSelectedProduct] = useState(null)
+
+    function openViewModal(product) {
+        setSelectedProduct(product)
+        onViewOpen()
+    }
+
     // -------------------------
     // Data fetch (unchanged)
     // -------------------------
     useEffect(() => {
         fetchCategories()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {
         fetchProducts()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters, offset, limit])
 
     useEffect(() => {
@@ -596,7 +603,7 @@ export default function ProductsPage() {
 
                                                         <Td isNumeric fontWeight="700" color="green.600" fontSize="sm">${product.sell_price}</Td>
 
-                                                        <Td isNumeric fontSize="sm" color={product.stock_available === 0 ? 'red.500' : product.stock_available < 10 ? 'orange.500' : 'gray.700'}>
+                                                        <Td isNumeric fontSize="sm" color={product.stock_available === 0 ? 'red.500' : product.stock_available < 10 ? 'orange.700' : 'white.700'}>
                                                             {product.stock_available}
                                                         </Td>
 
@@ -618,6 +625,12 @@ export default function ProductsPage() {
                                                                         aria-label="Edit"
                                                                         borderRadius="full"
                                                                     />
+                                                                </Tooltip>
+
+                                                                <Tooltip label="View product">
+                                                                    <Button size="sm" onClick={() => openViewModal(product)}>
+                                                                        View
+                                                                    </Button>
                                                                 </Tooltip>
 
                                                                 <Tooltip label="Delete product">
@@ -827,6 +840,39 @@ export default function ProductsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* View product modal */}
+            <Modal isOpen={isViewOpen} onClose={onViewClose} size="lg" isCentered>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>{selectedProduct?.name || 'Product details'}</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        {selectedProduct ? (
+                            <VStack align="stretch" spacing={4}>
+                                <Box>
+                                    <Text fontWeight="600">Price: ${selectedProduct.sell_price}</Text>
+                                    <Text fontSize="sm" color="gray.500">Cost: ${selectedProduct.cost_price}</Text>
+                                    <Text fontSize="sm">Stock: {selectedProduct.stock_available}</Text>
+                                    <Divider my={2} />
+                                    <Text>{selectedProduct.description || 'No description provided.'}</Text>
+                                </Box>
+
+                                <SimpleGrid columns={{ base: 1, md: 3 }} gap={3}>
+                                    {(selectedProduct.images || []).map((img, idx) => (
+                                        <ChakraImage key={idx} src={`${BACKEND_URL}/${img}`} alt={`img-${idx}`} w="100%" h="140px" objectFit="cover" borderRadius="md" />
+                                    ))}
+                                </SimpleGrid>
+                            </VStack>
+                        ) : (
+                            <Box textAlign="center" py={6}><Spinner /></Box>
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button onClick={onViewClose}>Close</Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
 
             <Footer />
         </Box>

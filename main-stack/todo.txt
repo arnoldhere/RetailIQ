@@ -12,4 +12,5 @@
 -- now next
     - send mail of joining/adding of supplier
     - send assurance email for feedback @ admin
+    - generate invoice and save to server and also send to user's email
     - order management,chekout and payment @ customer -> need enhancement

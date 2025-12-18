@@ -135,6 +135,45 @@ router.get('/customer-orders', authMiddleware, async (req, res, next) => {
   }
 });
 
+// Get order details
+router.get('/customer-orders/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getCustomerOrderDetails(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Update order status
+router.post('/customer-orders/:id/status', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.updateCustomerOrderStatus(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Deactivate / Reactivate user
+router.post('/users/:id/deactivate', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.deactivateUser(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/users/:id/reactivate', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.reactivateUser(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/supplier-orders', authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });

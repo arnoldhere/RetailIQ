@@ -295,7 +295,7 @@ exports.deleteCategory = async (req, res) => {
 
     try {
       // fetch the users list where role is customer
-      const users = await db('users').where('role', 'customer').select('id', 'firstname', 'lastname', 'email', 'phone', 'created_at');
+      const users = await db('users').where('role', 'customer').select('id', 'firstname', 'lastname', 'email', 'phone', 'created_at' , 'is_active');
       // fetch the users count where role is customer
       const usersCount = await db('users').where('role', 'customer').count('id as count').first();
 
@@ -313,8 +313,38 @@ exports.deleteCategory = async (req, res) => {
 
 exports.getFeedbacks = async (req, res) => {
   try {
-    const feedbacks = await db('feedbacks').join('users', 'feedbacks.cust_id', 'users.id').select('feedbacks.id', 'feedbacks.message', 'feedbacks.created_at', 'users.firstname as firstname', 'users.lastname as lastname', 'users.email as user_email');
-    return res.json({ feedbacks });
+    const limit = Math.min(parseInt(req.query.limit) || 12, 500);
+    const offset = parseInt(req.query.offset) || 0;
+    const search = req.query.search;
+
+    let query = db('feedbacks')
+      .join('users', 'feedbacks.cust_id', 'users.id')
+      .select('feedbacks.id', 'feedbacks.message', 'feedbacks.created_at', 'users.firstname as firstname', 'users.lastname as lastname', 'users.email as user_email');
+
+    if (search) {
+      query = query.where(function () {
+        this.where('users.firstname', 'like', `%${search}%`)
+          .orWhere('users.lastname', 'like', `%${search}%`)
+          .orWhere('users.email', 'like', `%${search}%`)
+          .orWhere('feedbacks.message', 'like', `%${search}%`);
+      });
+    }
+
+    const countQuery = query.clone();
+    const countResult = await countQuery
+      .clearSelect()
+      .clearOrder()
+      .count({ count: 'feedbacks.id' })
+      .first();
+
+    const total = Number(countResult.count || 0);
+
+    const feedbacks = await query
+      .orderBy('feedbacks.created_at', 'desc')
+      .limit(limit)
+      .offset(offset);
+
+    return res.json({ feedbacks, total, limit, offset });
   } catch (err) {
     console.error('get feedbacks error', err);
     return res.status(500).json({ message: 'Failed to load feedbacks' });
@@ -496,6 +526,143 @@ exports.listCustomerOrders = async (req, res) => {
     return res.status(500).json({ message: 'Failed to load customer orders' });
   }
 };
+
+// Get single order details (items + metadata)
+exports.getCustomerOrderDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await db('customer_orders')
+      .where({ id })
+      .first();
+
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const items = await db('customer_order_items')
+      .select('customer_order_items.*', 'products.name as product_name', 'products.images as product_images')
+      .leftJoin('products', 'customer_order_items.product_id', 'products.id')
+      .where('customer_order_items.customer_order_id', id);
+
+    return res.json({ order, items });
+  } catch (err) {
+    console.error('get order details error', err);
+    return res.status(500).json({ message: 'Failed to load order details' });
+  }
+}
+
+// Update order status and notify customer
+exports.updateCustomerOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const allowed = ['pending', 'processing', 'completed', 'cancelled', 'returned' , 'shipped'];
+
+    if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid status' });
+
+    const order = await db('customer_orders').where({ id }).first();
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    await db('customer_orders').where({ id }).update({ status });
+
+    // Notify customer if email exists
+    if (order.cust_id) {
+      const user = await db('users').where({ id: order.cust_id }).first();
+      if (user && user.email) {
+        const from = process.env.GMAIL_EMAIL || 'no-reply@example.com';
+        const to = user.email;
+        const sub = `Your order ${order.order_no} status updated to ${status}`;
+        const html = `
+          <p>Hi ${user.firstname},</p>
+          <p>Your order <strong>${order.order_no}</strong> status has been updated to <strong>${status}</strong>.</p>
+          <p>Thank you for shopping with RetailIQ.</p>
+        `;
+        try {
+          await emailService(from, to, sub, html);
+        } catch (mailErr) {
+          console.error('failed to send order status email', mailErr);
+        }
+      }
+    }
+
+    return res.json({ message: 'Order status updated', status });
+  } catch (err) {
+    console.error('update order status error', err);
+    return res.status(500).json({ message: 'Failed to update order status' });
+  }
+}
+
+// Deactivate user and send notification email
+exports.deactivateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await db('users').where({ id }).first();
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    await db('users').where({ id }).update({ is_active: false });
+
+    // send deactivation email
+    if (user.email) {
+      const from = process.env.GMAIL_EMAIL || 'no-reply@example.com';
+      const to = user.email;
+      const sub = `Your RetailIQ account has been deactivated`;
+      const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
+          <h2 style="color: #333; text-align: center;">Password Reset Request</h2>
+          <p style="color: #666; font-size: 14px;">Hi ${user.firstName},</p>
+          <p style="color: #666; font-size: 14px;">
+        <p>Your account has been deactivated by our support team. If you believe this is a mistake, please contact support.
+          </p>
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+          <p style="color: #999; font-size: 12px; text-align: center;">
+            RetailIQ - Smart Retail Analytics Platform
+          </p>
+        </div>
+      </div>
+    `;
+      try {
+        await emailService(from, to, sub, html);
+      } catch (mailErr) {
+        console.error('failed to send deactivation email', mailErr);
+      }
+    }
+
+    return res.json({ message: 'User deactivated' });
+  } catch (err) {
+    console.error('deactivate user error', err);
+    return res.status(500).json({ message: 'Failed to deactivate user' });
+  }
+}
+
+// Reactivate user and notify
+exports.reactivateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await db('users').where({ id }).first();
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    await db('users').where({ id }).update({ is_active: true });
+
+    if (user.email) {
+      const from = process.env.GMAIL_EMAIL || 'no-reply@example.com';
+      const to = user.email;
+      const sub = `Your RetailIQ account has been reactivated`;
+      const html = `
+        <p>Hi ${user.firstname},</p>
+        <p>Your account has been reactivated. You can now log in again.</p>
+      `;
+      try {
+        await emailService(from, to, sub, html);
+      } catch (mailErr) {
+        console.error('failed to send reactivation email', mailErr);
+      }
+    }
+
+    return res.json({ message: 'User reactivated' });
+  } catch (err) {
+    console.error('reactivate user error', err);
+    return res.status(500).json({ message: 'Failed to reactivate user' });
+  }
+}
 
 exports.listSupplierOrders = async (req, res) => {
   try {

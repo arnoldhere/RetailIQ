@@ -116,6 +116,41 @@ export default function UsersList() {
     const noSearchResults =
         !loading && users.length > 0 && filteredUsers.length === 0;
 
+    async function toggleUserStatus(user) {
+        const isActive = user.is_active === 1
+        const confirmText = isActive
+            ? 'Deactivate this user? This will prevent them from logging in.'
+            : 'Reactivate this user?'
+
+        const ok = window.confirm(confirmText)
+        if (!ok) return
+
+        try {
+            setLoading(true)
+
+            if (isActive) {
+                await adminApi.deactivateUser(user.id)
+                toast({ title: 'User deactivated', status: 'success', duration: 3000 })
+            } else {
+                await adminApi.reactivateUser(user.id)
+                toast({ title: 'User activated', status: 'success', duration: 3000 })
+            }
+
+            const res = await adminApi.getUsers()
+            setUsers(res?.data?.users || [])
+        } catch (err) {
+            console.error('Failed to toggle user status', err)
+            toast({
+                title: 'Action failed',
+                status: 'error',
+                duration: 3000,
+            })
+        } finally {
+            setLoading(false)
+        }
+    }
+
+
     return (
         <Box
             minH="100vh"
@@ -348,7 +383,18 @@ export default function UsersList() {
                                                             }
                                                         >
                                                             <Td>{sr}</Td>
-                                                            <Td>{`${item.firstname} ${item.lastname}`}</Td>
+                                                            <Td>
+                                                                <HStack spacing={2}>
+                                                                    <Text>{`${item.firstname} ${item.lastname}`}</Text>
+                                                                    <Box
+                                                                        w="8px"
+                                                                        h="8px"
+                                                                        borderRadius="full"
+                                                                        bg={item.is_active === 1 ? 'green.400' : 'red.400'}
+                                                                    />
+                                                                </HStack>
+                                                            </Td>
+
                                                             <Td>{item.email}</Td>
                                                             <Td
                                                                 display={{
@@ -368,13 +414,19 @@ export default function UsersList() {
                                                             </Td>
                                                             <Td textAlign="end">
                                                                 <Button
-                                                                    variant="outline"
+                                                                    isLoading={loading}
+                                                                    isDisabled={loading}
                                                                     size="xs"
-                                                                    colorScheme="red"
+                                                                    colorScheme={item.is_active === 1 ? 'red' : 'green'}
+                                                                    variant={item.is_active === 1 ? 'outline' : 'solid'}
+                                                                    onClick={() => toggleUserStatus(item)}
                                                                 >
-                                                                    Deactivate
+                                                                {console.log(item)}
+                                                                    {item.is_active === 1 ? 'Deactivate' : 'Activate'}
                                                                 </Button>
                                                             </Td>
+
+
                                                         </Tr>
                                                     );
                                                 })}

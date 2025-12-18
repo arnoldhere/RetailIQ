@@ -117,6 +117,11 @@ module.exports = {
 
       if (!user) return res.status(401).json({ errors: [{ field: 'identifier', msg: 'Invalid credentials' }] });
 
+      // Prevent login if user account is deactivated
+      if (typeof user.is_active !== 'undefined' && user.is_active === 0) {
+        return res.status(403).json({ errors: [{ field: 'identifier', msg: 'Account is deactivated' }] });
+      }
+
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) return res.status(401).json({ errors: [{ field: 'password', msg: 'Invalid credentials' }] });
 

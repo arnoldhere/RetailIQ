@@ -70,43 +70,35 @@ export default function FeedbacksPage() {
     const [loading, setLoading] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [limit] = useState(10)
-    const [currentPage, setCurrentPage] = useState(1)
+    const [offset, setOffset] = useState(0)
+    const [total, setTotal] = useState(0)
     const [sendingAssuranceId, setSendingAssuranceId] = useState(null)
     const [selectedFeedback, setSelectedFeedback] = useState(null)
     const { isOpen, onOpen, onClose } = useDisclosure()
     const cancelRef = useRef()
     const tableRef = useRef(null)
 
-    // Filter feedbacks based on search query
-    const filteredFeedbacks = feedbacks.filter((f) => {
-        const fullName = `${f.firstname} ${f.lastname}`.toLowerCase()
-        const message = (f.message || '').toLowerCase()
-        const query = searchQuery.toLowerCase()
-        return fullName.includes(query) || message.includes(query)
-    })
-
-    // Pagination
-    const totalPages = Math.ceil(filteredFeedbacks.length / limit)
-    const startIndex = (currentPage - 1) * limit
-    const endIndex = startIndex + limit
-    const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, endIndex)
+    // Server-side pagination: compute current page and total pages
+    const currentPage = Math.floor(offset / limit) + 1
+    const totalPages = Math.max(1, Math.ceil((total || 0) / limit))
 
     useEffect(() => {
-        if (searchQuery) {
-            setCurrentPage(1)
-        }
+        // whenever search changes reset to first page
+        setOffset(0)
     }, [searchQuery])
 
     async function fetchFeedbacks() {
         setLoading(true)
         try {
-            const res = await adminApi.getFeedbacks()
+            const res = await adminApi.getFeedbacks(limit, offset, { search: searchQuery })
             setFeedbacks(res.data.feedbacks || [])
-            // console.log(feedbacks)
+            setTotal(res.data.total || 0)
+            // console.log(res.data)
         } catch (err) {
             console.error('Failed to fetch feedbacks:', err)
             toast({ title: 'Failed to load feedbacks', status: 'error', duration: 3000 })
             setFeedbacks([])
+            setTotal(0)
         }
         finally {
             setLoading(false)
@@ -114,9 +106,9 @@ export default function FeedbacksPage() {
     }
 
     useEffect(() => {
-
         fetchFeedbacks();
-    }, [])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [offset, searchQuery])
 
 
     // ✅ Handle sending assurance email with loading state per feedback
@@ -260,7 +252,7 @@ export default function FeedbacksPage() {
                                 </InputGroup>
                                 {searchQuery && (
                                     <Text mt={2} fontSize="sm" color={mutedText}>
-                                        Showing {filteredFeedbacks.length} of {feedbacks.length} feedbacks
+                                        Showing {feedbacks.length} of {total} feedbacks
                                     </Text>
                                 )}
                             </Box>
@@ -270,7 +262,7 @@ export default function FeedbacksPage() {
                                 <Box textAlign="center" py={12} display="flex" flexDirection="column" alignItems="center">
                                     <Spinner size="xl" thickness="4px" color={accent} />
                                     <Text mt={4} color={mutedText} fontSize="sm">
-                                        Loading products...
+                                        Loading feedbacks...
                                     </Text>
                                 </Box>
                             ) : feedbacks.length === 0 ? (
@@ -351,7 +343,7 @@ export default function FeedbacksPage() {
                                             </Thead>
 
                                             <Tbody>
-                                                {paginatedFeedbacks.map((f, idx) => (
+                                                {feedbacks.map((f, idx) => (
                                                     <Tr
                                                         key={f.id}
                                                         borderBottom="1px"
@@ -441,11 +433,11 @@ export default function FeedbacksPage() {
                             )}
 
                             {/* Pagination */}
-                            {!loading && filteredFeedbacks.length > 0 && totalPages > 1 && (
+                            {!loading && feedbacks.length > 0 && totalPages > 1 && (
                                 <Flex justify="center" gap={4} align="center" mt={6}>
                                     <Button
                                         variant="ghost"
-                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                        onClick={() => setOffset(Math.max(0, offset - limit))}
                                         isDisabled={currentPage === 1}
                                         borderRadius="md"
                                     >
@@ -453,12 +445,12 @@ export default function FeedbacksPage() {
                                     </Button>
 
                                     <Text fontWeight="600" color={mutedText}>
-                                        Page {currentPage} of {totalPages} ({filteredFeedbacks.length} total)
+                                        Page {currentPage} of {totalPages} ({total} total)
                                     </Text>
 
                                     <Button
                                         variant="ghost"
-                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                        onClick={() => setOffset(offset + limit)}
                                         isDisabled={currentPage === totalPages}
                                         borderRadius="md"
                                     >
