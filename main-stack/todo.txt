@@ -12,8 +12,9 @@
     - paginations and filtering @ admin 
     - order status management
     - product listing enhanced
-
+    - store management @admin
 -- now next
     - send mail of joining/adding of supplier
+    - show users name in store owner list in add store
     - generate invoice and save to server and also send to user's email
     - order management -> need enhancement
