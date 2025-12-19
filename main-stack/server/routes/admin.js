@@ -192,4 +192,50 @@ router.post('/sendAssurance/:id', authMiddleware, async (req, res, next) => {
   }
 })
 
+// Stores routes
+router.get('/stores', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.listStores(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/stores/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getStoreDetails(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/stores', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.createStore(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/stores/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.updateStore(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/stores/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.deleteStore(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

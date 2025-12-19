@@ -1,6 +1,10 @@
 const db = require('../config/db');
 const crypto = require('crypto');
 const razorpay = require('../services/rzpay');
+const invoiceService = require('../services/invoiceService');
+const emailService = require('../services/mailService');
+const emailServiceAttachments = require('../services/mailService');
+const fs = require('fs');
 
 /**
  * Generate unique order number
@@ -21,7 +25,7 @@ exports.createRazorpayOrder = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const { items, totalAmount, taxAmount, shippingAmount } = req.body;
+    const { items, totalAmount, taxAmount, shippingAmount, store_id } = req.body;
 
     // Validate input
     if (!items || items.length === 0) {
@@ -60,11 +64,28 @@ exports.createRazorpayOrder = async (req, res) => {
 
     const razorpayOrder = await razorpay.orders.create(razorpayOptions);
 
+    // Validate store_id if provided
+    let finalStoreId = store_id || null;
+    if (finalStoreId) {
+      const store = await db('stores').where({ id: finalStoreId, is_active: true }).first();
+      if (!store) {
+        return res.status(400).json({ message: 'Invalid or inactive store selected' });
+      }
+    } else {
+      // If no store_id provided, get the first active store as default
+      const defaultStore = await db('stores').where({ is_active: true }).first();
+      if (defaultStore) {
+        finalStoreId = defaultStore.id;
+      } else {
+        return res.status(400).json({ message: 'No active store available. Please contact admin.' });
+      }
+    }
+
     // ✅ Save order to database in 'pending' state (will be confirmed after payment)
     const [orderId] = await db('customer_orders').insert({
       order_no: orderNo,
       cust_id: userId,
-      store_id: 1, // Default store (can be dynamic based on setup)
+      store_id: finalStoreId,
       status: 'pending',
       discount: 0,
       total_amount: totalAmount,
@@ -189,6 +210,77 @@ exports.verifyPayment = async (req, res) => {
       await db('customer_cart_items').where({ cart_id: cart.id }).del();
     }
 
+    // ✅ Generate invoice and PDF
+    let invoiceData = null;
+    try {
+      invoiceData = await invoiceService.generateInvoice(orderId);
+      console.log('Invoice generated successfully:', invoiceData.invoice.invoice_no);
+    } catch (invoiceError) {
+      console.error('Error generating invoice:', invoiceError);
+      // Don't fail the order if invoice generation fails, but log the error
+    }
+
+    // ✅ Send invoice email if invoice was generated
+    if (invoiceData && invoiceData.invoice) {
+      try {
+        const user = await db('users').where({ id: userId }).first();
+        if (user && user.email) {
+          const from = process.env.GMAIL_EMAIL || 'no-reply@example.com';
+          const to = user.email;
+          const subject = `Invoice ${invoiceData.invoice.invoice_no} - Order ${order.order_no}`;
+          
+          const htmlContent = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
+                <h2 style="color: #333; text-align: center;">Invoice Generated</h2>
+                <p style="color: #666; font-size: 14px;">Hi ${user.firstname || 'Customer'},</p>
+                <p style="color: #666; font-size: 14px;">
+                  Your invoice for order <strong>${order.order_no}</strong> has been generated.
+                </p>
+                <div style="background-color: #fff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${invoiceData.invoice.invoice_no}</p>
+                  <p style="margin: 5px 0;"><strong>Order Number:</strong> ${order.order_no}</p>
+                  <p style="margin: 5px 0;"><strong>Total Amount:</strong> ₹${invoiceData.invoice.grand_total.toFixed(2)}</p>
+                  <p style="margin: 5px 0;"><strong>Payment Status:</strong> ${order.payment_status}</p>
+                </div>
+                <p style="color: #666; font-size: 14px;">
+                  Please find your invoice PDF attached to this email.
+                </p>
+                <p style="color: #666; font-size: 14px;">
+                  Thank you for shopping with RetailIQ!
+                </p>
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+                <p style="color: #999; font-size: 12px; text-align: center;">
+                  RetailIQ - Smart Retail Analytics Platform
+                </p>
+              </div>
+            </div>
+          `;
+
+          // Read PDF file for attachment
+          const pdfPath = invoiceData.pdfPath;
+          if (fs.existsSync(pdfPath) && emailServiceAttachments.sendEmailWithAttachment) {
+            await emailServiceAttachments.sendEmailWithAttachment(
+              from,
+              to,
+              subject,
+              htmlContent,
+              pdfPath,
+              `${invoiceData.invoice.invoice_no}.pdf`
+            );
+            console.log('Invoice email sent successfully with PDF attachment to:', to);
+          } else {
+            // Send email without attachment if PDF doesn't exist or function not available
+            await emailService(from, to, subject, htmlContent);
+            console.log('Invoice email sent (without PDF attachment) to:', to);
+          }
+        }
+      } catch (emailError) {
+        console.error('Error sending invoice email:', emailError);
+        // Don't fail the order if email sending fails
+      }
+    }
+
     // Return success response with order details
     return res.json({
       success: true,
@@ -197,6 +289,7 @@ exports.verifyPayment = async (req, res) => {
       orderNo: order.order_no,
       status: 'processing',
       totalAmount: order.total_amount,
+      invoice: invoiceData ? invoiceData.invoice : null,
     });
   } catch (err) {
     console.error('Error verifying payment:', err);

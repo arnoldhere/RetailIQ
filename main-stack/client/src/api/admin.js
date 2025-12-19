@@ -62,3 +62,29 @@ export async function getFeedbacks(limit = 12, offset = 0, filters = {}) {
   if (filters.search) params.search = filters.search
   return client.get('/api/admin/get-feedbacks', { params })
 }
+
+// Stores API
+export async function getStores(limit = 12, offset = 0, filters = {}) {
+  const params = { limit, offset }
+  if (filters.search) params.search = filters.search
+  if (filters.is_active !== undefined) params.is_active = filters.is_active
+  if (filters.sort) params.sort = filters.sort
+  if (filters.order) params.order = filters.order
+  return client.get('/api/admin/stores', { params })
+}
+
+export async function getStoreDetails(id) {
+  return client.get(`/api/admin/stores/${id}`)
+}
+
+export async function createStore(data) {
+  return client.post('/api/admin/stores', data)
+}
+
+export async function updateStore(id, data) {
+  return client.put(`/api/admin/stores/${id}`, data)
+}
+
+export async function deleteStore(id) {
+  return client.delete(`/api/admin/stores/${id}`)
+}

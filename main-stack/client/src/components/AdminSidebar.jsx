@@ -16,12 +16,13 @@ import {
 } from '@chakra-ui/react'
 import { Link, useLocation } from 'react-router-dom'
 import { FiGrid, FiUsers, FiTag, FiBox, FiMessageSquare, FiShoppingCart, FiTruck } from 'react-icons/fi'
-
+import { FaStore } from "react-icons/fa";
 const items = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: FiGrid },
   { to: '/admin/users', label: 'Users', icon: FiUsers },
   { to: '/admin/categories', label: 'Product Categories', icon: FiTag },
   { to: '/admin/products', label: 'Products', icon: FiBox },
+  { to: '/admin/stores', label: 'Manage Stores', icon: FaStore },
   { to: '/admin/feedbacks', label: 'Feedbacks', icon: FiMessageSquare },
   { to: '/admin/customer-orders', label: 'Customer Orders', icon: FiShoppingCart },
   { to: '/admin/suppliers', label: 'Suppliers', icon: FiTruck },

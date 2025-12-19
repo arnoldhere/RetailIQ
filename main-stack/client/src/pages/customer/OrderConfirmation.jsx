@@ -210,7 +210,7 @@ export default function OrderConfirmation() {
                     </Badge>
                     <Text fontSize="xs" color={textMuted}>
                       Placed on{' '}
-                      {new Date(order.order.created_at).toLocaleDateString('en-IN', {
+                      {new Date(order.order.createdAt).toLocaleDateString('en-IN', {
                         year: 'numeric',
                         month: 'numeric',
                         day: 'numeric',

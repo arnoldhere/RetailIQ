@@ -15,7 +15,7 @@ const client = axios.create({
  * @param {Number} shippingAmount - Shipping amount in INR
  * @returns {Promise} - { orderId, razorpayOrderId, razorpayKeyId, amount, ... }
  */
-export async function createRazorpayOrder(items, totalAmount, taxAmount, shippingAmount) {
+export async function createRazorpayOrder(items, totalAmount, taxAmount, shippingAmount, storeId = null) {
   try {
     console.log(items)
     const response = await client.post('/api/orders/create-razorpay-order', {
@@ -23,6 +23,7 @@ export async function createRazorpayOrder(items, totalAmount, taxAmount, shippin
       totalAmount,
       taxAmount,
       shippingAmount,
+      store_id: storeId,
     });
     return response.data;
   } catch (error) {

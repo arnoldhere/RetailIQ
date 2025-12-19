@@ -17,12 +17,15 @@ import {
   useToast,
   FormControl,
   FormLabel,
-  Input,
+  Select,
   Heading,
   useColorModeValue,
 } from '@chakra-ui/react';
 import { createRazorpayOrder, verifyPayment } from '../api/orders';
 import { useCart } from '../context/CartContext';
+import axios from 'axios';
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8888';
 
 export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
   const toast = useToast();
@@ -30,6 +33,9 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
   const [paymentInProgress, setPaymentInProgress] = useState(false);
   const [orderCreated, setOrderCreated] = useState(null);
+  const [stores, setStores] = useState([]);
+  const [selectedStoreId, setSelectedStoreId] = useState('');
+  const [loadingStores, setLoadingStores] = useState(false);
 
   // Colors for light/dark mode
   const bgCard = useColorModeValue('gray.50', 'gray.800');
@@ -41,6 +47,26 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
   const taxAmount = subtotal * 0.1; // 10% tax
   const shippingAmount = 0; // Free shipping
   const totalAmount = subtotal + taxAmount + shippingAmount;
+
+  // Fetch stores on mount
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        setLoadingStores(true);
+        const response = await axios.get(`${BACKEND_URL}/api/stores`);
+        setStores(response.data.stores || []);
+      } catch (error) {
+        console.error('Failed to fetch stores:', error);
+        // Don't show error toast, just continue without store selection
+      } finally {
+        setLoadingStores(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchStores();
+    }
+  }, [isOpen]);
 
   /**
    * Handle checkout button click
@@ -70,12 +96,13 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
         unit_price: item.sell_price,
       }));
 
-      // ✅ Create Razorpay order on backend
+      // ✅ Create Razorpay order on backend (store_id is optional)
       const orderResponse = await createRazorpayOrder(
         items,
         totalAmount,
         taxAmount,
-        shippingAmount
+        shippingAmount,
+        selectedStoreId || null
       );
 
       if (!orderResponse.success) {
@@ -301,6 +328,35 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
                   </HStack>
                 ))}
               </VStack>
+            </Box>
+
+            <Divider />
+
+            {/* ✅ Store Selection */}
+            <Box>
+              <FormControl>
+                <FormLabel fontSize="sm" color={textMuted}>
+                  Select Store (Optional)
+                </FormLabel>
+                {loadingStores ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <Select
+                    placeholder="Select a store (optional)"
+                    value={selectedStoreId}
+                    onChange={(e) => setSelectedStoreId(e.target.value)}
+                    bg={useColorModeValue('white', 'gray.700')}
+                    borderColor={borderColor}
+                    _focus={{ borderColor: 'blue.500' }}
+                  >
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name} - {store.address}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </FormControl>
             </Box>
 
             <Divider />

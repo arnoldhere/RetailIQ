@@ -100,7 +100,25 @@ export default function CustomerOrdersPage() {
         setDetailsLoading(true)
         try {
             const res = await adminApi.getCustomerOrderDetails(order.id)
-            setSelectedOrderDetails(res.data)
+
+            // Normalize response
+            let items = []
+
+            if (Array.isArray(res.data)) {
+                items = res.data
+            } else if (Array.isArray(res.data?.items)) {
+                items = res.data.items
+            }
+
+            setSelectedOrderDetails({
+                customer_firstname: items[0]?.customer_firstname || '',
+                customer_lastname: items[0]?.customer_lastname || '',
+                customer_email: order.customer_email || '',
+                order_no: order.order_no,
+                total_amount: order.total_amount,
+                items
+            })
+
             onDetailsOpen()
         } catch (err) {
             console.error('Failed to load order details:', err)
@@ -109,6 +127,8 @@ export default function CustomerOrdersPage() {
             setDetailsLoading(false)
         }
     }
+
+
 
     // Quick status update
     async function handleChangeStatus(orderId, newStatus) {
@@ -412,6 +432,7 @@ export default function CustomerOrdersPage() {
                                         <ModalContent>
                                             <ModalHeader>Order Details</ModalHeader>
                                             <ModalCloseButton />
+
                                             <ModalBody>
                                                 {detailsLoading ? (
                                                     <Box textAlign="center" py={6}>
@@ -419,24 +440,42 @@ export default function CustomerOrdersPage() {
                                                     </Box>
                                                 ) : selectedOrderDetails ? (
                                                     <Box>
-                                                        <Text fontWeight="600">Order: {selectedOrderDetails.order.order_no}</Text>
-                                                        <Text mb={3}>Customer: {selectedOrderDetails.order.firstname} {selectedOrderDetails.order.lastname} ({selectedOrderDetails.order.customer_email})</Text>
+                                                        <Text fontWeight="600">
+                                                            Order: {selectedOrderDetails.order_no}
+                                                        </Text>
+
+                                                        <Text mb={3}>
+                                                            Customer: {selectedOrderDetails.customer_firstname}{" "}
+                                                            {selectedOrderDetails.customer_lastname}
+                                                            {" "}({selectedOrderDetails.customer_email})
+                                                        </Text>
+
                                                         <Divider mb={3} />
+
                                                         <Box>
                                                             <Heading size="sm" mb={2}>Items</Heading>
                                                             {selectedOrderDetails.items.map((it) => (
                                                                 <HStack key={it.id} justify="space-between" py={2}>
-                                                                    <Text>{it.product_name || 'Product'} x {it.qty}</Text>
-                                                                    <Text>${Number(it.total_amount || 0).toFixed(2)}</Text>
+                                                                    <Text>
+                                                                        {it.product_name || 'Product'} x {it.qty}
+                                                                    </Text>
+                                                                    <Text>
+                                                                        ${Number(it.total_amount || 0).toFixed(2)}
+                                                                    </Text>
                                                                 </HStack>
                                                             ))}
                                                         </Box>
+
                                                         <Divider my={3} />
-                                                        <Text fontWeight="700">Total: ${Number(selectedOrderDetails.order.total_amount || 0).toFixed(2)}</Text>
+
+                                                        <Text fontWeight="700">
+                                                            Total: ${Number(selectedOrderDetails.total_amount || 0).toFixed(2)}
+                                                        </Text>
                                                     </Box>
                                                 ) : (
                                                     <Text>No details to show</Text>
                                                 )}
+
                                             </ModalBody>
 
                                             <ModalFooter>

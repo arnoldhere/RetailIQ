@@ -7,10 +7,13 @@
     - add products categories and products from admin
     - read and edit products from admin
     - explore products @ customer    
-    - wishlist and cart management @ customer
+    - wishlist and cart management @ 
+    - send assurance email for feedback @ admin
+    - paginations and filtering @ admin 
+    - order status management
+    - product listing enhanced
 
 -- now next
     - send mail of joining/adding of supplier
-    - send assurance email for feedback @ admin
     - generate invoice and save to server and also send to user's email
-    - order management,chekout and payment @ customer -> need enhancement
+    - order management -> need enhancement

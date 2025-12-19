@@ -1,6 +1,21 @@
 const express = require('express')
 const router = express.Router()
 const db = require('../config/db')
+
+// Get active stores (public endpoint for customer store selection)
+router.get('/stores', async (req, res) => {
+  try {
+    const stores = await db('stores')
+      .where({ is_active: true })
+      .select('id', 'name', 'address', 'phone')
+      .orderBy('name', 'asc');
+    
+    return res.json({ stores });
+  } catch (err) {
+    console.error('Error fetching stores:', err);
+    return res.status(500).json({ message: 'Failed to fetch stores' });
+  }
+});
 const path = require('path');
 const fs = require('fs');
 // media products dir

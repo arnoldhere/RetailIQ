@@ -295,7 +295,7 @@ exports.deleteCategory = async (req, res) => {
 
     try {
       // fetch the users list where role is customer
-      const users = await db('users').where('role', 'customer').select('id', 'firstname', 'lastname', 'email', 'phone', 'created_at' , 'is_active');
+      const users = await db('users').where('role', 'customer').select('id', 'firstname', 'lastname', 'email', 'phone', 'created_at', 'is_active');
       // fetch the users count where role is customer
       const usersCount = await db('users').where('role', 'customer').count('id as count').first();
 
@@ -538,9 +538,30 @@ exports.getCustomerOrderDetails = async (req, res) => {
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
     const items = await db('customer_order_items')
-      .select('customer_order_items.*', 'products.name as product_name', 'products.images as product_images')
-      .leftJoin('products', 'customer_order_items.product_id', 'products.id')
+      .select(
+        'customer_order_items.*',
+        'products.name as product_name',
+        'products.images as product_images',
+        'users.firstname as customer_firstname',
+        'users.lastname as customer_lastname'
+      )
+      .join(
+        'products',
+        'customer_order_items.product_id',
+        'products.id'
+      )
+      .join(
+        'customer_orders',
+        'customer_order_items.customer_order_id',
+        'customer_orders.id'
+      )
+      .join(
+        'users',
+        'customer_orders.cust_id',
+        'users.id'
+      )
       .where('customer_order_items.customer_order_id', id);
+
 
     return res.json({ order, items });
   } catch (err) {
@@ -554,7 +575,7 @@ exports.updateCustomerOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const allowed = ['pending', 'processing', 'completed', 'cancelled', 'returned' , 'shipped'];
+    const allowed = ['pending', 'processing', 'completed', 'cancelled', 'returned', 'shipped'];
 
     if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid status' });
 
@@ -1062,3 +1083,297 @@ exports.sendAssuranceEmail = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" })
   }
 }
+
+// ==================== STORES MANAGEMENT ====================
+
+/**
+ * List stores with pagination, search, sort, and filter
+ */
+exports.listStores = async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 12, 500);
+    const offset = parseInt(req.query.offset) || 0;
+    const search = req.query.search;
+    const isActive = req.query.is_active; // filter by active status
+    const sort = req.query.sort || 'created_at';
+    const order = (req.query.order || 'desc').toUpperCase();
+
+    // Validate sort field
+    const validSortFields = ['name', 'created_at', 'rating', 'address'];
+    const sortField = validSortFields.includes(sort) ? sort : 'created_at';
+    const sortCol = `stores.${sortField}`;
+    const orderDir = order === 'DESC' ? 'desc' : 'asc';
+
+    let query = db('stores')
+      .select(
+        'stores.*',
+        'users.firstname as owner_firstname',
+        'users.lastname as owner_lastname',
+        'users.email as owner_email'
+      )
+      .leftJoin('users', 'stores.owner_id', 'users.id');
+
+    // Apply search filter
+    if (search) {
+      query = query.where(function () {
+        this.where('stores.name', 'like', `%${search}%`)
+          .orWhere('stores.address', 'like', `%${search}%`)
+          .orWhere('stores.phone', 'like', `%${search}%`);
+      });
+    }
+
+    // Apply active status filter
+    if (isActive !== undefined && isActive !== '') {
+      const activeBool = isActive === 'true' || isActive === '1' || isActive === true;
+      query = query.where('stores.is_active', activeBool);
+    }
+
+    // Get total count
+    const countQuery = query.clone();
+    const countResult = await countQuery
+      .clearSelect()
+      .clearOrder()
+      .count({ count: 'stores.id' })
+      .first();
+
+    const total = Number(countResult.count || 0);
+
+    // Apply sorting and pagination
+    const stores = await query
+      .orderBy(sortCol, orderDir)
+      .limit(limit)
+      .offset(offset);
+
+    return res.json({ stores, total, limit, offset });
+  } catch (err) {
+    console.error('list stores error', err);
+    return res.status(500).json({ message: 'Failed to load stores' });
+  }
+};
+
+/**
+ * Create new store
+ */
+exports.createStore = async (req, res) => {
+  try {
+    const { name, address, phone, owner_id, rating } = req.body;
+
+    // Validation
+    if (!name || !name.trim()) {
+      return res.status(400).json({ errors: [{ field: 'name', msg: 'Store name is required' }] });
+    }
+    if (!address || !address.trim()) {
+      return res.status(400).json({ errors: [{ field: 'address', msg: 'Store address is required' }] });
+    }
+
+    // Check if store name already exists
+    const existingName = await db('stores').where({ name: name.trim() }).first();
+    if (existingName) {
+      return res.status(409).json({ errors: [{ field: 'name', msg: 'Store name already exists' }] });
+    }
+
+    // Check if phone already exists (if provided)
+    if (phone && phone.trim()) {
+      const existingPhone = await db('stores').where({ phone: phone.trim() }).first();
+      if (existingPhone) {
+        return res.status(409).json({ errors: [{ field: 'phone', msg: 'Phone number already exists' }] });
+      }
+    }
+
+    // Validate owner_id if provided
+    if (owner_id) {
+      const owner = await db('users').where({ id: owner_id }).first();
+      if (!owner) {
+        return res.status(404).json({ errors: [{ field: 'owner_id', msg: 'Owner not found' }] });
+      }
+    }
+
+    // Validate rating if provided (1-5)
+    if (rating !== undefined && rating !== null) {
+      const ratingNum = parseFloat(rating);
+      if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+        return res.status(400).json({ errors: [{ field: 'rating', msg: 'Rating must be between 1 and 5' }] });
+      }
+    }
+
+    // Insert store
+    const [storeId] = await db('stores').insert({
+      name: name.trim(),
+      address: address.trim(),
+      phone: phone ? phone.trim() : null,
+      owner_id: owner_id || null,
+      rating: rating ? parseFloat(rating) : null,
+      is_active: true,
+    });
+
+    // Fetch created store with owner details
+    const store = await db('stores')
+      .select(
+        'stores.*',
+        'users.firstname as owner_firstname',
+        'users.lastname as owner_lastname',
+        'users.email as owner_email'
+      )
+      .leftJoin('users', 'stores.owner_id', 'users.id')
+      .where('stores.id', storeId)
+      .first();
+
+    return res.status(201).json({ store });
+  } catch (err) {
+    console.error('create store error', err);
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ errors: [{ field: 'name', msg: 'Store name or phone already exists' }] });
+    }
+    return res.status(500).json({ message: 'Failed to create store' });
+  }
+};
+
+/**
+ * Update store
+ */
+exports.updateStore = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, address, phone, owner_id, rating, is_active } = req.body;
+
+    // Check if store exists
+    const existing = await db('stores').where({ id }).first();
+    if (!existing) {
+      return res.status(404).json({ message: 'Store not found' });
+    }
+
+    // Validate name uniqueness (excluding current store)
+    if (name && name.trim() !== existing.name) {
+      const nameClash = await db('stores').where({ name: name.trim() }).andWhereNot({ id }).first();
+      if (nameClash) {
+        return res.status(409).json({ errors: [{ field: 'name', msg: 'Store name already exists' }] });
+      }
+    }
+
+    // Validate phone uniqueness (excluding current store)
+    if (phone && phone.trim() && phone.trim() !== existing.phone) {
+      const phoneClash = await db('stores').where({ phone: phone.trim() }).andWhereNot({ id }).first();
+      if (phoneClash) {
+        return res.status(409).json({ errors: [{ field: 'phone', msg: 'Phone number already exists' }] });
+      }
+    }
+
+    // Validate owner_id if provided
+    if (owner_id !== undefined && owner_id !== null) {
+      if (owner_id) {
+        const owner = await db('users').where({ id: owner_id }).first();
+        if (!owner) {
+          return res.status(404).json({ errors: [{ field: 'owner_id', msg: 'Owner not found' }] });
+        }
+      }
+    }
+
+    // Validate rating if provided
+    if (rating !== undefined && rating !== null) {
+      const ratingNum = parseFloat(rating);
+      if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+        return res.status(400).json({ errors: [{ field: 'rating', msg: 'Rating must be between 1 and 5' }] });
+      }
+    }
+
+    // Build update payload
+    const updatePayload = {};
+    if (name !== undefined) updatePayload.name = name.trim();
+    if (address !== undefined) updatePayload.address = address.trim();
+    if (phone !== undefined) updatePayload.phone = phone ? phone.trim() : null;
+    if (owner_id !== undefined) updatePayload.owner_id = owner_id || null;
+    if (rating !== undefined) updatePayload.rating = rating ? parseFloat(rating) : null;
+    if (is_active !== undefined) updatePayload.is_active = is_active === true || is_active === 'true' || is_active === 1 || is_active === '1';
+
+    // Perform update
+    await db('stores').where({ id }).update(updatePayload);
+
+    // Fetch updated store with owner details
+    const updated = await db('stores')
+      .select(
+        'stores.*',
+        'users.firstname as owner_firstname',
+        'users.lastname as owner_lastname',
+        'users.email as owner_email'
+      )
+      .leftJoin('users', 'stores.owner_id', 'users.id')
+      .where('stores.id', id)
+      .first();
+
+    return res.json({ store: updated });
+  } catch (err) {
+    console.error('update store error', err);
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ errors: [{ field: 'name', msg: 'Store name or phone already exists' }] });
+    }
+    return res.status(500).json({ message: 'Failed to update store' });
+  }
+};
+
+/**
+ * Delete store
+ */
+exports.deleteStore = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if store exists
+    const store = await db('stores').where({ id }).first();
+    if (!store) {
+      return res.status(404).json({ message: 'Store not found' });
+    }
+
+    // Check if store has associated orders (soft check - you might want to prevent deletion if orders exist)
+    const orderCount = await db('customer_orders').where({ store_id: id }).count('id as count').first();
+    const orderCountNum = Number(orderCount.count || 0);
+
+    if (orderCountNum > 0) {
+      return res.status(400).json({
+        message: `Cannot delete store. It has ${orderCountNum} associated order(s). Deactivate the store instead.`,
+      });
+    }
+
+    // Delete store
+    await db('stores').where({ id }).del();
+
+    return res.json({ message: 'Store deleted successfully' });
+  } catch (err) {
+    console.error('delete store error', err);
+    // Check for foreign key constraint violations
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(400).json({
+        message: 'Cannot delete store. It is referenced by other records. Deactivate the store instead.',
+      });
+    }
+    return res.status(500).json({ message: 'Failed to delete store' });
+  }
+};
+
+/**
+ * Get single store details
+ */
+exports.getStoreDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const store = await db('stores')
+      .select(
+        'stores.*',
+        'users.firstname as owner_firstname',
+        'users.lastname as owner_lastname',
+        'users.email as owner_email'
+      )
+      .leftJoin('users', 'stores.owner_id', 'users.id')
+      .where('stores.id', id)
+      .first();
+
+    if (!store) {
+      return res.status(404).json({ message: 'Store not found' });
+    }
+
+    return res.json({ store });
+  } catch (err) {
+    console.error('get store details error', err);
+    return res.status(500).json({ message: 'Failed to load store details' });
+  }
+};
