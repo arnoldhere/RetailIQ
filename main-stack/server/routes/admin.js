@@ -44,7 +44,7 @@ router.post('/categories', authMiddleware, async (req, res, next) => {
 router.put('/categories/:id', authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
-    return adminController.updateCategory(req, res);
+    return adminController.updateCategory (req, res);
   } catch (err) {
     next(err);
   }

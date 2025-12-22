@@ -51,28 +51,37 @@ export default function OrdersPage() {
         }
     }
 
-    const handleCancelOrder = async (orderId) => {
-        if (!window.confirm('Are you sure you want to cancel this order? Stock will be restored.')) {
+    const handleCancelOrder = async (orderId, order) => {
+        // Show contextual confirmation, especially for paid orders
+        const isPaid = order?.payment_status === 'paid'
+        const confirmMsg = isPaid
+            ? `This order was paid. Cancelling will initiate a refund which may take 3-7 business days. Do you want to continue?`
+            : 'Are you sure you want to cancel this order? Stock will be restored.'
+
+        if (!window.confirm(confirmMsg)) {
             return
         }
 
+        // Optional reason for cancellation (simple prompt)
+        const reason = window.prompt('Optional: give a reason for cancellation (helpful for support)', '')
+
         setCancellingId(orderId)
         try {
-            const res = await cancelOrder(orderId)
+            const res = await cancelOrder(orderId, reason)
             toast({
                 title: 'Order Cancelled',
                 description: res.message || 'Order has been cancelled successfully',
                 status: 'success',
-                duration: 3000,
+                duration: 4000,
             })
             fetchOrders() // Refresh orders list
         } catch (err) {
             console.error('Failed to cancel order:', err)
             toast({
                 title: 'Cancellation Failed',
-                description: err.response?.data?.message || 'Failed to cancel order',
+                description: err?.message || err?.response?.data?.message || 'Failed to cancel order',
                 status: 'error',
-                duration: 3000,
+                duration: 4000,
             })
         } finally {
             setCancellingId(null)
@@ -96,19 +105,21 @@ export default function OrdersPage() {
             paid: 'green',
             failed: 'red',
             refunded: 'orange',
+            refund_pending: 'yellow',
         }
         return colors[status] || 'gray'
     }
 
     const canCancelOrder = (order) => {
-        if (order.status === 'cancelled') return false
-        if (order.payment_status !== 'paid') return false
-        
+        // Don't allow if already finalised
+        if (['cancelled', 'returned', 'completed'].includes(order.status)) return false
+
         const orderDate = new Date(order.created_at)
         const currentDate = new Date()
-        const daysDifference = Math.floor((currentDate - orderDate) / (1000 * 60 * 60 * 24))
-        
-        return daysDifference <= 7
+        const daysDifference = (currentDate - orderDate) / (1000 * 60 * 60 * 24)
+
+        // Allow cancellation only within 3 days of placement
+        return daysDifference <= 3
     }
 
     return (
@@ -198,7 +209,7 @@ export default function OrdersPage() {
                                                     size="sm"
                                                     colorScheme="red"
                                                     variant="outline"
-                                                    onClick={() => handleCancelOrder(order.id)}
+                                                    onClick={() => handleCancelOrder(order.id, order)}
                                                     isLoading={cancellingId === order.id}
                                                     loadingText="Cancelling..."
                                                 >

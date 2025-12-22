@@ -86,13 +86,14 @@ export async function getUserOrders() {
 }
 
 /**
- * Cancel an order (only if payment not completed)
+ * Cancel an order (allows reason and refunds where applicable)
  * @param {Number} orderId - Order ID to cancel
+ * @param {String} [reason] - Optional cancellation reason
  * @returns {Promise} - { success, message }
  */
-export async function cancelOrder(orderId) {
+export async function cancelOrder(orderId, reason = null) {
   try {
-    const response = await client.put(`/api/orders/${orderId}/cancel`);
+    const response = await client.post(`/api/orders/${orderId}/cancel`, { reason });
     return response.data;
   } catch (error) {
     console.error('Error cancelling order:', error);

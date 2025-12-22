@@ -75,7 +75,7 @@ router.get('/', authMiddleware, async (req, res, next) => {
  * PUT /api/orders/:orderId/cancel
  * Requires: Authentication
  */
-router.put('/:orderId/cancel', authMiddleware, async (req, res, next) => {
+router.post('/:orderId/cancel', authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'customer') {
       return res.status(403).json({ message: 'Only customers can cancel orders' });

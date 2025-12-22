@@ -114,6 +114,8 @@ export default function MyOrders() {
                 return 'red';
             case 'refunded':
                 return 'orange';
+            case 'refund_pending':
+                return 'yellow';
             default:
                 return 'gray';
         }
@@ -153,6 +155,17 @@ export default function MyOrders() {
     };
 
     /**
+     * Check if an order can be cancelled (within 3 days and not finalised)
+     */
+    const canCancelOrder = (order) => {
+        if (!order) return false;
+        if (['cancelled', 'returned', 'completed'].includes(order.status)) return false;
+        const orderDate = new Date(order.created_at);
+        const diffDays = (new Date() - orderDate) / (1000 * 60 * 60 * 24);
+        return diffDays <= 3;
+    };
+
+    /**
      * Confirm order cancellation
      */
     const handleConfirmCancel = async () => {
@@ -160,11 +173,15 @@ export default function MyOrders() {
 
         try {
             setCancellingId(selectedOrder.id);
-            await cancelOrder(selectedOrder.id);
 
-            // Remove cancelled order from list
+            // Optional reason prompt
+            const reason = window.prompt('Optional: give a reason for cancellation (helpful for support)', '')
+
+            const res = await cancelOrder(selectedOrder.id, reason);
+
+            // Update local state based on response
             setOrders(orders.map((order) =>
-                order.id === selectedOrder.id ? { ...order, status: 'cancelled' } : order
+                order.id === selectedOrder.id ? { ...order, status: 'cancelled', payment_status: res?.payment_status || order.payment_status } : order
             ));
 
             toast({
@@ -405,7 +422,7 @@ export default function MyOrders() {
                                                         </Button>
 
                                                         {/* ✅ Show cancel button only for pending/processing orders */}
-                                                        {(order.status === 'pending' || order.status === 'processing') && order.paymentStatus !== 'paid' && (
+                                                        {(order.status === 'pending' || order.status === 'processing') && canCancelOrder(order) && (
                                                             <Button
                                                                 leftIcon={<DeleteIcon />}
                                                                 size="sm"
@@ -441,6 +458,11 @@ export default function MyOrders() {
                         </AlertDialogHeader>
                         <AlertDialogBody>
                             Are you sure you want to cancel order <strong>{selectedOrder?.orderNo}</strong>? This action cannot be undone.
+                            {selectedOrder?.payment_status === 'paid' && (
+                                <Box mt={3} fontSize="sm" color="gray.600">
+                                    Cancelling this paid order will initiate a refund which may take 3-7 business days to reflect in your account.
+                                </Box>
+                            )}
                         </AlertDialogBody>
                         <AlertDialogFooter>
                             <Button ref={cancelRef} onClick={() => setIsAlertOpen(false)}>

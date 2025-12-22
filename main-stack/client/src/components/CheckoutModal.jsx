@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Modal,
   ModalOverlay,
@@ -36,6 +37,7 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
   const [stores, setStores] = useState([]);
   const [selectedStoreId, setSelectedStoreId] = useState('');
   const [loadingStores, setLoadingStores] = useState(false);
+  const navigate = useNavigate();
 
   // Colors for light/dark mode
   const bgCard = useColorModeValue('gray.50', 'gray.800');
@@ -213,7 +215,7 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
       // ✅ Payment verified - Order confirmed
       toast({
         title: '✅ Order Confirmed',
-        description: `Order ${verificationResponse.orderNo} has been placed successfully`,
+        description: `Order has been placed successfully`,
         status: 'success',
         duration: 4000,
         isClosable: true,
@@ -232,6 +234,7 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
       }
 
       // ✅ Close checkout modal
+      navigate('/customer/my-orders');
       onClose();
     } catch (error) {
       console.error('Payment verification error:', error);

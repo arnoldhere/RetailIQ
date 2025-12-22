@@ -165,12 +165,18 @@ CREATE TABLE IF NOT EXISTS customer_payments (
   cust_id INT NULL,
   amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
   payment_date DATE,
-  method ENUM('cash','card','upi','online','other') NOT NULL DEFAULT 'cash',
+  method ENUM('cash','card','upi','online','refund','other') NOT NULL DEFAULT 'cash',
   payment_ref VARCHAR(255),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_custpayments_order (customer_order_id),
   INDEX idx_custpayments_cust (cust_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Add columns to support cancellation metadata and refund tracking
+ALTER TABLE customer_orders
+  ADD COLUMN cancelled_at TIMESTAMP NULL,
+  ADD COLUMN cancel_reason VARCHAR(255) NULL,
+  ADD COLUMN refund_status ENUM('pending','completed','failed') NULL;
 
 -- WISHLISTS
 CREATE TABLE IF NOT EXISTS customer_wishlists (

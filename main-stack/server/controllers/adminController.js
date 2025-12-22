@@ -289,27 +289,82 @@ exports.deleteCategory = async (req, res) => {
     console.error('delete category error', err);
     return res.status(500).json({ message: 'Failed to delete category' });
   }
-},
+};
 
-  exports.getUsers = async (req, res) => {
-
-    try {
-      // fetch the users list where role is customer
-      const users = await db('users').where('role', 'customer').select('id', 'firstname', 'lastname', 'email', 'phone', 'created_at', 'is_active');
-      // fetch the users count where role is customer
-      const usersCount = await db('users').where('role', 'customer').count('id as count').first();
-
-      return res.json({
-        users, metrics: {
-          totalUsers: normalizeCount(usersCount)
-        }
-      })
+exports.updateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    // Validation
+    if (!id) {
+      return res.status(400).json({ message: 'Category ID is required' });
     }
-    catch (err) {
-      console.err("failed to fetch users", err);
-      return res.status(500).json({ message: "Internal server error" })
+    if (!name && !description) {
+      return res.status(400).json({
+        message: 'At least one field (name or description) is required',
+      });
     }
+
+    // Check if category exists
+    const existingCategory = await db('categories')
+      .where({ id })
+      .first();
+
+    if (!existingCategory) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+    // Prepare update payload
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (description) updateData.description = description;
+
+    // Perform update
+    await db('categories')
+      .where({ id })
+      .update(updateData);
+      
+    return res.status(200).json({
+      message: 'Category updated successfully',
+      data: {
+        id,
+        ...updateData,
+      },
+    });
+  } catch (error) {
+    // Handle duplicate category name
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        message: 'Category name already exists',
+      });
+    }
+
+    console.error(error);
+    return res.status(500).json({
+      message: 'Internal server error',
+      error: error.message,
+    });
   }
+}
+
+exports.getUsers = async (req, res) => {
+
+  try {
+    // fetch the users list where role is customer
+    const users = await db('users').where('role', 'customer').select('id', 'firstname', 'lastname', 'email', 'phone', 'created_at', 'is_active');
+    // fetch the users count where role is customer
+    const usersCount = await db('users').where('role', 'customer').count('id as count').first();
+
+    return res.json({
+      users, metrics: {
+        totalUsers: normalizeCount(usersCount)
+      }
+    })
+  }
+  catch (err) {
+    console.err("failed to fetch users", err);
+    return res.status(500).json({ message: "Internal server error" })
+  }
+}
 
 exports.getFeedbacks = async (req, res) => {
   try {

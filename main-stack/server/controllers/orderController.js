@@ -240,7 +240,7 @@ exports.verifyPayment = async (req, res) => {
                 <div style="background-color: #fff; padding: 15px; border-radius: 8px; margin: 20px 0;">
                   <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${invoiceData.invoice.invoice_no}</p>
                   <p style="margin: 5px 0;"><strong>Order Number:</strong> ${order.order_no}</p>
-                  <p style="margin: 5px 0;"><strong>Total Amount:</strong> ₹${invoiceData.invoice.grand_total.toFixed(2)}</p>
+                  <p style="margin: 5px 0;"><strong>Total Amount:</strong> ₹${invoiceData.invoice.grand_total}</p>
                   <p style="margin: 5px 0;"><strong>Payment Status:</strong> ${order.payment_status}</p>
                 </div>
                 <p style="color: #666; font-size: 14px;">
@@ -391,6 +391,7 @@ exports.getUserOrders = async (req, res) => {
         'order_no',
         'status',
         'payment_status',
+        'refund_status',
         'total_amount',
         'created_at'
       );
@@ -409,51 +410,163 @@ exports.getUserOrders = async (req, res) => {
 };
 
 /**
- * Cancel order (only if payment not completed)
- * PUT /api/orders/:orderId/cancel
+ * Cancel order (allow within 3 days even if paid)
+ * POST /api/orders/:orderId/cancel
  * Requires: authentication
  */
 exports.cancelOrder = async (req, res) => {
   try {
     const userId = req.user?.userId;
     const { orderId } = req.params;
+    const { reason } = req.body || {};
 
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // ✅ Get order
-    const order = await db('customer_orders')
-      .where({ id: orderId, cust_id: userId })
-      .first();
+    const now = new Date();
 
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
+    await db.transaction(async (trx) => {
+      // Lock the order row for update to avoid race conditions
+      const order = await trx('customer_orders')
+        .where({ id: orderId, cust_id: userId })
+        .forUpdate()
+        .first();
 
-    // ✅ Check if order can be cancelled (only pending orders)
-    if (order.payment_status === 'paid') {
-      return res.status(400).json({
-        message: 'Cannot cancel paid orders. Please contact support for refund.',
-      });
-    }
+      if (!order) {
+        const e = new Error('Order not found');
+        e.status = 404;
+        throw e;
+      }
 
-    // ✅ Cancel the order
-    await db('customer_orders').where({ id: orderId }).update({
-      status: 'cancelled',
-      payment_status: 'failed',
+      if (['cancelled', 'returned'].includes(order.status)) {
+        const e = new Error('Order already cancelled or returned');
+        e.status = 400;
+        throw e;
+      }
+
+      if (order.status === 'completed') {
+        const e = new Error('Order already completed and cannot be cancelled');
+        e.status = 400;
+        throw e;
+      }
+
+      // Check cancellation window: within 3 days (72 hours)
+      const createdAt = new Date(order.created_at);
+      const diffMs = now - createdAt;
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      if (diffDays > 3) {
+        const e = new Error('Cancellation window expired. Orders can be cancelled within 3 days of placement.');
+        e.status = 400;
+        throw e;
+      }
+
+      // Get order items for restocking if needed
+      const orderItems = await trx('customer_order_items').where({ customer_order_id: orderId });
+
+      // If paid -> try to initiate refund via Razorpay (if payment was online)
+      if (order.payment_status === 'paid') {
+        const payment = await trx('customer_payments').where({ customer_order_id: orderId }).orderBy('payment_date', 'desc').first();
+        let refundCreated = false;
+        let refundRef = null;
+
+        if (payment && payment.method === 'online' && payment.payment_ref) {
+          try {
+            const amountPaise = Math.round(order.total_amount * 100);
+            const refund = await razorpay.payments.refund(payment.payment_ref, { amount: amountPaise, speed: 'normal' });
+            // Record refund as a negative payment
+            await trx('customer_payments').insert({
+              customer_order_id: orderId,
+              cust_id: userId,
+              amount: -Math.abs(order.total_amount),
+              payment_date: new Date(),
+              method: 'refund',
+              payment_ref: refund.id,
+            });
+            refundCreated = true;
+            refundRef = refund.id;
+          } catch (refundErr) {
+            console.error('Refund failed for order', orderId, refundErr);
+            // Insert a refund record with null ref to mark pending refund - amount 0 to indicate manual processing needed
+            await trx('customer_payments').insert({
+              customer_order_id: orderId,
+              cust_id: userId,
+              amount: 0,
+              payment_date: new Date(),
+              method: 'refund',
+              payment_ref: null,
+            });
+          }
+        } else {
+          // No online payment ref available - mark refund pending / manual process
+          await trx('customer_payments').insert({
+            customer_order_id: orderId,
+            cust_id: userId,
+            amount: 0,
+            payment_date: new Date(),
+            method: 'refund',
+            payment_ref: null,
+          });
+        }
+
+        // Restock products (we previously decremented stock when payment was confirmed)
+        for (const item of orderItems) {
+          await trx('products').where({ id: item.product_id }).increment('stock_available', item.qty);
+        }
+
+        // Update order to cancelled and set payment_status depending on refund outcome
+        await trx('customer_orders').where({ id: orderId }).update({
+          status: 'cancelled',
+          payment_status: refundCreated ? 'refunded' : 'refund_pending',
+          refund_status: refundCreated ? 'completed' : 'pending',
+          cancelled_at: new Date(),
+          cancel_reason: reason || null,
+          updated_at: new Date(),
+        });
+
+        // Notify user by email (best-effort)
+        try {
+          const user = await trx('users').where({ id: userId }).first();
+          if (user && user.email) {
+            const from = process.env.GMAIL_EMAIL || 'no-reply@example.com';
+            const to = user.email;
+            const subject = `Order ${order.order_no} cancelled`;
+            let html = `<p>Hi ${user.firstname || 'Customer'},</p>`;
+            html += `<p>Your order <strong>${order.order_no}</strong> has been cancelled.`;
+            if (refundCreated) {
+              html += `<p>A refund of ₹${Number(order.total_amount).toFixed(2)} has been initiated (Ref: ${refundRef}). It may take 3-7 business days to reflect in your account.</p>`;
+            } else {
+              html += `<p>Your refund is being processed. Our support team will follow up if manual action is required.</p>`;
+            }
+            html += `<p>Regards,<br/>RetailIQ</p>`;
+            await emailService(from, to, subject, html);
+          }
+        } catch (emailErr) {
+          console.error('Failed to send cancellation email:', emailErr);
+        }
+      } else {
+        // Not paid yet -> cancel and set payment_status accordingly
+        for (const item of orderItems) {
+          // If stock wasn't decremented earlier, this is safe - it will just increment available stock
+          await trx('products').where({ id: item.product_id }).increment('stock_available', item.qty);
+        }
+        await trx('customer_orders').where({ id: orderId }).update({
+          status: 'cancelled',
+          payment_status: 'cancelled',
+          refund_status: null,
+          cancelled_at: new Date(),
+          cancel_reason: reason || null,
+          updated_at: new Date(),
+        });
+      }
     });
 
-    return res.json({
-      success: true,
-      message: 'Order cancelled successfully',
-      orderId: orderId,
-    });
+    return res.json({ success: true, message: 'Order cancelled successfully. If applicable, refund is being processed.', payment_status: finalPaymentStatus });
   } catch (err) {
     console.error('Error cancelling order:', err);
-    return res.status(500).json({
-      message: 'Failed to cancel order',
-      error: err.message,
-    });
+    if (err && err.status) {
+      return res.status(err.status).json({ message: err.message });
+    }
+    return res.status(500).json({ message: 'Failed to cancel order', error: err.message || err });
   }
 };
