@@ -37,6 +37,7 @@ import ContactUs from './pages/ContactUs'
 import FeedbacksPage from './pages/Admin/Feedbacks'
 import SuppliersPage from './pages/Admin/Suppliers'
 import StoresPage from './pages/Admin/Stores'
+import StoreManagersPage from './pages/Admin/StoreManagers'
 import CustomerOrdersPage from './pages/Admin/CustomerOrders'
 import SupplierOrdersPage from './pages/Admin/SupplierOrders'
 
@@ -86,6 +87,7 @@ function AppRoutes() {
       <Route path='/admin/categories' element={user?.role === 'admin' ? <Categories /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/products' element={user?.role === 'admin' ? <Products /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/stores' element={user?.role === 'admin' ? <StoresPage /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/admin/store-managers' element={user?.role === 'admin' ? <StoreManagersPage /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/feedbacks' element={user?.role === 'admin' ? <FeedbacksPage /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/suppliers' element={user?.role === 'admin' ? <SuppliersPage /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/customer-orders' element={user?.role === 'admin' ? <CustomerOrdersPage /> : <Navigate to="/auth/login" replace />} />

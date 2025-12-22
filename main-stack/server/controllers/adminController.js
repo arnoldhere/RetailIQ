@@ -350,9 +350,9 @@ exports.getUsers = async (req, res) => {
 
   try {
     // fetch the users list where role is customer
-    const users = await db('users').where('role', 'customer').select('id', 'firstname', 'lastname', 'email', 'phone', 'created_at', 'is_active');
+    const users = await db('users').select('id', 'firstname', 'lastname', 'email', 'phone', 'created_at', 'is_active');
     // fetch the users count where role is customer
-    const usersCount = await db('users').where('role', 'customer').count('id as count').first();
+    const usersCount = await db('users').count('id as count').first();
 
     return res.json({
       users, metrics: {
@@ -443,6 +443,70 @@ exports.listSuppliers = async (req, res) => {
   }
 };
 
+// Update supplier (and linked user record)
+exports.updateSupplier = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { firstname, lastname, name, email, phone, is_active } = req.body;
+
+    const existing = await db('suppliers').where({ id }).first();
+    if (!existing) return res.status(404).json({ message: 'Supplier not found' });
+
+    // Update supplier table
+    const updatePayload = {};
+    if (name !== undefined) updatePayload.name = name.trim();
+    if (email !== undefined) updatePayload.email = email.trim();
+    if (phone !== undefined) updatePayload.phone = phone.trim();
+    if (is_active !== undefined) updatePayload.is_active = is_active === true || is_active === 'true' || is_active === 1 || is_active === '1';
+
+    await db('suppliers').where({ id }).update(updatePayload);
+
+    // Update linked user
+    if (existing.cust_id) {
+      const userPayload = {};
+      if (firstname !== undefined) userPayload.firstname = firstname.trim();
+      if (lastname !== undefined) userPayload.lastname = lastname.trim();
+      if (email !== undefined) userPayload.email = email.trim();
+      if (phone !== undefined) userPayload.phone = phone.trim();
+      if (Object.keys(userPayload).length > 0) await db('users').where({ id: existing.cust_id }).update(userPayload);
+    }
+
+    const updated = await db('suppliers').where({ id }).first();
+    return res.json({ supplier: updated });
+  } catch (err) {
+    console.error('update supplier error', err);
+    return res.status(500).json({ message: 'Failed to update supplier' });
+  }
+}
+
+// Delete supplier
+exports.deleteSupplier = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const supplier = await db('suppliers').where({ id }).first();
+    if (!supplier) return res.status(404).json({ message: 'Supplier not found' });
+
+    // Check for supply orders
+    const orderCount = await db('supply_orders').where({ supplier_id: id }).count('id as count').first();
+    if (Number(orderCount.count || 0) > 0) {
+      return res.status(400).json({ message: 'Cannot delete supplier with associated supply orders. Deactivate instead.' });
+    }
+
+    // Delete supplier and optionally delete linked user if desired
+    await db.transaction(async (trx) => {
+      await trx('suppliers').where({ id }).del();
+      if (supplier.cust_id) {
+        await trx('users').where({ id: supplier.cust_id }).del();
+      }
+    });
+
+    return res.json({ message: 'Supplier deleted' });
+  } catch (err) {
+    console.error('delete supplier error', err);
+    return res.status(500).json({ message: 'Failed to delete supplier' });
+  }
+}
+
 exports.createSupplier = async (req, res) => {
   try {
     const bcrypt = require('bcryptjs');
@@ -461,9 +525,8 @@ exports.createSupplier = async (req, res) => {
     if (!phone || phone.length < 7) {
       return res.status(400).json({ errors: [{ field: 'phone', msg: 'Valid phone is required' }] });
     }
-    if (!password || password.length < 8) {
-      return res.status(400).json({ errors: [{ field: 'password', msg: 'Password must be at least 8 characters' }] });
-    }
+    // Allow admin to omit password; default to '12345678' if not provided or too short
+    const rawPassword = password && password.length >= 8 ? password : '12345678';
 
     // Check if email already exists
     const existingEmail = await db('users').where({ email }).first();
@@ -477,8 +540,8 @@ exports.createSupplier = async (req, res) => {
       return res.status(409).json({ errors: [{ field: 'phone', msg: 'Phone already exists' }] });
     }
 
-    // Hash password
-    const hashed = await bcrypt.hash(password, 10);
+    // Hash password (use rawPassword defaulted earlier)
+    const hashed = await bcrypt.hash(rawPassword, 10);
 
     // Create user and supplier in transaction
     const result = await db.transaction(async (trx) => {
@@ -512,6 +575,32 @@ exports.createSupplier = async (req, res) => {
     delete safeUser.otp;
     delete safeUser.otpGeneratedAt;
 
+    // send welcome email with credentials (try/catch to avoid failing the request)
+    (async () => {
+      try {
+        if (safeUser.email) {
+          const from = process.env.GMAIL_EMAIL || 'no-reply@example.com';
+          const to = safeUser.email;
+          const sub = `Welcome to RetailIQ!`;
+          const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2>Welcome to RetailIQ</h2>
+              <p>Hi ${safeUser.firstname},</p>
+              <p>Your supplier account has been created by an administrator.</p>
+              <p><strong>Login email:</strong> ${safeUser.email}</p>
+              <p><strong>Temporary password:</strong> ${req.body.password || '12345678'}</p>
+              <p>Please log in and change your password immediately.</p>
+              <hr/>
+              <p style="font-size: 12px; color: #666;">RetailIQ - Smart Retail Analytics Platform</p>
+            </div>
+          `;
+          await emailService(from, to, sub, html);
+        }
+      } catch (mailErr) {
+        console.error('failed to send supplier welcome email', mailErr);
+      }
+    })();
+
     return res.status(201).json({
       message: 'Supplier created successfully',
       supplier: safeUser,
@@ -521,6 +610,202 @@ exports.createSupplier = async (req, res) => {
     return res.status(500).json({ message: 'Failed to create supplier' });
   }
 };
+
+// ------------------- STORE MANAGERS (store_owner) MANAGEMENT -------------------
+
+/**
+ * List store managers with pagination, search, sort
+ */
+exports.listStoreManagers = async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 12, 500);
+    const offset = parseInt(req.query.offset) || 0;
+    const search = req.query.search;
+    const sort = req.query.sort || 'created_at';
+    const order = (req.query.order || 'desc').toUpperCase();
+
+    const validSortFields = ['created_at', 'firstname', 'lastname', 'email'];
+    const sortField = validSortFields.includes(sort) ? sort : 'created_at';
+    const sortCol = `users.${sortField}`;
+    const orderDir = order === 'DESC' ? 'desc' : 'asc';
+
+    let query = db('users').select('id','firstname','lastname','email','phone','created_at','is_active').where('role', 'store_manager');
+
+    if (search) {
+      query = query.where(function() {
+        this.where('firstname', 'like', `%${search}%`)
+          .orWhere('lastname', 'like', `%${search}%`)
+          .orWhere('email', 'like', `%${search}%`)
+          .orWhere('phone', 'like', `%${search}%`);
+      });
+    }
+
+    const countQuery = query.clone();
+    const countResult = await countQuery.clearSelect().clearOrder().count({ count: 'users.id' }).first();
+    const total = Number(countResult.count || 0);
+
+    const managers = await query.orderBy(sortCol, orderDir).limit(limit).offset(offset);
+
+    return res.json({ managers, total, limit, offset });
+  } catch (err) {
+    console.error('list store managers error', err);
+    return res.status(500).json({ message: 'Failed to load store managers' });
+  }
+}
+
+/**
+ * Simple list of store managers (id/name) for select dropdowns
+ */
+exports.listStoreManagersSimple = async (req, res) => {
+  try {
+    const onlyActive = req.query.active === '1' || req.query.active === 'true';
+    let query = db('users').select('id','firstname','lastname').where('role', 'store_manager');
+    if (onlyActive) query = query.andWhere('is_active', true);
+    const list = await query.orderBy('firstname', 'asc');
+    const formatted = list.map((r) => ({ id: r.id, name: `${r.firstname} ${r.lastname}` }));
+    return res.json({ managers: formatted });
+  } catch (err) {
+    console.error('list store managers simple error', err);
+    return res.status(500).json({ message: 'Failed to load store managers' });
+  }
+}
+
+/**
+ * Create a new store manager (admin action)
+ */
+exports.createStoreManager = async (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { firstname, lastname, email, phone, password } = req.body;
+
+    if (!firstname || !firstname.trim()) return res.status(400).json({ errors: [{ field: 'firstname', msg: 'First name is required' }] });
+    if (!lastname || !lastname.trim()) return res.status(400).json({ errors: [{ field: 'lastname', msg: 'Last name is required' }] });
+    if (!email || !email.includes('@')) return res.status(400).json({ errors: [{ field: 'email', msg: 'Valid email is required' }] });
+    if (!phone || phone.length < 7) return res.status(400).json({ errors: [{ field: 'phone', msg: 'Valid phone is required' }] });
+
+    // Check uniqueness
+    const existingEmail = await db('users').where({ email }).first();
+    if (existingEmail) return res.status(409).json({ errors: [{ field: 'email', msg: 'Email already exists' }] });
+    const existingPhone = await db('users').where({ phone }).first();
+    if (existingPhone) return res.status(409).json({ errors: [{ field: 'phone', msg: 'Phone already exists' }] });
+
+    const rawPassword = password && password.length >= 8 ? password : '12345678';
+    const hashed = await bcrypt.hash(rawPassword, 10);
+
+    const userId = await db.transaction(async (trx) => {
+      const [id] = await trx('users').insert({
+        firstname: firstname.trim(),
+        lastname: lastname.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        password: hashed,
+        role: 'store_manager',
+        is_active: true,
+      });
+      return id;
+    });
+
+    const user = await db('users').where({ id: userId }).first();
+    const safeUser = { ...user };
+    delete safeUser.password; delete safeUser.otp; delete safeUser.otpGeneratedAt;
+
+    // send welcome email
+    (async () => {
+      try {
+        if (safeUser.email) {
+          const from = process.env.GMAIL_EMAIL || 'no-reply@example.com';
+          const to = safeUser.email;
+          const sub = `Welcome to RetailIQ as Store Manager`;
+          const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2>Welcome to RetailIQ</h2>
+              <p>Hi ${safeUser.firstname},</p>
+              <p>Your store manager account has been created by an administrator.</p>
+              <p><strong>Login email:</strong> ${safeUser.email}</p>
+              <p><strong>Temporary password:</strong> ${rawPassword}</p>
+              <p>Please log in and change your password immediately.</p>
+              <hr/>
+              <p style="font-size: 12px; color: #666;">RetailIQ - Smart Retail Analytics Platform</p>
+            </div>
+          `;
+          await emailService(from, to, sub, html);
+        }
+      } catch (mailErr) {
+        console.error('failed to send store manager welcome email', mailErr);
+      }
+    })();
+
+    return res.status(201).json({ message: 'Store manager created successfully', manager: safeUser });
+  } catch (err) {
+    console.error('create store manager error', err);
+    return res.status(500).json({ message: 'Failed to create store manager' });
+  }
+}
+
+/**
+ * Update a store manager
+ */
+exports.updateStoreManager = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { firstname, lastname, email, phone, is_active } = req.body;
+
+    const existing = await db('users').where({ id, role: 'store_manager' }).first();
+    if (!existing) return res.status(404).json({ message: 'Store manager not found' });
+
+    // email/phone uniqueness checks
+    if (email && email !== existing.email) {
+      const clash = await db('users').where({ email }).andWhereNot({ id }).first();
+      if (clash) return res.status(409).json({ errors: [{ field: 'email', msg: 'Email already exists' }] });
+    }
+    if (phone && phone !== existing.phone) {
+      const clash = await db('users').where({ phone }).andWhereNot({ id }).first();
+      if (clash) return res.status(409).json({ errors: [{ field: 'phone', msg: 'Phone already exists' }] });
+    }
+
+    const payload = {};
+    if (firstname !== undefined) payload.firstname = firstname.trim();
+    if (lastname !== undefined) payload.lastname = lastname.trim();
+    if (email !== undefined) payload.email = email.trim();
+    if (phone !== undefined) payload.phone = phone.trim();
+    if (is_active !== undefined) payload.is_active = is_active === true || is_active === 'true' || is_active === 1 || is_active === '1';
+
+    await db('users').where({ id }).update(payload);
+    const updated = await db('users').where({ id }).first();
+    delete updated.password; delete updated.otp; delete updated.otpGeneratedAt;
+
+    return res.json({ manager: updated });
+  } catch (err) {
+    console.error('update store manager error', err);
+    return res.status(500).json({ message: 'Failed to update store manager' });
+  }
+}
+
+/**
+ * Delete a store manager (only if not owning stores or referenced records)
+ */
+exports.deleteStoreManager = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await db('users').where({ id, role: 'store_manager' }).first();
+    if (!user) return res.status(404).json({ message: 'Store manager not found' });
+
+    // Check if manager owns stores
+    const storeCount = await db('stores').where({ owner_id: id }).count('id as count').first();
+    if (Number(storeCount.count || 0) > 0) {
+      return res.status(400).json({ message: 'Cannot delete manager: they own one or more stores. Reassign or delete stores first.' });
+    }
+
+    await db('users').where({ id }).del();
+    return res.json({ message: 'Store manager deleted' });
+  } catch (err) {
+    console.error('delete store manager error', err);
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(400).json({ message: 'Cannot delete manager: referenced by other records.' });
+    }
+    return res.status(500).json({ message: 'Failed to delete store manager' });
+  }
+}
 
 exports.listCustomerOrders = async (req, res) => {
   try {

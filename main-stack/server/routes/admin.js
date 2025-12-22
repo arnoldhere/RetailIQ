@@ -126,6 +126,71 @@ router.post('/suppliers', authMiddleware, async (req, res, next) => {
   }
 });
 
+router.put('/suppliers/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.updateSupplier(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/suppliers/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.deleteSupplier(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Store managers (store_owner) routes
+router.get('/store-managers', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.listStoreManagers(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// simple list for select fields
+router.get('/store-managers/simple', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.listStoreManagersSimple(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/store-managers', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.createStoreManager(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/store-managers/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.updateStoreManager(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/store-managers/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.deleteStoreManager(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/customer-orders', authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });

@@ -45,6 +45,14 @@ export async function createSupplier(data) {
   return client.post('/api/admin/suppliers', data)
 }
 
+export async function updateSupplier(id, data) {
+  return client.put(`/api/admin/suppliers/${id}`, data)
+}
+
+export async function deleteSupplier(id) {
+  return client.delete(`/api/admin/suppliers/${id}`)
+}
+
 export async function sendAssuranceMail(id) {
   return client.post(`/api/admin/sendAssurance/${id}`)
 }
@@ -87,4 +95,29 @@ export async function updateStore(id, data) {
 
 export async function deleteStore(id) {
   return client.delete(`/api/admin/stores/${id}`)
+}
+
+// Store managers
+export async function getStoreManagers(limit = 12, offset = 0, filters = {}) {
+  const params = { limit, offset };
+  if (filters.search) params.search = filters.search;
+  if (filters.sort) params.sort = filters.sort;
+  if (filters.order) params.order = filters.order;
+  return client.get('/api/admin/store-managers', { params });
+}
+
+export async function getStoreManagersSimple(activeOnly = false) {
+  return client.get('/api/admin/store-managers/simple', { params: { active: activeOnly ? '1' : '0' } });
+}
+
+export async function createStoreManager(data) {
+  return client.post('/api/admin/store-managers', data);
+}
+
+export async function updateStoreManager(id, data) {
+  return client.put(`/api/admin/store-managers/${id}`, data);
+}
+
+export async function deleteStoreManager(id) {
+  return client.delete(`/api/admin/store-managers/${id}`);
 }

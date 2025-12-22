@@ -15,6 +15,7 @@ import {
     useToast,
     Input,
     Spinner,
+    Tooltip,
     TableContainer,
     SimpleGrid,
     useColorModeValue,
@@ -33,17 +34,21 @@ import {
     useDisclosure,
     FormControl,
     FormLabel,
+    IconButton,
 } from '@chakra-ui/react'
 import { SearchIcon, AddIcon } from '@chakra-ui/icons'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import AdminSidebar from '../../components/AdminSidebar'
 import * as adminApi from '../../api/admin'
-
+import { DeleteIcon, EditIcon } from '@chakra-ui/icons'
 export default function SuppliersPage() {
     const toast = useToast()
     const { isOpen, onOpen, onClose } = useDisclosure()
-    
+    const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
+
+    const handleAddSupplierOpen = () => { setEditingSupplierId(null); setFormData({ firstname: '', lastname: '', email: '', phone: '', password: '' }); onOpen() }
+
     const pageBg = useColorModeValue('gray.50', 'gray.900')
     const subtleCard = useColorModeValue('white', 'gray.800')
     const mutedText = useColorModeValue('gray.600', 'gray.300')
@@ -76,6 +81,8 @@ export default function SuppliersPage() {
     })
     const [formErrors, setFormErrors] = useState({})
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [editingSupplierId, setEditingSupplierId] = useState(null)
+    const [deleteSupplierId, setDeleteSupplierId] = useState(null)
 
     useEffect(() => {
         fetchSuppliers()
@@ -120,7 +127,7 @@ export default function SuppliersPage() {
         if (!formData.phone.trim()) errors.phone = 'Phone is required'
         if (formData.phone.trim().length < 7) errors.phone = 'Invalid phone number'
         if (!formData.password || formData.password.length < 8) errors.password = 'Password must be at least 8 characters'
-        
+
         setFormErrors(errors)
         return Object.keys(errors).length === 0
     }
@@ -130,39 +137,26 @@ export default function SuppliersPage() {
 
         try {
             setIsSubmitting(true)
-            await adminApi.createSupplier(formData)
-            
-            toast({
-                title: 'Success',
-                description: 'Supplier added successfully!',
-                status: 'success',
-                duration: 3000,
-                isClosable: true,
-            })
-            
+            if (editingSupplierId) {
+                await adminApi.updateSupplier(editingSupplierId, formData)
+                toast({ title: 'Success', description: 'Supplier updated successfully!', status: 'success', duration: 3000, isClosable: true })
+            } else {
+                await adminApi.createSupplier(formData)
+                toast({ title: 'Success', description: 'Supplier added successfully!', status: 'success', duration: 3000, isClosable: true })
+            }
+
             // Reset form and close modal
-            setFormData({
-                firstname: '',
-                lastname: '',
-                email: '',
-                phone: '',
-                password: '',
-            })
+            setFormData({ firstname: '', lastname: '', email: '', phone: '', password: '' })
             setFormErrors({})
+            setEditingSupplierId(null)
             onClose()
-            
+
             // Refresh suppliers list
             fetchSuppliers()
         } catch (err) {
-            console.error('Failed to create supplier:', err)
-            const errorMsg = err?.response?.data?.message || err?.message || 'Failed to add supplier'
-            toast({
-                title: 'Error',
-                description: errorMsg,
-                status: 'error',
-                duration: 3000,
-                isClosable: true,
-            })
+            console.error('Failed to save supplier:', err)
+            const errorMsg = err?.response?.data?.message || err?.response?.data?.errors?.[0]?.msg || err?.message || 'Failed to save supplier'
+            toast({ title: 'Error', description: errorMsg, status: 'error', duration: 3000, isClosable: true })
         } finally {
             setIsSubmitting(false)
         }
@@ -213,7 +207,7 @@ export default function SuppliersPage() {
                                     leftIcon={<AddIcon />}
                                     colorScheme="blue"
                                     size="sm"
-                                    onClick={onOpen}
+                                    onClick={handleAddSupplierOpen}
                                     _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
                                     transition="all 0.2s"
                                 >
@@ -279,6 +273,7 @@ export default function SuppliersPage() {
                                                         <Th fontWeight="700" color="white.700">Address</Th>
                                                         <Th fontWeight="700" color="white.700" textAlign="center">Status</Th>
                                                         <Th fontWeight="700" color="white.700" isNumeric>Rating</Th>
+                                                        <Th fontWeight="700" color="white.700" textAlign="center">Actions</Th>
                                                     </Tr>
                                                 </Thead>
                                                 <Tbody>
@@ -302,6 +297,23 @@ export default function SuppliersPage() {
                                                             </Td>
                                                             <Td isNumeric fontSize="sm" color={mutedText}>
                                                                 {supplier.rating ? `${supplier.rating}/5` : '-'}
+                                                            </Td>
+                                                            <Td textAlign="center">
+                                                                <HStack justify="center">
+                                                                    <Tooltip label="Edit">
+                                                                        <IconButton aria-label="Edit supplier"
+                                                                            icon={<EditIcon />} size="sm"
+                                                                            variant="ghost"
+                                                                            colorScheme="info"
+                                                                            onClick={() => { setEditingSupplierId(supplier.id); setFormData({ firstname: supplier.name.split(' ')[0] || '', lastname: supplier.name.split(' ').slice(1).join(' ') || '', email: supplier.email || '', phone: supplier.phone || '', password: '' }); onOpen() }} />
+                                                                    </Tooltip>
+                                                                    <Tooltip label="Delete">
+                                                                        <IconButton
+                                                                            variant="ghost"
+                                                                            colorScheme="red"
+                                                                            aria-label="Delete supplier" icon={<DeleteIcon />} size="sm" onClick={() => { setDeleteSupplierId(supplier.id); onDeleteOpen() }} />
+                                                                    </Tooltip>
+                                                                </HStack>
                                                             </Td>
                                                         </Tr>
                                                     ))}
@@ -336,6 +348,33 @@ export default function SuppliersPage() {
                                             </Button>
                                         </Flex>
                                     )}
+
+                                    {/* Delete confirmation */}
+                                    <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} isCentered>
+                                        <ModalOverlay />
+                                        <ModalContent>
+                                            <ModalHeader>Delete Supplier</ModalHeader>
+                                            <ModalCloseButton />
+                                            <ModalBody>Are you sure you want to delete this supplier? This action cannot be undone.</ModalBody>
+                                            <ModalFooter>
+                                                <Button variant="ghost" onClick={onDeleteClose}>Cancel</Button>
+                                                <Button colorScheme="red" onClick={async () => {
+                                                    try {
+                                                        await adminApi.deleteSupplier(deleteSupplierId)
+                                                        toast({ title: 'Deleted', status: 'success' })
+                                                        onDeleteClose()
+                                                        setDeleteSupplierId(null)
+                                                        fetchSuppliers()
+                                                    } catch (err) {
+                                                        console.error('Failed to delete supplier', err)
+                                                        toast({ title: 'Error', description: err?.response?.data?.message || err?.message || 'Failed to delete', status: 'error' })
+                                                        onDeleteClose()
+                                                    }
+                                                }}>Delete</Button>
+                                            </ModalFooter>
+                                        </ModalContent>
+                                    </Modal>
+
                                 </>
                             )}
                         </Box>
@@ -348,7 +387,7 @@ export default function SuppliersPage() {
                 <ModalOverlay backdropFilter="blur(10px)" />
                 <ModalContent bg={subtleCard} border="1px solid" borderColor={borderColor}>
                     <ModalHeader>
-                        <Heading size="md">Add New Supplier</Heading>
+                        <Heading size="md">{editingSupplierId ? 'Edit Supplier' : 'Add New Supplier'}</Heading>
                     </ModalHeader>
                     <ModalCloseButton />
                     <ModalBody>
@@ -452,9 +491,9 @@ export default function SuppliersPage() {
                             colorScheme="blue"
                             onClick={handleSubmitSupplier}
                             isLoading={isSubmitting}
-                            loadingText="Adding..."
+                            loadingText={editingSupplierId ? 'Updating...' : 'Adding...'}
                         >
-                            Add Supplier
+                            {editingSupplierId ? 'Update Supplier' : 'Add Supplier'}
                         </Button>
                     </ModalFooter>
                 </ModalContent>

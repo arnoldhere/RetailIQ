@@ -23,6 +23,7 @@ const items = [
   { to: '/admin/categories', label: 'Product Categories', icon: FiTag },
   { to: '/admin/products', label: 'Products', icon: FiBox },
   { to: '/admin/stores', label: 'Manage Stores', icon: FaStore },
+  { to: '/admin/store-managers', label: 'Store Managers', icon: FiUsers },
   { to: '/admin/feedbacks', label: 'Feedbacks', icon: FiMessageSquare },
   { to: '/admin/customer-orders', label: 'Customer Orders', icon: FiShoppingCart },
   { to: '/admin/suppliers', label: 'Suppliers', icon: FiTruck },

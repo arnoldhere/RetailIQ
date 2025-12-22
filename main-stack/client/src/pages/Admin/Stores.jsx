@@ -75,6 +75,19 @@ export default function StoresPage() {
         sort: 'created_at',
         order: 'desc',
     })
+
+    // Owners (store managers) for owner select
+    const [managers, setManagers] = useState([])
+
+    async function fetchManagers() {
+        try {
+            const res = await adminApi.getStoreManagersSimple(true)
+            setManagers(res?.data?.managers || [])
+        } catch (err) {
+            console.error('Failed to fetch store managers for owner select', err)
+            setManagers([])
+        }
+    }
     const [limit] = useState(12)
     const [offset, setOffset] = useState(0)
 
@@ -94,6 +107,7 @@ export default function StoresPage() {
 
     useEffect(() => {
         fetchStores()
+        fetchManagers()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters, offset, limit])
 
@@ -536,16 +550,20 @@ export default function StoresPage() {
                             </FormControl>
 
                             <FormControl>
-                                <FormLabel fontSize="sm">Owner ID</FormLabel>
-                                <Input
+                                <FormLabel fontSize="sm">Owner</FormLabel>
+                                <Select
                                     name="owner_id"
-                                    type="number"
                                     value={formData.owner_id}
                                     onChange={handleFormChange}
-                                    placeholder="Owner user ID (optional)"
+                                    placeholder="Select owner (optional)"
                                     borderColor={borderColor}
                                     _focus={{ borderColor: accent }}
-                                />
+                                >
+                                    {/* options populated dynamically */}
+                                    {managers.map((m) => (
+                                        <option key={m.id} value={m.id}>{m.name}</option>
+                                    ))}
+                                </Select>
                             </FormControl>
 
                             <HStack spacing={4} w="100%">
