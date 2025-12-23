@@ -20,7 +20,6 @@ import {
 	StackDivider,
 	Spinner,
 } from "@chakra-ui/react";
-
 import {
 	FiAlertTriangle,
 	FiUsers,
@@ -30,7 +29,6 @@ import {
 	FiDownloadCloud,
 	FiFileText,
 } from "react-icons/fi";
-
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import AdminSidebar from "../../components/AdminSidebar";

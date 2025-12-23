@@ -20,5 +20,8 @@ export async function editProfile(data, id) {
     return client.post(`/api/user/edit-profile/${id}`, data)
 }
 
+export async function getAboutusStat() {
+    return client.get("/api/user/get-aboutus-stat")
+}
 
 export default client;

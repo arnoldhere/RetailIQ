@@ -241,7 +241,6 @@ exports.verifyPayment = async (req, res) => {
                   <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${invoiceData.invoice.invoice_no}</p>
                   <p style="margin: 5px 0;"><strong>Order Number:</strong> ${order.order_no}</p>
                   <p style="margin: 5px 0;"><strong>Total Amount:</strong> ₹${invoiceData.invoice.grand_total}</p>
-                  <p style="margin: 5px 0;"><strong>Payment Status:</strong> ${order.payment_status}</p>
                 </div>
                 <p style="color: #666; font-size: 14px;">
                   Please find your invoice PDF attached to this email.

@@ -27,12 +27,12 @@ exports.getMetrics = async (req, res) => {
         const totalCustomersRow = await db('users').where('role', 'customer').count('id as count').first();
         const totalProducts = await db('products').count('id as count').first();
 
-        const metrics = {
+        const metrics = [{
             totalOrders: totalOrdersRow,
             totalSuppliers: totalSuppliersRow,
             totalCustomers: totalCustomersRow,
             totalProducts: totalProducts,
-        };
+        }];
         /*
         // recent activities: get latest entries from customer_orders, supply_orders, feedbacks
         const custOrders = await db('customer_orders')
@@ -65,6 +65,27 @@ exports.getMetrics = async (req, res) => {
     } catch (err) {
         console.error('admin overview error', err);
         return res.status(500).json({ message: 'Failed to load admin overview' });
+    }
+}
+
+exports.getAboutus = async (req, res) => {
+    try {
+        const totalCustomersRow = await db('users').where('role', 'customer').count('id as count').first();
+        const totalProducts = await db('products').count('id as count').first();
+        const totalSuppliersRow = await db('suppliers').count('id as count').first();
+        const totalStoresRow = await db('stores').count('id as count').first();
+
+        const stats = {
+            totalCustomers: totalCustomersRow,
+            totalProducts: totalProducts,
+            totalSuppliers: totalSuppliersRow,
+            totalStores: totalStoresRow,
+        }
+        return res.json({ stats });
+
+    } catch (error) {
+        console.error('About us pagee error', err);
+        return res.status(500).json({ message: 'Internal server error' });
     }
 }
 

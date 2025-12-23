@@ -77,7 +77,7 @@ async function generateInvoice(orderId) {
     // Calculate invoice amounts
     const subtotal = parseFloat(order.total_amount) || 0;
     const discountAmount = parseFloat(order.discount) || 0;
-    
+
     // Calculate tax (assuming 10% GST - you can customize this)
     const taxRate = 0.10;
     const taxableAmount = subtotal - discountAmount;
@@ -131,7 +131,7 @@ async function generateInvoice(orderId) {
     const payment = await db('customer_payments')
       .where({ customer_order_id: orderId })
       .first();
-    
+
     if (payment) {
       await db('customer_payments')
         .where({ id: payment.id })
@@ -170,124 +170,161 @@ async function generateInvoice(orderId) {
 async function generateInvoicePDF(invoiceId, pdfPath, order, orderItems, amounts) {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
       const stream = fs.createWriteStream(pdfPath);
       doc.pipe(stream);
 
-      // Header
-      doc.fontSize(24).font('Helvetica-Bold').text('INVOICE', { align: 'center' });
-      doc.moveDown();
+      const primaryColor = '#1F4FD8';
+      const lightGray = '#F2F2F2';
+      const darkGray = '#555';
 
-      // Company/Store Info
-      doc.fontSize(12).font('Helvetica-Bold').text('RetailIQ', { align: 'center' });
-      if (order.store_name) {
-        doc.fontSize(10).font('Helvetica').text(order.store_name, { align: 'center' });
-      }
-      if (order.store_address) {
-        doc.fontSize(9).font('Helvetica').text(order.store_address, { align: 'center' });
-      }
-      if (order.store_phone) {
-        doc.fontSize(9).font('Helvetica').text(`Phone: ${order.store_phone}`, { align: 'center' });
-      }
+      /* ================= HEADER ================= */
+      const headerHeight = 90;
+      doc.rect(0, 0, 595, headerHeight).fill(primaryColor);
+
+      // LEFT: TITLE
+      doc
+        .fillColor('#FFF')
+        .font('Helvetica-Bold')
+        .fontSize(28)
+        .text('INVOICE', 50, 30);
+
+      // RIGHT: META (NO OVERLAP GUARANTEED)
+      doc
+        .fontSize(10)
+        .font('Helvetica')
+        .text('Invoice No', 360, 28, { width: 85, align: 'right' })
+        .text(amounts.invoiceNo, 450, 28, { width: 95, align: 'right' });
+
+      doc
+        .text('Date', 360, 45, { width: 85, align: 'right' })
+        .text(
+          amounts.invoiceDate.toLocaleDateString('en-IN'),
+          450,
+          45,
+          { width: 95, align: 'right' }
+        );
+
+      doc.fillColor('#000');
+      doc.y = headerHeight + 15;
+
+      /* ================= STORE INFO ================= */
+      doc.font('Helvetica-Bold').fontSize(14).text('RetailIQ');
+      doc.font('Helvetica').fontSize(9).fillColor(darkGray);
+
+      if (order.store_name) doc.text(order.store_name);
+      if (order.store_address) doc.text(order.store_address);
+      if (order.store_phone) doc.text(`Phone: ${order.store_phone}`);
+
+      /* Divider */
+      doc.moveDown(1);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#DDD').stroke();
+
+      /* ================= CUSTOMER INFO ================= */
+      doc.moveDown(1);
+      doc.font('Helvetica-Bold').fillColor('#000').text('Bill To:');
+      doc.font('Helvetica').fillColor(darkGray);
+
+      doc.text(`${order.firstname || ''} ${order.lastname || ''}`.trim());
+      if (order.customer_email) doc.text(order.customer_email);
+      if (order.customer_phone) doc.text(order.customer_phone);
+      if (order.customer_address) doc.text(order.customer_address);
+
+      /* ================= TABLE ================= */
       doc.moveDown(2);
-
-      // Invoice Details
-      doc.fontSize(10);
-      doc.font('Helvetica-Bold').text('Invoice No:', 50, doc.y);
-      doc.font('Helvetica').text(amounts.invoiceNo, 150, doc.y - 10);
-      
-      doc.font('Helvetica-Bold').text('Invoice Date:', 50, doc.y + 5);
-      doc.font('Helvetica').text(amounts.invoiceDate.toLocaleDateString('en-IN'), 150, doc.y - 5);
-      
-      doc.font('Helvetica-Bold').text('Order No:', 50, doc.y + 5);
-      doc.font('Helvetica').text(order.order_no, 150, doc.y - 5);
-
-      // Customer Details
-      const customerY = doc.y + 20;
-      doc.font('Helvetica-Bold').fontSize(11).text('Bill To:', 350, customerY);
-      doc.font('Helvetica').fontSize(9);
-      if (order.firstname || order.lastname) {
-        doc.text(`${order.firstname || ''} ${order.lastname || ''}`.trim(), 350, doc.y + 5);
-      }
-      if (order.customer_email) {
-        doc.text(`Email: ${order.customer_email}`, 350, doc.y + 5);
-      }
-      if (order.customer_phone) {
-        doc.text(`Phone: ${order.customer_phone}`, 350, doc.y + 5);
-      }
-      if (order.customer_address) {
-        doc.text(`Address: ${order.customer_address}`, 350, doc.y + 5);
-      }
-
-      doc.moveDown(3);
-
-      // Items Table Header
       const tableTop = doc.y;
-      doc.font('Helvetica-Bold').fontSize(9);
-      doc.text('S.No.', 50, tableTop);
-      doc.text('Product Name', 100, tableTop);
-      doc.text('Qty', 300, tableTop);
-      doc.text('Unit Price', 340, tableTop);
-      doc.text('Total', 420, tableTop, { align: 'right' });
 
-      // Table Line
-      doc.moveTo(50, tableTop + 15).lineTo(500, tableTop + 15).stroke();
+      doc.rect(50, tableTop, 495, 22).fill(lightGray);
 
-      // Items
-      let yPos = tableTop + 25;
-      orderItems.forEach((item, index) => {
-        if (yPos > 700) {
-          doc.addPage();
-          yPos = 50;
-        }
+      doc
+        .fillColor('#000')
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .text('S.No', 55, tableTop + 7, { width: 30 })
+        .text('Product', 90, tableTop + 7, { width: 200 })
+        .text('Qty', 300, tableTop + 7, { width: 40, align: 'right' })
+        .text('Unit Price', 350, tableTop + 7, { width: 80, align: 'right' })
+        .text('Total', 440, tableTop + 7, { width: 95, align: 'right' });
 
-        doc.font('Helvetica').fontSize(9);
-        doc.text((index + 1).toString(), 50, yPos);
-        doc.text(item.product_name || 'Product', 100, yPos, { width: 180, ellipsis: true });
-        doc.text(item.qty.toString(), 300, yPos);
-        doc.text(`₹${parseFloat(item.unit_price).toFixed(2)}`, 340, yPos);
-        doc.text(`₹${parseFloat(item.total_amount).toFixed(2)}`, 420, yPos, { align: 'right' });
-        yPos += 20;
+      let y = tableTop + 28;
+      doc.font('Helvetica').fontSize(9);
+
+      /* ===== SINGLE PAGE LIMIT (IMPORTANT) ===== */
+      const maxRows = 10; // hard limit to prevent overflow
+      orderItems.slice(0, maxRows).forEach((item, i) => {
+        doc
+          .fillColor('#000')
+          .text(i + 1, 55, y, { width: 30 })
+          .text(item.product_name || 'Product', 90, y, { width: 200 })
+          .text(item.qty, 300, y, { width: 40, align: 'right' })
+          .text(`₹${Number(item.unit_price).toFixed(2)}`, 350, y, {
+            width: 80,
+            align: 'right'
+          })
+          .text(`₹${Number(item.total_amount).toFixed(2)}`, 440, y, {
+            width: 95,
+            align: 'right'
+          });
+
+        doc
+          .moveTo(50, y + 15)
+          .lineTo(545, y + 15)
+          .strokeColor('#EEE')
+          .stroke();
+
+        y += 20;
       });
 
-      doc.moveDown();
-      const totalsY = Math.max(yPos + 10, 600);
+      /* ================= TOTALS ================= */
+      const totalsTop = 600;
 
-      // Totals
-      doc.font('Helvetica').fontSize(9);
-      doc.text('Subtotal:', 350, totalsY, { align: 'right' });
-      doc.text(`₹${amounts.subtotal.toFixed(2)}`, 500, totalsY, { align: 'right' });
+      doc.rect(330, totalsTop, 215, 120).fill('#FAFAFA').stroke('#DDD');
 
-      if (amounts.discountAmount > 0) {
-        doc.text('Discount:', 350, totalsY + 15, { align: 'right' });
-        doc.text(`-₹${amounts.discountAmount.toFixed(2)}`, 500, totalsY + 15, { align: 'right' });
-      }
+      const row = (label, value, offset, bold = false) => {
+        doc
+          .font(bold ? 'Helvetica-Bold' : 'Helvetica')
+          .fontSize(bold ? 11 : 9)
+          .fillColor('#000')
+          .text(label, 340, totalsTop + offset)
+          .text(`₹${value.toFixed(2)}`, 440, totalsTop + offset, {
+            width: 95,
+            align: 'right'
+          });
+      };
 
-      doc.text('CGST (5%):', 350, totalsY + 30, { align: 'right' });
-      doc.text(`₹${amounts.cgstAmount.toFixed(2)}`, 500, totalsY + 30, { align: 'right' });
+      row('Subtotal', amounts.subtotal, 10);
+      if (amounts.discountAmount > 0)
+        row('Discount', -amounts.discountAmount, 28);
+      row('CGST (5%)', amounts.cgstAmount, 46);
+      row('SGST (5%)', amounts.sgstAmount, 64);
+      row('Grand Total', amounts.grandTotal, 90, true);
 
-      doc.text('SGST (5%):', 350, totalsY + 45, { align: 'right' });
-      doc.text(`₹${amounts.sgstAmount.toFixed(2)}`, 500, totalsY + 45, { align: 'right' });
+      /* ================= PAYMENT ================= */
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .fillColor(primaryColor)
+        .text(`Payment Status: ${order.payment_status.toUpperCase()}`, 50, totalsTop + 95);
 
-      doc.font('Helvetica-Bold').fontSize(11);
-      doc.text('Grand Total:', 350, totalsY + 65, { align: 'right' });
-      doc.text(`₹${amounts.grandTotal.toFixed(2)}`, 500, totalsY + 65, { align: 'right' });
-
-      // Payment Status
-      doc.font('Helvetica').fontSize(9);
-      doc.text(`Payment Status: ${order.payment_status.toUpperCase()}`, 50, totalsY + 90);
-
-      // Footer
-      doc.fontSize(8).font('Helvetica');
-      const footerY = 750;
-      doc.text('Thank you for your business!', 50, footerY, { align: 'center', width: 500 });
-      doc.text('This is a computer-generated invoice.', 50, footerY + 15, { align: 'center', width: 500 });
+      /* ================= FOOTER ================= */
+      doc
+        .fontSize(8)
+        .font('Helvetica')
+        .fillColor('#777')
+        .text('Thank you for your business!', 50, 780, {
+          width: 495,
+          align: 'center'
+        })
+        .text('This is a computer-generated invoice.', {
+          width: 495,
+          align: 'center'
+        });
 
       doc.end();
       stream.on('finish', resolve);
       stream.on('error', reject);
-    } catch (error) {
-      reject(error);
+    } catch (err) {
+      reject(err);
     }
   });
 }

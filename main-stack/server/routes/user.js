@@ -41,4 +41,12 @@ router.post('/edit-profile/:id', authMiddleware, async (req, res) => {
     }
 })
 
+router.get('/get-aboutus-stat', authMiddleware, async (req, res) => {
+    try {
+        return UserController.getAboutus(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
 module.exports = router;

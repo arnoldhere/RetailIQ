@@ -73,7 +73,7 @@ export default function CartPage() {
       // Show success notification
       toast({
         title: 'Order Placed Successfully! 🎉',
-        description: `Order ${orderNo} has been confirmed`,
+        // description: `Order ${orderNo} has been confirmed`,
         status: 'success',
         duration: 5000,
         isClosable: true,
@@ -81,7 +81,7 @@ export default function CartPage() {
 
       // Redirect to order confirmation page after brief delay
       setTimeout(() => {
-        navigate(`/customer/order-confirmation/${orderId}`, {
+        navigate(`/customer/my-orders`, {
           state: {
             orderId,
             orderNo,

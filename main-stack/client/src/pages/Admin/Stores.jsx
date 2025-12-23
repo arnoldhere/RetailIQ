@@ -56,7 +56,7 @@ export default function StoresPage() {
     const { isOpen, onOpen, onClose } = useDisclosure()
     const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
     const cancelDeleteRef = useRef()
-    
+
     const pageBg = useColorModeValue('gray.50', 'gray.900')
     const subtleCard = useColorModeValue('white', 'gray.800')
     const mutedText = useColorModeValue('gray.600', 'gray.300')
@@ -154,7 +154,7 @@ export default function StoresPage() {
         if (formData.rating && (parseFloat(formData.rating) < 1 || parseFloat(formData.rating) > 5)) {
             errors.rating = 'Rating must be between 1 and 5'
         }
-        
+
         setFormErrors(errors)
         return Object.keys(errors).length === 0
     }
@@ -199,7 +199,7 @@ export default function StoresPage() {
 
         try {
             setIsSubmitting(true)
-            
+
             const payload = {
                 ...formData,
                 rating: formData.rating ? parseFloat(formData.rating) : null,
@@ -224,7 +224,7 @@ export default function StoresPage() {
                     duration: 3000,
                 })
             }
-            
+
             handleCloseModal()
             fetchStores()
         } catch (err) {
@@ -350,6 +350,7 @@ export default function StoresPage() {
                                     bg={useColorModeValue('white', 'gray.700')}
                                     borderColor={borderColor}
                                 >
+                                    <option selected>--select status--</option>
                                     <option value="true">Active</option>
                                     <option value="false">Inactive</option>
                                 </Select>
@@ -599,6 +600,7 @@ export default function StoresPage() {
                                         borderColor={borderColor}
                                         _focus={{ borderColor: accent }}
                                     >
+                                        <option selected>--select status--</option>
                                         <option value={true}>Active</option>
                                         <option value={false}>Inactive</option>
                                     </Select>
