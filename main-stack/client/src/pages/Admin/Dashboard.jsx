@@ -95,18 +95,18 @@ export default function AdminDashboard() {
 		},
 		{
 			label: "Total Customers",
-			value: metrics.totalCustomers ?? 0,
+			value: metrics.totalProducts ?? 0,
 			change: "",
 			positive: true,
 			icon: FiUsers,
 			spark: [32, 30, 29, 28, 27, 26],
 		},
 		{
-			label: "Stock Alerts",
-			value: "58 low",
-			change: "12 critical",
+			label: "Total Products",
+			value: metrics.totalProducts ?? 0,
+			change: "",
 			positive: false,
-			icon: FiAlertTriangle,
+			icon: FiPackage,
 			spark: [3, 4, 6, 9, 7, 12],
 		},
 	];

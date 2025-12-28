@@ -14,9 +14,6 @@
     - product listing enhanced
     - store management @admin
 -- now next
-    - fix the order cancellation feature
-    - enhanced about us page
-    - send mail of joining/adding of supplier
-    - show users name in store owner list in add store
-    - generate invoice and save to server and also send to user's email
+    - add the need of the orders or products show that supplier can bid their ask 
+    - supplier dashboard and explore catalog for bid 
     - order management -> need enhancement

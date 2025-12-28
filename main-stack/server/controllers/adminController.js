@@ -90,11 +90,14 @@ exports.overview = async (req, res) => {
     const totalOrdersRow = await db('customer_orders').count('id as count').first();
     const totalSuppliersRow = await db('suppliers').count('id as count').first();
     const totalCustomersRow = await db('users').where('role', 'customer').count('id as count').first();
+    const totalProductsRow = await db('products').count('id as count').first();
+
 
     const metrics = {
       totalOrders: normalizeCount(totalOrdersRow),
       totalSuppliers: normalizeCount(totalSuppliersRow),
       totalCustomers: normalizeCount(totalCustomersRow),
+      totalProducts: normalizeCount(totalProductsRow),
     };
 
     // recent activities: get latest entries from customer_orders, supply_orders, feedbacks
@@ -322,7 +325,7 @@ exports.updateCategory = async (req, res) => {
     await db('categories')
       .where({ id })
       .update(updateData);
-      
+
     return res.status(200).json({
       message: 'Category updated successfully',
       data: {
@@ -629,10 +632,10 @@ exports.listStoreManagers = async (req, res) => {
     const sortCol = `users.${sortField}`;
     const orderDir = order === 'DESC' ? 'desc' : 'asc';
 
-    let query = db('users').select('id','firstname','lastname','email','phone','created_at','is_active').where('role', 'store_manager');
+    let query = db('users').select('id', 'firstname', 'lastname', 'email', 'phone', 'created_at', 'is_active').where('role', 'store_manager');
 
     if (search) {
-      query = query.where(function() {
+      query = query.where(function () {
         this.where('firstname', 'like', `%${search}%`)
           .orWhere('lastname', 'like', `%${search}%`)
           .orWhere('email', 'like', `%${search}%`)
@@ -659,7 +662,7 @@ exports.listStoreManagers = async (req, res) => {
 exports.listStoreManagersSimple = async (req, res) => {
   try {
     const onlyActive = req.query.active === '1' || req.query.active === 'true';
-    let query = db('users').select('id','firstname','lastname').where('role', 'store_manager');
+    let query = db('users').select('id', 'firstname', 'lastname').where('role', 'store_manager');
     if (onlyActive) query = query.andWhere('is_active', true);
     const list = await query.orderBy('firstname', 'asc');
     const formatted = list.map((r) => ({ id: r.id, name: `${r.firstname} ${r.lastname}` }));
