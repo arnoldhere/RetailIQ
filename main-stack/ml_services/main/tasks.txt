@@ -1,0 +1,8 @@
+TASK 01
+    Goal:
+        Predict total order value of a customer based on:
+        Past orders
+        Cart behavior
+        Wishlist activity
+        This is regression, simple but realistic.
+

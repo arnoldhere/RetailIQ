@@ -286,6 +286,7 @@ export default function UsersList() {
                                 <TableContainer
                                     w="100%"
                                     overflowX="auto"
+                                    overflowY="auto"
                                     maxH={{ base: "none", md: "70vh" }}
                                 >
                                     <Table size="md" variant="outline">
@@ -421,7 +422,7 @@ export default function UsersList() {
                                                                     variant={item.is_active === 1 ? 'outline' : 'solid'}
                                                                     onClick={() => toggleUserStatus(item)}
                                                                 >
-                                                                {console.log(item)}
+                                                                    {console.log(item)}
                                                                     {item.is_active === 1 ? 'Deactivate' : 'Activate'}
                                                                 </Button>
                                                             </Td>

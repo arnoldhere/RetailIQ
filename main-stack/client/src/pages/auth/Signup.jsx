@@ -26,14 +26,16 @@ function Signup() {
 	const { signup } = useAuth();
 	const navigate = useNavigate();
 	const toast = useToast();
-
 	const [form, setForm] = useState({
 		firstname: "",
 		lastname: "",
 		email: "",
 		password: "",
 		phone: "",
+		gender: "",
+		dob: "",
 	});
+
 	const [errors, setErrors] = useState({});
 	const [busy, setBusy] = useState(false);
 	const [showPass, setShowPass] = useState(false);
@@ -61,8 +63,13 @@ function Signup() {
 			e.password = "Password must be at least 8 characters";
 		if (values.phone && !/^\+?\d{7,15}$/.test(values.phone))
 			e.phone = "Phone must be digits (7-15 chars)";
+		if (!values.gender)
+			e.gender = "Please select gender";
+		if (!values.dob)
+			e.dob = "Date of birth is required";
 		return e;
 	}
+
 
 	async function onSubmit(e) {
 		e.preventDefault();
@@ -173,7 +180,7 @@ function Signup() {
 							inventory, and make confident pricing decisions powered by data.
 						</Text>
 					</Box>
-					<Image rounded='lg' src='/logo_retailiq.png' alt ='RetailIQ' w='2xs'/>
+					<Image rounded='lg' src='/logo_retailiq.png' alt='RetailIQ' w='2xs' />
 					<Box mt={8} position="relative">
 						<Text fontSize="xs" opacity={0.85} mb={1} fontWeight="medium">
 							Why join?
@@ -316,6 +323,62 @@ function Signup() {
 									</Text>
 								)}
 							</FormControl>
+
+							<HStack spacing={3}>
+								{/* Gender */}
+								<FormControl isInvalid={!!errors.gender} isRequired>
+									<FormLabel color="gray.200" fontSize="sm">
+										Gender
+									</FormLabel>
+									<select
+										value={form.gender}
+										onChange={(e) => setForm({ ...form, gender: e.target.value })}
+										style={{
+											width: "100%",
+											padding: "10px",
+											borderRadius: "6px",
+											background: "#1A202C",
+											color: "#EDF2F7",
+											border: "1px solid #4A5568",
+										}}
+									>
+										<option value="">Select gender</option>
+										<option value="male">Male</option>
+										<option value="female">Female</option>
+									</select>
+									{errors.gender && (
+										<Text color="red.400" fontSize="xs" mt={1}>
+											{errors.gender}
+										</Text>
+									)}
+								</FormControl>
+
+								{/* Date of Birth */}
+								<FormControl isInvalid={!!errors.dob} isRequired>
+									<FormLabel color="gray.200" fontSize="sm">
+										Date of Birth
+									</FormLabel>
+									<Input
+										type="date"
+										value={form.dob}
+										onChange={(e) => setForm({ ...form, dob: e.target.value })}
+										bg="gray.800"
+										borderColor="gray.700"
+										_hover={{ borderColor: "purple.400" }}
+										_focus={{
+											borderColor: "purple.400",
+											boxShadow: "0 0 0 1px rgba(168, 85, 247, 0.7)",
+										}}
+										color="gray.50"
+									/>
+									{errors.dob && (
+										<Text color="red.400" fontSize="xs" mt={1}>
+											{errors.dob}
+										</Text>
+									)}
+								</FormControl>
+							</HStack>
+
 
 							<FormControl isInvalid={!!errors.password} isRequired>
 								<FormLabel color="gray.200" fontSize="sm">

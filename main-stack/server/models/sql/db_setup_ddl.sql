@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
   phone VARCHAR(50) UNIQUE,
   store_id INT NULL,
   address TEXT Null
+  gender ENUM('male', 'female') NULL,
+  date_of_birth DATE NULL,
   otp VARCHAR(10) NULL,
   otpGeneratedAt TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

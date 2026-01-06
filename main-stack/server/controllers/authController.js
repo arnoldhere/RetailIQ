@@ -23,7 +23,17 @@ module.exports = {
         return res.status(400).json({ errors: payload });
       }
 
-      const { firstname, lastname, email, password, phone, role, address } = req.body;
+      const {
+        firstname,
+        lastname,
+        email,
+        password,
+        phone,
+        role,
+        address,
+        gender,
+        dob
+      } = req.body;
 
       // check for existing email
       const byEmail = await db('users').where({ email }).first();
@@ -54,21 +64,25 @@ module.exports = {
           email,
           password: hashed,
           phone,
-          role: role || 'customer', // fallback if role isn't provided
+          gender,
+          date_of_birth: dob,
+          role: role || 'customer',
         });
 
         const createdUser = await trx('users').where({ id }).first();
 
         // If role is supplier, create supplier row
         if (createdUser.role === 'supplier') {
-          // address is NOT NULL in suppliers table, so make sure you pass it from frontend
+          if (!address) {
+            throw new Error('Address is required for suppliers');
+          }
+
           await trx('suppliers').insert({
             cust_id: createdUser.id,
             name: `${createdUser.firstname} ${createdUser.lastname}`,
             email: createdUser.email,
             phone: createdUser.phone,
-            address: address, // must be provided in req.body for suppliers
-            // other fields use defaults (is_active, rating, etc.)
+            address: address,
           });
         }
 
@@ -94,9 +108,10 @@ module.exports = {
       return res.status(201).json({ user: safeUser(newUser), token });
     } catch (err) {
       console.error('signup error', err);
-      return res.status(500).json({ message: 'Internal Server Error' });
+      return res.status(500).json({ message: err.message || 'Internal Server Error' });
     }
   },
+
 
   login: async (req, res) => {
     try {

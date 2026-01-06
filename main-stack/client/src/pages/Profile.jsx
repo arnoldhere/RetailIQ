@@ -39,10 +39,16 @@ export default function Profile() {
 		email: '',
 		phone: '',
 		address: '',
+		dob: '',
 	});
+
 	const [isSaving, setIsSaving] = useState(false);
 	const [errors, setErrors] = useState({});
 	const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+	const formatDateOnly = (dateString) => {
+		if (!dateString) return '';
+		return dateString.split('T')[0];
+	};
 
 	// Colors for dark/light mode
 	const bgCard = useColorModeValue('gray.50', 'rgba(11,18,32,0.8)');
@@ -59,6 +65,7 @@ export default function Profile() {
 				email: user.email || '',
 				phone: user.phone || '',
 				address: user.address || '',
+				dob: user.dob || '',
 			});
 		}
 	}, [user]);
@@ -228,6 +235,19 @@ export default function Profile() {
 			setIsSaving(false);
 		}
 	};
+
+	const calculateAge = (dob) => {
+		if (!dob) return null;
+		const birthDate = new Date(dob);
+		const today = new Date();
+		let age = today.getFullYear() - birthDate.getFullYear();
+		const m = today.getMonth() - birthDate.getMonth();
+		if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+			age--;
+		}
+		return age;
+	};
+
 
 	const getRoleBadgeColor = () => {
 		switch (user?.role) {
@@ -450,6 +470,28 @@ export default function Profile() {
 										)}
 									</FormControl>
 
+									{/* Date of Birth */}
+									<FormControl gridColumn={{ base: '1', md: '1 / -1' }}>
+										<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>
+											Date of Birth
+										</FormLabel>
+										<Input
+											name="dob"
+											type="date"
+											value={formData.dob ? formData.dob.slice(0, 10) : ''}
+											onChange={handleInputChange}
+											isReadOnly={!isEditing}
+											bg={isEditing ? 'whiteAlpha.50' : 'transparent'}
+											border="1px solid"
+											borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'}
+											_hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }}
+											_focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }}
+											color={textPrimary}
+											transition="all 0.2s"
+										/>
+									</FormControl>
+
+
 									{/* Address */}
 									<FormControl isInvalid={!!errors.address} gridColumn={{ base: '1', md: '1 / -1' }}>
 										<HStack justify="space-between" align="center" mb={2}>
@@ -515,6 +557,7 @@ export default function Profile() {
 											{getRoleLabel()}
 										</Text>
 									</Box>
+
 									<Box>
 										<Text fontSize="xs" color={textSecondary} mb={1}>
 											Member Since
@@ -527,6 +570,32 @@ export default function Profile() {
 											})}
 										</Text>
 									</Box>
+
+									<Box>
+										<Text fontSize="xs" color={textSecondary} mb={1}>
+											Age
+										</Text>
+										<Text fontSize="sm" fontWeight="600" color={textPrimary}>
+											{`${user.date_of_birth ? calculateAge(formatDateOnly(user.date_of_birth)) : '—'} years`}
+										</Text>
+									</Box>
+
+
+									<Box>
+										<Text fontSize="xs" color={textSecondary} mb={1}>
+											Date of Birth
+										</Text>
+										<Text fontSize="sm" fontWeight="600" color={textPrimary}>
+											{user.date_of_birth
+												? new Date(user.date_of_birth).toLocaleDateString('en-US', {
+													year: 'numeric',
+													month: 'short',
+													day: 'numeric',
+												})
+												: '—'}
+										</Text>
+									</Box>
+
 									<Box gridColumn="1 / -1">
 										<Text fontSize="xs" color={textSecondary} mb={1}>
 											User ID
@@ -536,6 +605,7 @@ export default function Profile() {
 										</Text>
 									</Box>
 								</Grid>
+
 							</VStack>
 
 							{/* Cancel Button (when editing) */}
