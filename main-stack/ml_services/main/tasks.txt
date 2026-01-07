@@ -5,4 +5,3 @@ TASK 01
         Cart behavior
         Wishlist activity
         This is regression, simple but realistic.
-

@@ -1,0 +1,15 @@
+========
+task - 
+        Predict total order value of a customer based on:
+========
+* Target value
+y = total_order_value (per customer)
+* features 
+name                                  |                       source
+total_orders                     |                       customer_orders
+avg_order_value             |                       customer_orders
+total_orders                     |                       customer_orders
+total_items_purchased |                       order_items
+Wishlist_count                |                       customer_wishlist 
+cart_abandon_rate         |                       cart vs orders
+
