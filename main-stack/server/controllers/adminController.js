@@ -467,6 +467,11 @@ exports.updateSupplier = async (req, res) => {
     // Update linked user
     if (existing.cust_id) {
       const userPayload = {};
+      if (name !== undefined) {
+        const parts = name.trim().split(/\s+/);
+        userPayload.firstname = parts[0] || '';
+        userPayload.lastname = parts.slice(1).join(' ') || null;
+      }
       if (firstname !== undefined) userPayload.firstname = firstname.trim();
       if (lastname !== undefined) userPayload.lastname = lastname.trim();
       if (email !== undefined) userPayload.email = email.trim();
@@ -513,14 +518,11 @@ exports.deleteSupplier = async (req, res) => {
 exports.createSupplier = async (req, res) => {
   try {
     const bcrypt = require('bcryptjs');
-    const { firstname, lastname, email, phone, password } = req.body;
+    const { name, email, phone, password } = req.body;
 
     // Validation
-    if (!firstname || !firstname.trim()) {
-      return res.status(400).json({ errors: [{ field: 'firstname', msg: 'First name is required' }] });
-    }
-    if (!lastname || !lastname.trim()) {
-      return res.status(400).json({ errors: [{ field: 'lastname', msg: 'Last name is required' }] });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ errors: [{ field: 'name', msg: 'Supplier name is required' }] });
     }
     if (!email || !email.includes('@')) {
       return res.status(400).json({ errors: [{ field: 'email', msg: 'Valid email is required' }] });
@@ -528,6 +530,7 @@ exports.createSupplier = async (req, res) => {
     if (!phone || phone.length < 7) {
       return res.status(400).json({ errors: [{ field: 'phone', msg: 'Valid phone is required' }] });
     }
+
     // Allow admin to omit password; default to '12345678' if not provided or too short
     const rawPassword = password && password.length >= 8 ? password : '12345678';
 
@@ -548,10 +551,15 @@ exports.createSupplier = async (req, res) => {
 
     // Create user and supplier in transaction
     const result = await db.transaction(async (trx) => {
+      // parse name into firstname/lastname if possible
+      const parts = name.trim().split(/\s+/);
+      const firstname = parts[0];
+      const lastname = parts.slice(1).join(' ') || null;
+
       // 1. Insert user with role='supplier'
       const [userId] = await trx('users').insert({
-        firstname: firstname.trim(),
-        lastname: lastname.trim(),
+        firstname: firstname,
+        lastname: lastname,
         email: email.trim(),
         phone: phone.trim(),
         password: hashed,
@@ -561,7 +569,7 @@ exports.createSupplier = async (req, res) => {
       // 2. Insert supplier record
       await trx('suppliers').insert({
         cust_id: userId,
-        name: `${firstname.trim()} ${lastname.trim()}`,
+        name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
         is_active: true,
@@ -591,7 +599,7 @@ exports.createSupplier = async (req, res) => {
               <p>Hi ${safeUser.firstname},</p>
               <p>Your supplier account has been created by an administrator.</p>
               <p><strong>Login email:</strong> ${safeUser.email}</p>
-              <p><strong>Temporary password:</strong> ${req.body.password || '12345678'}</p>
+              <p><strong>Temporary password:</strong> ${rawPassword}</p>
               <p>Please log in and change your password immediately.</p>
               <hr/>
               <p style="font-size: 12px; color: #666;">RetailIQ - Smart Retail Analytics Platform</p>
@@ -1078,6 +1086,42 @@ exports.listSupplierOrders = async (req, res) => {
   } catch (err) {
     console.error('list supplier orders error', err);
     return res.status(500).json({ message: 'Failed to load supplier orders' });
+  }
+};
+
+// Admin: update supply order status and optionally delivery/date/amount
+exports.updateSupplyOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, deliver_at, total_amount } = req.body;
+    const allowed = ['pending', 'sent', 'received', 'cancelled'];
+    if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid status' });
+
+    const order = await db('supply_orders').where('id', id).first();
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const payload = { status };
+    if (deliver_at !== undefined) payload.deliver_at = deliver_at || null;
+    if (total_amount !== undefined) payload.total_amount = total_amount;
+
+    await db('supply_orders').where('id', id).update(payload);
+
+    // notify supplier when status changes
+    try {
+      const updated = await db('supply_orders').where('id', id).first();
+      const supplier = await db('suppliers').where('id', updated.supplier_id).first();
+      if (supplier && supplier.email) {
+        const sendEmail = require('../services/mailService');
+        const subject = `Supply order ${updated.order_no} is now ${updated.status}`;
+        const html = `<p>Your supply order (${updated.order_no}) status has been updated to <strong>${updated.status}</strong>.</p>`;
+        sendEmail(process.env.GMAIL_EMAIL, supplier.email, subject, html).catch(e=>console.error('notify supplier failed', e));
+      }
+    } catch (e) { console.error('post-update notify failed', e) }
+
+    return res.json({ message: 'Order updated' });
+  } catch (err) {
+    console.error('update supply order status error', err);
+    return res.status(500).json({ message: 'Failed to update order' });
   }
 };
 

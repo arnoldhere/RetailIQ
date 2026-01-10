@@ -73,8 +73,7 @@ export default function SuppliersPage() {
 
     // Form state for adding supplier
     const [formData, setFormData] = useState({
-        firstname: '',
-        lastname: '',
+        name: '',
         email: '',
         phone: '',
         password: '',
@@ -120,15 +119,12 @@ export default function SuppliersPage() {
 
     const validateForm = () => {
         const errors = {}
-        if (!formData.firstname.trim()) errors.firstname = 'First name is required'
-        if (!formData.lastname.trim()) errors.lastname = 'Last name is required'
+        if (!formData.name || !formData.name.trim()) errors.name = 'Supplier name is required'
         if (!formData.email.trim()) errors.email = 'Email is required'
         if (formData.email && !formData.email.includes('@')) errors.email = 'Invalid email'
         if (!formData.phone.trim()) errors.phone = 'Phone is required'
         if (formData.phone.trim().length < 7) errors.phone = 'Invalid phone number'
-        if (!formData.password || formData.password.length < 8) errors.password = 'Password must be at least 8 characters'
-
-        setFormErrors(errors)
+        if (formData.password && formData.password.length > 0 && formData.password.length < 8) errors.password = 'Password must be at least 8 characters'
         return Object.keys(errors).length === 0
     }
 
@@ -305,7 +301,7 @@ export default function SuppliersPage() {
                                                                             icon={<EditIcon />} size="sm"
                                                                             variant="ghost"
                                                                             colorScheme="info"
-                                                                            onClick={() => { setEditingSupplierId(supplier.id); setFormData({ firstname: supplier.name.split(' ')[0] || '', lastname: supplier.name.split(' ').slice(1).join(' ') || '', email: supplier.email || '', phone: supplier.phone || '', password: '' }); onOpen() }} />
+                                                                            onClick={() => { setEditingSupplierId(supplier.id); setFormData({ name: supplier.name || '', email: supplier.email || '', phone: supplier.phone || '', password: '' }); onOpen() }} />
                                                                     </Tooltip>
                                                                     <Tooltip label="Delete">
                                                                         <IconButton
@@ -392,40 +388,22 @@ export default function SuppliersPage() {
                     <ModalCloseButton />
                     <ModalBody>
                         <VStack spacing={4}>
-                            <HStack spacing={4} w="100%">
-                                <FormControl isInvalid={!!formErrors.firstname}>
-                                    <FormLabel fontSize="sm">First Name</FormLabel>
-                                    <Input
-                                        name="firstname"
-                                        value={formData.firstname}
-                                        onChange={handleFormChange}
-                                        placeholder="First name"
-                                        borderColor={borderColor}
-                                        _focus={{ borderColor: accent }}
-                                    />
-                                    {formErrors.firstname && (
-                                        <Text color="red.400" fontSize="xs" mt={1}>
-                                            {formErrors.firstname}
-                                        </Text>
-                                    )}
-                                </FormControl>
-                                <FormControl isInvalid={!!formErrors.lastname}>
-                                    <FormLabel fontSize="sm">Last Name</FormLabel>
-                                    <Input
-                                        name="lastname"
-                                        value={formData.lastname}
-                                        onChange={handleFormChange}
-                                        placeholder="Last name"
-                                        borderColor={borderColor}
-                                        _focus={{ borderColor: accent }}
-                                    />
-                                    {formErrors.lastname && (
-                                        <Text color="red.400" fontSize="xs" mt={1}>
-                                            {formErrors.lastname}
-                                        </Text>
-                                    )}
-                                </FormControl>
-                            </HStack>
+                            <FormControl isInvalid={!!formErrors.name} w="100%">
+                                <FormLabel fontSize="sm">Supplier Name</FormLabel>
+                                <Input
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={handleFormChange}
+                                    placeholder="Supplier or company name"
+                                    borderColor={borderColor}
+                                    _focus={{ borderColor: accent }}
+                                />
+                                {formErrors.name && (
+                                    <Text color="red.400" fontSize="xs" mt={1}>
+                                        {formErrors.name}
+                                    </Text>
+                                )}
+                            </FormControl>
 
                             <FormControl isInvalid={!!formErrors.email} w="100%">
                                 <FormLabel fontSize="sm">Email Address</FormLabel>

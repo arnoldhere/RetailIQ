@@ -22,6 +22,20 @@ import {
     Avatar,
     Stack,
     Tag,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalFooter,
+    ModalCloseButton,
+    NumberInput,
+    NumberInputField,
+    NumberInputStepper,
+    NumberIncrementStepper,
+    NumberDecrementStepper,
+    Input,
+    Select,
     // chakra,
     VisuallyHidden,
 } from '@chakra-ui/react'
@@ -33,15 +47,18 @@ import Footer from '../../components/Footer'
 import { getPublicProducts } from '../../api/products'
 import { useCart } from '../../context/CartContext'
 import { useWishlist } from '../../context/WishlistContext'
+import { useAuth } from '../../context/AuthContext'
 import { FaHeart, FaShoppingCart } from 'react-icons/fa'
+import * as bidsApi from '../../api/bids'
 
 /**
  * ProductCard - purely presentational + local animations.
  * Hooks are called at top-level of this component only.
  */
-function ProductCard({ product, onViewDetail, onAddCart, onToggleWishlist, isInWishlist }) {
+function ProductCard({ product, onViewDetail, onAddCart, onToggleWishlist, isInWishlist, onAskSupply }) {
     const cardRef = useRef()
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+    const { user } = useAuth()
 
     // theme tokens (top-level hooks)
     const cardBg = useColorModeValue('white', 'gray.800')
@@ -111,26 +128,28 @@ function ProductCard({ product, onViewDetail, onAddCart, onToggleWishlist, isInW
                     </Tag>
                 )}
 
-                {/* wishlist button top-right */}
-                <Tooltip label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
-                    <Button
-                        pos="absolute"
-                        top={3}
-                        right={3}
-                        size="sm"
-                        aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-                        onClick={() => onToggleWishlist(product)}
-                        zIndex={3}
-                        borderRadius="full"
-                        bg={isInWishlist ? 'red.500' : wishlistBg}
-                        color={isInWishlist ? 'white' : 'red.500'}
-                        _hover={{ bg: isInWishlist ? 'red.600' : 'gray.100' }}
-                        boxShadow="sm"
-                    >
-                        <FaHeart />
-                        <VisuallyHidden>{isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}</VisuallyHidden>
-                    </Button>
-                </Tooltip>
+                {/* wishlist button top-right (hidden for suppliers) */}
+                {user?.role !== 'supplier' && (
+                    <Tooltip label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
+                        <Button
+                            pos="absolute"
+                            top={3}
+                            right={3}
+                            size="sm"
+                            aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                            onClick={() => onToggleWishlist(product)}
+                            zIndex={3}
+                            borderRadius="full"
+                            bg={isInWishlist ? 'red.500' : wishlistBg}
+                            color={isInWishlist ? 'white' : 'red.500'}
+                            _hover={{ bg: isInWishlist ? 'red.600' : 'gray.100' }}
+                            boxShadow="sm"
+                        >
+                            <FaHeart />
+                            <VisuallyHidden>{isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}</VisuallyHidden>
+                        </Button>
+                    </Tooltip>
+                )}
 
                 {/* stock badge bottom-left */}
                 <Badge pos="absolute" bottom={3} left={3} px={2} py={1} borderRadius="full" bg="whiteAlpha.800" color={stockColor} fontSize="xs">
@@ -179,17 +198,29 @@ function ProductCard({ product, onViewDetail, onAddCart, onToggleWishlist, isInW
                         View details
                     </Button>
 
-                    <Button
-                        leftIcon={<FaShoppingCart />}
-                        colorScheme="green"
-                        size="sm"
-                        onClick={() => onAddCart(product)}
-                        isDisabled={product.stock_available === 0}
-                        borderRadius="md"
-                        _active={{ transform: 'scale(0.99)' }}
-                    >
-                        Add to cart
-                    </Button>
+                    {user?.role === 'supplier' ? (
+                        <Button
+                            colorScheme="purple"
+                            size="sm"
+                            onClick={() => onAskSupply(product)}
+                            isDisabled={product.stock_available === 0}
+                            borderRadius="md"
+                        >
+                            Ask to place supply order
+                        </Button>
+                    ) : (
+                        <Button
+                            leftIcon={<FaShoppingCart />}
+                            colorScheme="green"
+                            size="sm"
+                            onClick={() => onAddCart(product)}
+                            isDisabled={product.stock_available === 0}
+                            borderRadius="md"
+                            _active={{ transform: 'scale(0.99)' }}
+                        >
+                            Add to cart
+                        </Button>
+                    )}
                 </Flex>
             </VStack>
         </Box>
@@ -224,6 +255,16 @@ export default function ProductsPage() {
     const [limit] = useState(12)
     const [offset, setOffset] = useState(0)
 
+    // supply order modal state
+    const { user } = useAuth()
+    const [supplyModalOpen, setSupplyModalOpen] = useState(false)
+    const [supplyProduct, setSupplyProduct] = useState(null)
+    const [supplyQty, setSupplyQty] = useState(1)
+    const [supplyCost, setSupplyCost] = useState(0)
+    const [stores, setStores] = useState([])
+    const [supplyStoreId, setSupplyStoreId] = useState(null)
+    const [placingSupply, setPlacingSupply] = useState(false)
+
     // Fetch categories
     async function fetchCategories() {
         try {
@@ -234,6 +275,60 @@ export default function ProductsPage() {
             }
         } catch (err) {
             console.error('Failed to fetch categories:', err)
+        }
+    }
+
+    // fetch stores (public)
+    async function fetchStores() {
+        try {
+            const res = await fetch('/api/stores', { credentials: 'include' })
+            if (!res.ok) throw new Error('Failed to fetch stores')
+            const data = await res.json()
+            const arr = data.stores || []
+            setStores(arr)
+            if (arr.length > 0) setSupplyStoreId(arr[0].id)
+        } catch (err) {
+            console.error('Failed to fetch stores:', err)
+            setStores([])
+            setSupplyStoreId(null)
+        }
+    }
+
+    useEffect(() => {
+        if (user?.role === 'supplier') fetchStores()
+    }, [user])
+
+    function openSupplyModal(product) {
+        setSupplyProduct(product)
+        setSupplyQty(1)
+        setSupplyCost(product.cost_price || product.sell_price || 0)
+        setSupplyModalOpen(true)
+    }
+
+    function closeSupplyModal() {
+        setSupplyModalOpen(false)
+        setSupplyProduct(null)
+    }
+
+    async function handlePlaceSupplyOrder() {
+        if (!supplyProduct) return
+        if (!supplyQty || supplyQty <= 0) return toast({ title: 'Quantity must be at least 1', status: 'warning' })
+        if (!supplyCost || supplyCost <= 0) return toast({ title: 'Cost must be greater than 0', status: 'warning' })
+        if (!stores.length) return toast({ title: 'No stores available to select', status: 'error' })
+        if (!supplyStoreId) return toast({ title: 'Please select a store', status: 'warning' })
+
+        try {
+            setPlacingSupply(true)
+            const store_id = supplyStoreId
+            const payload = { store_id, items: [{ product_id: supplyProduct.id, qty: supplyQty, cost: supplyCost }] }
+            const res = await bidsApi.placeSupplyOrder(payload)
+            toast({ title: 'Supply order requested', description: `Order ${res?.data?.order?.order_no} created`, status: 'success' })
+            closeSupplyModal()
+        } catch (err) {
+            console.error('Failed to place supply order', err)
+            toast({ title: 'Failed to place supply order', status: 'error' })
+        } finally {
+            setPlacingSupply(false)
         }
     }
 
@@ -425,6 +520,7 @@ export default function ProductsPage() {
                                         onAddCart={handleAddCart}
                                         onToggleWishlist={handleToggleWishlist}
                                         isInWishlist={isInWishlist(product.id)}
+                                        onAskSupply={openSupplyModal}
                                     />
                                 ))}
                             </SimpleGrid>
@@ -459,6 +555,51 @@ export default function ProductsPage() {
                     )}
                 </Box>
             </Box>
+
+            {/* Supply order modal (supplier only) */}
+            {user?.role === 'supplier' && (
+                <>
+                    <Modal isOpen={supplyModalOpen} onClose={closeSupplyModal} isCentered>
+                        <ModalOverlay />
+                        <ModalContent>
+                            <ModalHeader>Request Supply Order</ModalHeader>
+                            <ModalCloseButton />
+                            <ModalBody>
+                                <Text fontWeight="600">Product: {supplyProduct?.name}</Text>
+                                <FormControl mt={3}>
+                                    <FormLabel>Store</FormLabel>
+                                    <Select value={supplyStoreId || ''} onChange={(e) => setSupplyStoreId(e.target.value)}>
+                                        {stores.map((s) => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+
+                                <FormControl mt={3}>
+                                    <FormLabel>Quantity</FormLabel>
+                                    <NumberInput min={1} value={supplyQty} onChange={(_, v) => setSupplyQty(v)}>
+                                        <NumberInputField />
+                                        <NumberInputStepper>
+                                            <NumberIncrementStepper />
+                                            <NumberDecrementStepper />
+                                        </NumberInputStepper>
+                                    </NumberInput>
+                                </FormControl>
+
+                                <FormControl mt={3}>
+                                    <FormLabel>Unit cost</FormLabel>
+                                    <Input type="number" value={supplyCost} onChange={(e) => setSupplyCost(Number(e.target.value))} />
+                                </FormControl>
+                            </ModalBody>
+
+                            <ModalFooter>
+                                <Button variant="ghost" mr={3} onClick={closeSupplyModal}>Cancel</Button>
+                                <Button colorScheme="purple" onClick={handlePlaceSupplyOrder} isLoading={placingSupply}>Request</Button>
+                            </ModalFooter>
+                        </ModalContent>
+                    </Modal>
+                </>
+            )}
 
             <Footer />
         </Box>

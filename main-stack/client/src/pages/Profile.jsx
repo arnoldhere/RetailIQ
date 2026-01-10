@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
 	Box,
 	Container,
@@ -36,6 +36,7 @@ export default function Profile() {
 	const [formData, setFormData] = useState({
 		firstname: '',
 		lastname: '',
+		name: '',
 		email: '',
 		phone: '',
 		address: '',
@@ -56,17 +57,43 @@ export default function Profile() {
 	const textPrimary = useColorModeValue('gray.900', 'gray.50');
 	const textSecondary = useColorModeValue('gray.600', 'gray.400');
 
+	// Keep a snapshot of initial form data so we can reset on cancel
+	const initialFormDataRef = useRef(null);
+
 	// Initialize form with user data
 	useEffect(() => {
 		if (user) {
-			setFormData({
+			const base = {
 				firstname: user.firstname || '',
 				lastname: user.lastname || '',
+				name: '',
 				email: user.email || '',
 				phone: user.phone || '',
 				address: user.address || '',
 				dob: user.dob || '',
-			});
+			};
+
+			setFormData(base);
+			initialFormDataRef.current = base;
+
+			// If supplier, fetch supplier record to populate 'name'
+			if (user.role === 'supplier') {
+				(async () => {
+					try {
+						const res = await fetch('/api/user/supplier-profile', { credentials: 'include' });
+						if (res.ok) {
+							const json = await res.json();
+							setFormData(prev => {
+								const updated = { ...prev, name: json.supplier?.name || '' };
+								initialFormDataRef.current = updated;
+								return updated;
+							});
+						}
+					} catch (err) {
+						console.error('Failed to fetch supplier profile', err);
+					}
+				})();
+			}
 		}
 	}, [user]);
 
@@ -101,8 +128,12 @@ export default function Profile() {
 
 	const validateForm = () => {
 		const newErrors = {};
-		if (!formData.firstname.trim()) newErrors.firstname = 'First name is required';
-		if (!formData.lastname.trim()) newErrors.lastname = 'Last name is required';
+		if (user?.role === 'supplier') {
+			if (!formData.name || !formData.name.trim()) newErrors.name = 'Supplier name is required';
+		} else {
+			if (!formData.firstname.trim()) newErrors.firstname = 'First name is required';
+			if (!formData.lastname.trim()) newErrors.lastname = 'Last name is required';
+		}
 		if (!formData.email.trim()) newErrors.email = 'Email is required';
 		if (formData.email && !formData.email.includes('@')) newErrors.email = 'Invalid email';
 		if (formData.phone && formData.phone.length < 7) newErrors.phone = 'Invalid phone number';
@@ -320,7 +351,7 @@ export default function Profile() {
 								<HStack spacing={4}>
 									<Avatar
 										size="lg"
-										name={`${user.firstname} ${user.lastname}`}
+										name={user.role === 'supplier' ? (formData.name || `${user.firstname} ${user.lastname}`) : `${user.firstname} ${user.lastname}`}
 										bgGradient="linear(to-r, cyan.400, purple.500)"
 										color="white"
 										fontWeight="bold"
@@ -328,7 +359,7 @@ export default function Profile() {
 									/>
 									<VStack align="flex-start" spacing={1}>
 										<Heading size="md" color={textPrimary}>
-											{user.firstname} {user.lastname}
+											{user.role === 'supplier' ? (formData.name || `${user.firstname} ${user.lastname}`) : `${user.firstname} ${user.lastname}`}
 										</Heading>
 										<Badge colorScheme={getRoleBadgeColor()} fontSize="xs" px={2} py={1}>
 											{getRoleLabel()}
@@ -360,59 +391,45 @@ export default function Profile() {
 							{/* Form Section */}
 							<VStack spacing={5} align="stretch">
 								<Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={5}>
-									{/* First Name */}
-									<FormControl isInvalid={!!errors.firstname}>
-										<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>
-											First Name
-										</FormLabel>
-										<Input
-											name="firstname"
-											value={formData.firstname}
-											onChange={handleInputChange}
-											isReadOnly={!isEditing}
-											placeholder="First name"
-											bg={isEditing ? 'whiteAlpha.50' : 'transparent'}
-											border="1px solid"
-											borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'}
-											_hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }}
-											_focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }}
-											color={textPrimary}
-											_placeholder={{ color: textSecondary }}
-											transition="all 0.2s"
-										/>
-										{errors.firstname && (
-											<Text color="red.400" fontSize="xs" mt={1}>
-												{errors.firstname}
-											</Text>
-										)}
-									</FormControl>
+{/* For suppliers show a single name field, otherwise show first/last name */}
+				{user.role === 'supplier' ? (
+					<FormControl isInvalid={!!errors.name}>
+						<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>Supplier / Company Name</FormLabel>
+						<Input
+							name="name"
+							value={formData.name}
+							onChange={handleInputChange}
+							isReadOnly={!isEditing}
+							placeholder="Supplier / company name"
+							bg={isEditing ? 'whiteAlpha.50' : 'transparent'}
+							border="1px solid"
+							borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'}
+							_hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }}
+							_focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }}
+							color={textPrimary}
+							_placeholder={{ color: textSecondary }}
+							transition="all 0.2s"
+						/>
+						{errors.name && (
+							<Text color="red.400" fontSize="xs" mt={1}>{errors.name}</Text>
+						)}
+					</FormControl>
+				) : (
+					<>
+						<FormControl isInvalid={!!errors.firstname}>
+							<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>First Name</FormLabel>
+							<Input name="firstname" value={formData.firstname} onChange={handleInputChange} isReadOnly={!isEditing} placeholder="First name" bg={isEditing ? 'whiteAlpha.50' : 'transparent'} border="1px solid" borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'} _hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }} _focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }} color={textPrimary} _placeholder={{ color: textSecondary }} transition="all 0.2s" />
+						{errors.firstname && (<Text color="red.400" fontSize="xs" mt={1}>{errors.firstname}</Text>)}
+						</FormControl>
 
-									{/* Last Name */}
-									<FormControl isInvalid={!!errors.lastname}>
-										<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>
-											Last Name
-										</FormLabel>
-										<Input
-											name="lastname"
-											value={formData.lastname}
-											onChange={handleInputChange}
-											isReadOnly={!isEditing}
-											placeholder="Last name"
-											bg={isEditing ? 'whiteAlpha.50' : 'transparent'}
-											border="1px solid"
-											borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'}
-											_hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }}
-											_focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }}
-											color={textPrimary}
-											_placeholder={{ color: textSecondary }}
-											transition="all 0.2s"
-										/>
-										{errors.lastname && (
-											<Text color="red.400" fontSize="xs" mt={1}>
-												{errors.lastname}
-											</Text>
-										)}
-									</FormControl>
+						{/* Last Name */}
+						<FormControl isInvalid={!!errors.lastname}>
+							<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>Last Name</FormLabel>
+							<Input name="lastname" value={formData.lastname} onChange={handleInputChange} isReadOnly={!isEditing} placeholder="Last name" bg={isEditing ? 'whiteAlpha.50' : 'transparent'} border="1px solid" borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'} _hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }} _focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }} color={textPrimary} _placeholder={{ color: textSecondary }} transition="all 0.2s" />
+						{errors.lastname && (<Text color="red.400" fontSize="xs" mt={1}>{errors.lastname}</Text>)}
+						</FormControl>
+					</>
+				)}
 
 									{/* Email */}
 									<FormControl isInvalid={!!errors.email} gridColumn={{ base: '1', md: '1 / -1' }}>
@@ -617,7 +634,8 @@ export default function Profile() {
 									w="100%"
 									onClick={() => {
 										setIsEditing(false);
-										setFormData({
+						initialFormDataRef.current = { ...formData };
+										setFormData(initialFormDataRef.current || {
 											firstname: user.firstname || '',
 											lastname: user.lastname || '',
 											email: user.email || '',

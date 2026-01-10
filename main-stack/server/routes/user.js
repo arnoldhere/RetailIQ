@@ -41,6 +41,69 @@ router.post('/edit-profile/:id', authMiddleware, async (req, res) => {
     }
 })
 
+// Supplier specific profile fetch (for supplier users)
+router.get('/supplier-profile', authMiddleware, async (req, res, next) => {
+    try {
+        if (!req.user || req.user.role !== 'supplier') return res.status(403).json({ message: 'Forbidden' });
+        return UserController.getSupplierProfile(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
+// Supplier: create supply order (request to supply product(s) to a store)
+router.post('/supplier/orders', authMiddleware, async (req, res, next) => {
+    try {
+        if (!req.user || req.user.role !== 'supplier') return res.status(403).json({ message: 'Forbidden' });
+        return UserController.supplierCreateSupplyOrder(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
+// Supplier: list own supply orders
+router.get('/supplier/orders', authMiddleware, async (req, res, next) => {
+    try {
+        if (!req.user || req.user.role !== 'supplier') return res.status(403).json({ message: 'Forbidden' });
+        return UserController.supplierListOrders(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
+// Supplier: view open asks
+router.get('/supplier/asks', authMiddleware, async (req, res, next) => {
+    try {
+        if (!req.user || req.user.role !== 'supplier') return res.status(403).json({ message: 'Forbidden' });
+        const bidController = require('../controllers/bidController');
+        return bidController.supplierListAsks(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
+// Supplier: place bid on ask
+router.post('/supplier/asks/:askId/bids', authMiddleware, async (req, res, next) => {
+    try {
+        if (!req.user || req.user.role !== 'supplier') return res.status(403).json({ message: 'Forbidden' });
+        const bidController = require('../controllers/bidController');
+        return bidController.supplierPlaceBid(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
+// Supplier: list own bids
+router.get('/supplier/bids', authMiddleware, async (req, res, next) => {
+    try {
+        if (!req.user || req.user.role !== 'supplier') return res.status(403).json({ message: 'Forbidden' });
+        const bidController = require('../controllers/bidController');
+        return bidController.supplierListBids(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
 router.get('/get-aboutus-stat', authMiddleware, async (req, res) => {
     try {
         return UserController.getAboutus(req, res);

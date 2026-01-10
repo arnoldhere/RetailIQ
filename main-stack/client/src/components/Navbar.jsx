@@ -86,8 +86,28 @@ export default function Navbar() {
 							onClick={() => navigate("/customer/products")}
 						>
 							Explore
-						</ChakraLink>
-						{user?.role !== 'admin' && (
+						</ChakraLink>					{user?.role === 'supplier' && (
+						<>
+							<ChakraLink
+								fontSize="sm"
+								color="gray.300"
+								_hover={{ color: "cyan.400", textDecoration: "none" }}
+								transition="color 0.2s"
+								onClick={() => navigate("/supplier/products")}
+							>
+								Catalog
+							</ChakraLink>
+							<ChakraLink
+								fontSize="sm"
+								color="gray.300"
+								_hover={{ color: "cyan.400", textDecoration: "none" }}
+								transition="color 0.2s"
+								onClick={() => navigate("/supplier/bids")}
+							>
+								Bids
+							</ChakraLink>
+						</>
+					)}						{user?.role !== 'admin' && (
 							<>
 								<ChakraLink
 									fontSize="sm"
@@ -177,14 +197,7 @@ export default function Navbar() {
 										bg="rgba(11,18,32,0.98)"
 										backdropFilter="blur(10px)"
 									>
-										<MenuItem
-											onClick={() => navigate("/profile")}
-											_hover={{ bg: "whiteAlpha.200" }}
-											fontSize="sm"
-											color="gray.200"
-										>
-											Profile
-										</MenuItem>
+										
 										<MenuItem
 											_hover={{ bg: "whiteAlpha.200" }}
 											fontSize="sm"

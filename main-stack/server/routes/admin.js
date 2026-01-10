@@ -248,6 +248,16 @@ router.get('/supplier-orders', authMiddleware, async (req, res, next) => {
   }
 });
 
+// Admin: update supply order status
+router.post('/supplier-orders/:id/status', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.updateSupplyOrderStatus(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/sendAssurance/:id', authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
@@ -298,6 +308,67 @@ router.delete('/stores/:id', authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
     return adminController.deleteStore(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Admin asks and bids
+router.post('/asks', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    const bidController = require('../controllers/bidController');
+    return bidController.createAsk(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/asks', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    const bidController = require('../controllers/bidController');
+    return bidController.listAsks(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/asks/:id', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    const bidController = require('../controllers/bidController');
+    return bidController.getAskDetails(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/asks/:id/close', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    const bidController = require('../controllers/bidController');
+    return bidController.closeAsk(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/bids', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    const bidController = require('../controllers/bidController');
+    return bidController.adminListBids(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/bids/:id/accept', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    const bidController = require('../controllers/bidController');
+    return bidController.acceptBid(req, res);
   } catch (err) {
     next(err);
   }

@@ -14,6 +14,7 @@ import ResetPassword from './pages/auth/ResetPassword'
 // Dashboard Pages
 import AdminDashboard from './pages/Admin/Dashboard'
 import SupplierDashboard from './pages/supplier/Dashboard'
+import SupplierBids from './pages/supplier/Bids'
 import CustomerHome from './pages/customer/Home'
 
 // Error Page
@@ -80,6 +81,12 @@ function AppRoutes() {
 
       <Route path="/admin/dashboard" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/dashboard" element={user?.role === 'supplier' ? <SupplierDashboard /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/products" element={user?.role === 'supplier' ? <CustomerProducts /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/products/:id" element={user?.role === 'supplier' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/bids" element={user?.role === 'supplier' ? <SupplierBids /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/products" element={user?.role === 'supplier' ? <CustomerProducts /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/products/:id" element={user?.role === 'supplier' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/bids" element={user?.role === 'supplier' ? <SupplierBids /> : <Navigate to="/auth/login" replace />} />
       <Route path="/customer/home" element={user?.role === 'customer' ? <CustomerHome /> : <Navigate to="/auth/login" replace />} />
 
       {/* Other Admin Routes */}
@@ -90,6 +97,7 @@ function AppRoutes() {
       <Route path='/admin/store-managers' element={user?.role === 'admin' ? <StoreManagersPage /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/feedbacks' element={user?.role === 'admin' ? <FeedbacksPage /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/suppliers' element={user?.role === 'admin' ? <SuppliersPage /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/admin/asks' element={user?.role === 'admin' ? <AskSuppliers /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/customer-orders' element={user?.role === 'admin' ? <CustomerOrdersPage /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/supplier-orders' element={user?.role === 'admin' ? <SupplierOrdersPage /> : <Navigate to="/auth/login" replace />} />
 

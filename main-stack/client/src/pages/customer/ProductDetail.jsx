@@ -28,6 +28,17 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   AspectRatio,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  FormControl,
+  FormLabel,
+  Input,
+  Select,
 } from '@chakra-ui/react'
 import { StarIcon, ArrowBackIcon, ChevronRightIcon } from '@chakra-ui/icons'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -36,7 +47,9 @@ import Footer from '../../components/Footer'
 import { getProductById } from '../../api/products'
 import { useCart } from '../../context/CartContext'
 import { useWishlist } from '../../context/WishlistContext'
+import { useAuth } from '../../context/AuthContext'
 import { FaHeart, FaShoppingCart } from 'react-icons/fa'
+import * as bidsApi from '../../api/bids'
 
 export default function ProductDetailPage() {
   const { id } = useParams()
@@ -44,11 +57,70 @@ export default function ProductDetailPage() {
   const toast = useToast()
   const { addToCart } = useCart()
   const { toggleWishlist, isInWishlist } = useWishlist()
+  const { user } = useAuth()
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [selectedImageIdx, setSelectedImageIdx] = useState(0)
+
+  // supplier modal state
+  const [supplyModalOpen, setSupplyModalOpen] = useState(false)
+  const [stores, setStores] = useState([])
+  const [supplyQty, setSupplyQty] = useState(1)
+  const [supplyCost, setSupplyCost] = useState(0)
+  const [supplyStoreId, setSupplyStoreId] = useState(null)
+  const [placingSupply, setPlacingSupply] = useState(false)
+
+  async function fetchStores() {
+    try {
+      const res = await fetch('/api/stores', { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to fetch stores')
+      const data = await res.json()
+      const arr = data.stores || []
+      setStores(arr)
+      if (arr.length > 0) setSupplyStoreId(arr[0].id)
+    } catch (err) {
+      console.error('Failed to fetch stores:', err)
+      setStores([])
+    }
+  }
+
+  useEffect(() => {
+    if (user?.role === 'supplier') fetchStores()
+  }, [user])
+
+  function openSupplyModal() {
+    setSupplyQty(1)
+    setSupplyCost(product?.cost_price || product?.sell_price || 0)
+    setSupplyModalOpen(true)
+  }
+
+  function closeSupplyModal() {
+    setSupplyModalOpen(false)
+  }
+
+  async function handlePlaceSupplyOrder() {
+    if (!product) return
+    if (!supplyQty || supplyQty <= 0) return toast({ title: 'Quantity must be at least 1', status: 'warning' })
+    if (!supplyCost || supplyCost <= 0) return toast({ title: 'Cost must be greater than 0', status: 'warning' })
+    if (!stores.length) return toast({ title: 'No stores available', status: 'error' })
+    if (!supplyStoreId) return toast({ title: 'Please select a store', status: 'warning' })
+
+    try {
+      setPlacingSupply(true)
+      const store_id = supplyStoreId
+      const payload = { store_id, items: [{ product_id: product.id, qty: supplyQty, cost: supplyCost }] }
+      const res = await bidsApi.placeSupplyOrder(payload)
+      toast({ title: 'Supply order requested', description: `Order ${res?.data?.order?.order_no} created`, status: 'success' })
+      closeSupplyModal()
+    } catch (err) {
+      console.error('Failed to place supply order', err)
+      toast({ title: 'Failed to place supply order', status: 'error' })
+    } finally {
+      setPlacingSupply(false)
+    }
+  }
 
   // ✅ All hooks at top level, not inside conditionals
   const bgCard = useColorModeValue('white', 'gray.800')
@@ -430,31 +502,49 @@ export default function ProductDetailPage() {
 
                 {/* Action Buttons */}
                 <HStack spacing={3} w="100%" pt={2} flexWrap="wrap">
-                  <Button
-                    flex="1 1 180px"
-                    colorScheme="green"
-                    size="md"
-                    leftIcon={<FaShoppingCart />}
-                    isDisabled={product.stock_available === 0}
-                    onClick={handleAddToCart}
-                    boxShadow="md"
-                    _hover={{ boxShadow: 'xl', transform: 'translateY(-1px)' }}
-                    transition="all 0.15s ease-out"
-                  >
-                    Add to Cart
-                  </Button>
-                  <Button
-                    flex="0 0 auto"
-                    colorScheme={isInWishlist(product.id) ? 'red' : 'gray'}
-                    size="md"
-                    leftIcon={<FaHeart />}
-                    variant={isInWishlist(product.id) ? 'solid' : 'outline'}
-                    onClick={handleToggleWishlist}
-                    _hover={{ transform: 'translateY(-1px)' }}
-                    transition="all 0.15s ease-out"
-                  >
-                    {isInWishlist(product.id) ? 'In Wishlist' : 'Wishlist'}
-                  </Button>
+                  {user?.role === 'supplier' ? (
+                    <Button
+                      flex="1 1 180px"
+                      colorScheme="purple"
+                      size="md"
+                      onClick={openSupplyModal}
+                      isDisabled={product.stock_available === 0}
+                      boxShadow="md"
+                      _hover={{ boxShadow: 'xl', transform: 'translateY(-1px)' }}
+                      transition="all 0.15s ease-out"
+                    >
+                      Ask to place supply order
+                    </Button>
+                  ) : (
+                    <Button
+                      flex="1 1 180px"
+                      colorScheme="green"
+                      size="md"
+                      leftIcon={<FaShoppingCart />}
+                      isDisabled={product.stock_available === 0}
+                      onClick={handleAddToCart}
+                      boxShadow="md"
+                      _hover={{ boxShadow: 'xl', transform: 'translateY(-1px)' }}
+                      transition="all 0.15s ease-out"
+                    >
+                      Add to Cart
+                    </Button>
+                  )}
+
+                  {user?.role !== 'supplier' && (
+                    <Button
+                      flex="0 0 auto"
+                      colorScheme={isInWishlist(product.id) ? 'red' : 'gray'}
+                      size="md"
+                      leftIcon={<FaHeart />}
+                      variant={isInWishlist(product.id) ? 'solid' : 'outline'}
+                      onClick={handleToggleWishlist}
+                      _hover={{ transform: 'translateY(-1px)' }}
+                      transition="all 0.15s ease-out"
+                    >
+                      {isInWishlist(product.id) ? 'In Wishlist' : 'Wishlist'}
+                    </Button>
+                  )
                 </HStack>
 
                 {/* Info strip */}
@@ -473,6 +563,50 @@ export default function ProductDetailPage() {
                     <Text>✓ Secure payment & checkout</Text>
                   </VStack>
                 </Box>
+
+                {/* Supply modal */}
+                {user?.role === 'supplier' && (
+                  <Modal isOpen={supplyModalOpen} onClose={closeSupplyModal} isCentered>
+                    <ModalOverlay />
+                    <ModalContent>
+                      <ModalHeader>Request Supply Order</ModalHeader>
+                      <ModalCloseButton />
+                      <ModalBody>
+                        <Text fontWeight="600">Product: {product?.name}</Text>
+                        <FormControl mt={3}>
+                          <FormLabel>Store</FormLabel>
+                          <Select value={supplyStoreId || ''} onChange={(e) => setSupplyStoreId(e.target.value)}>
+                            {stores.map((s) => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </Select>
+                        </FormControl>
+
+                        <FormControl mt={3}>
+                          <FormLabel>Quantity</FormLabel>
+                          <NumberInput min={1} value={supplyQty} onChange={(_, v) => setSupplyQty(v)}>
+                            <NumberInputField />
+                            <NumberInputStepper>
+                              <NumberIncrementStepper />
+                              <NumberDecrementStepper />
+                            </NumberInputStepper>
+                          </NumberInput>
+                        </FormControl>
+
+                        <FormControl mt={3}>
+                          <FormLabel>Unit cost</FormLabel>
+                          <Input type="number" value={supplyCost} onChange={(e) => setSupplyCost(Number(e.target.value))} />
+                        </FormControl>
+                      </ModalBody>
+
+                      <ModalFooter>
+                        <Button variant="ghost" mr={3} onClick={closeSupplyModal}>Cancel</Button>
+                        <Button colorScheme="purple" onClick={handlePlaceSupplyOrder} isLoading={placingSupply}>Request</Button>
+                      </ModalFooter>
+                    </ModalContent>
+                  </Modal>
+                )}
+
               </VStack>
             </SimpleGrid>
           </Box>

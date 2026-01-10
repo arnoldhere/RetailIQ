@@ -27,6 +27,7 @@ const items = [
   { to: '/admin/feedbacks', label: 'Feedbacks', icon: FiMessageSquare },
   { to: '/admin/customer-orders', label: 'Customer Orders', icon: FiShoppingCart },
   { to: '/admin/suppliers', label: 'Suppliers', icon: FiTruck },
+  { to: '/admin/asks', label: 'Ask Suppliers', icon: FiTruck },
   { to: '/admin/supplier-orders', label: 'Supplier Orders', icon: FiTruck },
 ]
 
