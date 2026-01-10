@@ -1,8 +1,11 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import * as userApi from "../../api/user";
+import { FaUsers, FaBoxOpen, FaStore } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import {
 	Box,
 	Button,
+	SimpleGrid,
 	Container,
 	Grid,
 	GridItem,
@@ -13,8 +16,9 @@ import {
 	Flex,
 	Icon,
 	Link,
+	useToast,
+	useColorModeValue,
 } from "@chakra-ui/react";
-import { ArrowRightIcon, CheckCircleIcon } from "@chakra-ui/icons";
 // import trust icon, tech icons from chkra ui
 import {
 	FaRobot,
@@ -28,6 +32,12 @@ import Footer from "../../components/Footer";
 
 export default function CustomerHome() {
 	const navigate = useNavigate();
+	const toast = useToast();
+	const [stats, setStats] = useState([]);
+
+	const cardBg = useColorModeValue("white", "gray.800");
+	const textColor = useColorModeValue("gray.700", "gray.300");
+	// const mutedText = useColorModeValue("gray.600", "gray.400");
 
 	const features = [
 		{
@@ -51,6 +61,42 @@ export default function CustomerHome() {
 			description: "Discover product correlations and bundle opportunities",
 		},
 	];
+
+	useEffect(() => {
+		async function load() {
+			try {
+				const res = await userApi.getAboutusStat();
+				const raw = res?.data?.stats || {};
+
+				const formattedStats = [
+					{
+						label: "Happy Customers",
+						number: raw.totalCustomers?.count ?? 0,
+					},
+					{
+						label: "Products Available",
+						number: raw.totalProducts?.count ?? 0,
+					},
+					{
+						label: "Stores Connected",
+						number: raw.totalStores?.count ?? 0,
+					},
+				];
+
+				setStats(formattedStats);
+			} catch (e) {
+				console.error("failed to load stats", e);
+				toast({
+					title: "Failed to load overview",
+					status: "error",
+					duration: 4000,
+				});
+			}
+		}
+
+		load();
+	}, [toast]);
+
 
 	return (
 		<Box
@@ -90,15 +136,6 @@ export default function CustomerHome() {
 									Explore Products
 								</Button>
 							</Link>
-							{/* <Button
-								colorScheme="whiteAlpha"
-								variant="outline"
-								size="lg"
-								fontWeight="600"
-								_hover={{ bg: "whiteAlpha.200" }}
-							>
-								Learn More
-							</Button> */}
 						</HStack>
 					</Container>
 				</Box>
@@ -154,45 +191,98 @@ export default function CustomerHome() {
 				</Container>
 
 				{/* Quick Stats */}
-				<Box
-					bg="blackAlpha.700"
-					py={12}
-					borderTop="1px solid"
-					borderColor="whiteAlpha.200"
-				>
-					<Container maxW="container.xl" px={6}>
-						<Grid
-							templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }}
-							gap={8}
-							textAlign="center"
+				{/* Quick Stats */}
+				<Container maxW="container.xl" py={16}>
+					<VStack spacing={8}>
+						<Box textAlign="center">
+							<Heading size="lg" color="gray.100" mb={2}>
+								Our Impact in Numbers
+							</Heading>
+							<Text color="gray.400">
+								Trusted by customers and retailers alike
+							</Text>
+						</Box>
+
+						<SimpleGrid
+							columns={{ base: 1, sm: 2, md: 3 }}
+							spacing={8}
+							w="full"
 						>
-							<Box>
-								<Heading size="xl" color="cyan.400">
-									500+
-								</Heading>
-								<Text color="gray.300" mt={2}>
-									Active Retailers
-								</Text>
-							</Box>
-							<Box>
-								<Heading size="xl" color="purple.400">
-									$2.5M+
-								</Heading>
-								<Text color="gray.300" mt={2}>
-									Revenue Optimized
-								</Text>
-							</Box>
-							<Box>
-								<Heading size="xl" color="green.400">
-									98%
-								</Heading>
-								<Text color="gray.300" mt={2}>
-									Satisfaction Rate
-								</Text>
-							</Box>
-						</Grid>
-					</Container>
-				</Box>
+							{stats.map((stat, idx) => {
+								const icons = [FaUsers, FaBoxOpen, FaStore];
+								const StatIcon = icons[idx];
+
+								return (
+									<Box
+										key={idx}
+										position="relative"
+										bg="whiteAlpha.50"
+										backdropFilter="blur(10px)"
+										p={8}
+										borderRadius="2xl"
+										textAlign="center"
+										border="1px solid"
+										borderColor="whiteAlpha.200"
+										boxShadow="0 10px 30px rgba(0,0,0,0.4)"
+										transition="all 0.35s ease"
+										_hover={{
+											transform: "translateY(-8px) scale(1.03)",
+											boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
+											borderColor: "cyan.400",
+										}}
+									>
+										{/* Glow effect */}
+										<Box
+											position="absolute"
+											inset={0}
+											borderRadius="2xl"
+											bgGradient="linear(to-r, cyan.400, purple.500)"
+											opacity={0.08}
+											zIndex={0}
+										/>
+
+										<VStack spacing={4} position="relative" zIndex={1}>
+											<Flex
+												w="64px"
+												h="64px"
+												borderRadius="full"
+												align="center"
+												justify="center"
+												bgGradient="linear(to-r, cyan.400, purple.500)"
+												color="white"
+												fontSize="2xl"
+												boxShadow="lg"
+											>
+												<Icon as={StatIcon} />
+											</Flex>
+
+											<Heading
+												size="2xl"
+												bgGradient="linear(to-r, cyan.300, purple.400)"
+												bgClip="text"
+												fontWeight="extrabold"
+											>
+												{stat.number}
+											</Heading>
+
+											<Text
+												fontWeight="600"
+												color="gray.200"
+												letterSpacing="wide"
+												textTransform="uppercase"
+												fontSize="sm"
+											>
+												{stat.label}
+											</Text>
+										</VStack>
+									</Box>
+								);
+							})}
+						</SimpleGrid>
+					</VStack>
+				</Container>
+
+
 				{/* CTA Section */}
 				<Box
 					bgGradient="linear(to-r, blue.600, purple.600)"
