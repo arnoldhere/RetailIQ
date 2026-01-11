@@ -4,6 +4,10 @@ export async function getOverview() {
   return client.get('/api/admin/overview')
 }
 
+export async function getProducts(){
+  return client.get("/api/admin/products")
+}
+
 export async function getUsers(){
   return client.get("/api/admin/get-users")
 }
@@ -120,4 +124,13 @@ export async function updateStoreManager(id, data) {
 
 export async function deleteStoreManager(id) {
   return client.delete(`/api/admin/store-managers/${id}`);
+}
+
+// Supply order payments
+export async function getSupplyPayments(orderId) {
+  return client.get(`/api/admin/supplier-orders/${orderId}/payments`)
+}
+
+export async function recordSupplyPayment(orderId, data) {
+  return client.post(`/api/admin/supplier-orders/${orderId}/payments`, data)
 }

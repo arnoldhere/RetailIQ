@@ -258,6 +258,26 @@ router.post('/supplier-orders/:id/status', authMiddleware, async (req, res, next
   }
 });
 
+// Admin: list payments for supply order
+router.get('/supplier-orders/:id/payments', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.listSupplyPayments(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Admin: record a payment for a supply order
+router.post('/supplier-orders/:id/payments', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.createSupplyPayment(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/sendAssurance/:id', authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });

@@ -202,7 +202,7 @@ export default function Navbar() {
 											_hover={{ bg: "whiteAlpha.200" }}
 											fontSize="sm"
 											color="gray.200"
-										>
+									>
 											Settings
 										</MenuItem>
 										<MenuDivider />

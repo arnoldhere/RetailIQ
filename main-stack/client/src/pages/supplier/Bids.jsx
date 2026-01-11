@@ -1,7 +1,4 @@
-import React from "react";
-import { Box, Container, Heading, Text, VStack, Button } from "@chakra-ui/react";
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
+// import { Box, Container, Heading, Text, VStack, Button } from "@chakra-ui/react";
 
 import React, { useEffect, useState } from "react";
 import { Box, Container, Heading, Text, VStack, Button, Table, Thead, Tbody, Tr, Th, Td, useToast, Input, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, FormControl, FormLabel } from "@chakra-ui/react";

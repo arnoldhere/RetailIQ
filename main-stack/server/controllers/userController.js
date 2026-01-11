@@ -125,11 +125,21 @@ exports.editProfile = async (req, res) => {
     }
 }
 
+// Helper to resolve supplier from token (supports supplierId or linked userId)
+async function resolveSupplierFromReq(req) {
+    if (req.user && req.user.supplierId) {
+        return await db('suppliers').where({ id: req.user.supplierId }).first();
+    }
+    if (req.user && req.user.userId) {
+        return await db('suppliers').where({ cust_id: req.user.userId }).first();
+    }
+    return null;
+}
+
 // Return supplier record for logged-in supplier
 exports.getSupplierProfile = async (req, res) => {
     try {
-        const user = req.user;
-        const supplier = await db('suppliers').where({ cust_id: user.id }).first();
+        const supplier = await resolveSupplierFromReq(req);
         if (!supplier) return res.status(404).json({ message: 'Supplier profile not found' });
         return res.json({ supplier });
     } catch (err) {
@@ -142,8 +152,7 @@ exports.getSupplierProfile = async (req, res) => {
 exports.supplierCreateSupplyOrder = async (req, res) => {
     const trx = await db.transaction();
     try {
-        const user = req.user;
-        const supplier = await db('suppliers').where({ cust_id: user.id }).first();
+        const supplier = await resolveSupplierFromReq(req);
         if (!supplier) return res.status(404).json({ message: 'Supplier profile not found' });
 
         const { store_id, items, deliver_at } = req.body;
@@ -160,11 +169,12 @@ exports.supplierCreateSupplyOrder = async (req, res) => {
         }
 
         const order_no = `SO-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`;
+        const orderedBy = req.user && req.user.userId ? req.user.userId : null;
         const [orderId] = await trx('supply_orders').insert({
             order_no,
             supplier_id: supplier.id,
             store_id,
-            ordered_by: user.id,
+            ordered_by: orderedBy,
             status: 'pending',
             total_amount: total,
             deliver_at: deliver_at || null,
@@ -189,7 +199,7 @@ exports.supplierCreateSupplyOrder = async (req, res) => {
                 const subject = `New supply order request ${order_no}`;
                 const html = `<p>Supplier ${supplier.name || supplier.cust_id} placed a supply request (${order_no}).</p>`;
                 const sendEmail = require('../services/mailService');
-                sendEmail(process.env.GMAIL_EMAIL, adminEmails, subject, html).catch(e=>console.error('notify admin failed', e));
+                sendEmail(process.env.GMAIL_EMAIL, adminEmails, subject, html).catch(e => console.error('notify admin failed', e));
             }
         } catch (e) {
             console.error('notify admins error', e);
@@ -208,25 +218,101 @@ exports.supplierCreateSupplyOrder = async (req, res) => {
 // Supplier: list own supply orders
 exports.supplierListOrders = async (req, res) => {
     try {
-        const user = req.user;
-        const supplier = await db('suppliers').where({ cust_id: user.id }).first();
+        const supplier = await resolveSupplierFromReq(req);
         if (!supplier) return res.status(404).json({ message: 'Supplier profile not found' });
 
         const limit = Math.min(parseInt(req.query.limit) || 20, 500);
         const offset = parseInt(req.query.offset) || 0;
 
-        const q = db('supply_orders')
-            .where('supply_orders.supplier_id', supplier.id)
-            .select('supply_orders.*', 'stores.name as store_name')
-            .leftJoin('stores', 'supply_orders.store_id', 'stores.id');
+        // Base filter
+        const baseQuery = db('supply_orders')
+            .where('supply_orders.supplier_id', supplier.id);
 
-        const countRes = await q.clone().count({ count: 'supply_orders.id' }).first();
+        // Total count (clean, no select pollution)
+        const countRes = await baseQuery.clone().count({ count: 'supply_orders.id' }).first();
         const total = Number(countRes.count || 0);
 
-        const orders = await q.orderBy('supply_orders.created_at', 'desc').limit(limit).offset(offset);
+        // Actual data query
+        const orders = await baseQuery
+            .clone()
+            .select('supply_orders.*', 'stores.name as store_name')
+            .leftJoin('stores', 'supply_orders.store_id', 'stores.id')
+            .orderBy('supply_orders.created_at', 'desc')
+            .limit(limit)
+            .offset(offset);
+
         return res.json({ orders, total, limit, offset });
+
     } catch (err) {
         console.error('supplierListOrders error', err);
         return res.status(500).json({ message: 'Failed to list supplier orders' });
+    }
+};
+
+
+// Supplier: get single supply order details (items & payments)
+exports.supplierGetOrder = async (req, res) => {
+    try {
+        const supplier = await resolveSupplierFromReq(req);
+        if (!supplier) return res.status(404).json({ message: 'Supplier profile not found' });
+
+        const { id } = req.params;
+        const order = await db('supply_orders')
+            .where({ id, supplier_id: supplier.id })
+            .select('supply_orders.*', 'stores.name as store_name')
+            .leftJoin('stores', 'supply_orders.store_id', 'stores.id')
+            .first();
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+
+        const items = await db('supply_order_items').where({ supply_order_id: id }).leftJoin('products', 'supply_order_items.product_id', 'products.id').select('supply_order_items.*', 'products.name as product_name');
+        const payments = await db('supply_payments').where({ supply_order_id: id }).orderBy('payment_date', 'desc');
+
+        return res.json({ order, items, payments });
+    } catch (err) {
+        console.error('supplierGetOrder error', err);
+        return res.status(500).json({ message: 'Failed to load order' });
+    }
+}
+
+// Update supplier profile (for suppliers authenticated from suppliers table or linked users)
+exports.updateSupplierProfile = async (req, res) => {
+    try {
+        const supplier = await resolveSupplierFromReq(req);
+        if (!supplier) return res.status(404).json({ message: 'Supplier profile not found' });
+
+        const { name, email, phone, address, password } = req.body;
+        const payload = {};
+        if (name !== undefined) payload.name = name.trim();
+        if (email !== undefined) payload.email = email.trim();
+        if (phone !== undefined) payload.phone = phone.trim();
+        if (address !== undefined) payload.address = address;
+
+        // Validate uniqueness for email/phone among suppliers (exclude self)
+        if (payload.email) {
+            const existing = await db('suppliers').where('email', payload.email).andWhereNot('id', supplier.id).first();
+            if (existing) return res.status(409).json({ message: 'Email already in use' });
+        }
+        if (payload.phone) {
+            const existing = await db('suppliers').where('phone', payload.phone).andWhereNot('id', supplier.id).first();
+            if (existing) return res.status(409).json({ message: 'Phone already in use' });
+        }
+
+        // If password provided, hash and update
+        if (password !== undefined && password && password.length >= 8) {
+            const bcrypt = require('bcryptjs');
+            const hashed = await bcrypt.hash(password, 10);
+            payload.password = hashed;
+        }
+
+        if (Object.keys(payload).length > 0) {
+            await db('suppliers').where({ id: supplier.id }).update(payload);
+        }
+
+        const updated = await db('suppliers').where({ id: supplier.id }).first();
+        delete updated.password;
+        return res.json({ supplier: updated });
+    } catch (err) {
+        console.error('update supplier profile error', err);
+        return res.status(500).json({ message: 'Failed to update profile' });
     }
 }

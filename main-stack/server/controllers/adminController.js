@@ -534,71 +534,53 @@ exports.createSupplier = async (req, res) => {
     // Allow admin to omit password; default to '12345678' if not provided or too short
     const rawPassword = password && password.length >= 8 ? password : '12345678';
 
-    // Check if email already exists
-    const existingEmail = await db('users').where({ email }).first();
-    if (existingEmail) {
+    // Check if email or phone already exists in users OR suppliers
+    const existingEmailUser = await db('users').where({ email }).first();
+    const existingEmailSupplier = await db('suppliers').where({ email }).first();
+    if (existingEmailUser || existingEmailSupplier) {
       return res.status(409).json({ errors: [{ field: 'email', msg: 'Email already exists' }] });
     }
 
-    // Check if phone already exists
-    const existingPhone = await db('users').where({ phone }).first();
-    if (existingPhone) {
+    const existingPhoneUser = await db('users').where({ phone }).first();
+    const existingPhoneSupplier = await db('suppliers').where({ phone }).first();
+    if (existingPhoneUser || existingPhoneSupplier) {
       return res.status(409).json({ errors: [{ field: 'phone', msg: 'Phone already exists' }] });
     }
 
     // Hash password (use rawPassword defaulted earlier)
     const hashed = await bcrypt.hash(rawPassword, 10);
 
-    // Create user and supplier in transaction
-    const result = await db.transaction(async (trx) => {
-      // parse name into firstname/lastname if possible
-      const parts = name.trim().split(/\s+/);
-      const firstname = parts[0];
-      const lastname = parts.slice(1).join(' ') || null;
-
-      // 1. Insert user with role='supplier'
-      const [userId] = await trx('users').insert({
-        firstname: firstname,
-        lastname: lastname,
-        email: email.trim(),
-        phone: phone.trim(),
-        password: hashed,
-        role: 'supplier',
-      });
-
-      // 2. Insert supplier record
-      await trx('suppliers').insert({
-        cust_id: userId,
+    // Insert supplier only (do not create a users row)
+    const supplier = await db.transaction(async (trx) => {
+      const [supplierId] = await trx('suppliers').insert({
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        password: hashed,
         is_active: true,
       });
 
-      // Return created user (without password)
-      const user = await trx('users').where({ id: userId }).first();
-      return user;
+      const created = await trx('suppliers').where({ id: supplierId }).first();
+      return created;
     });
 
-    // Format response (exclude password)
-    const safeUser = { ...result };
-    delete safeUser.password;
-    delete safeUser.otp;
-    delete safeUser.otpGeneratedAt;
+    // Remove password before sending response
+    const safeSupplier = { ...supplier };
+    delete safeSupplier.password;
 
     // send welcome email with credentials (try/catch to avoid failing the request)
     (async () => {
       try {
-        if (safeUser.email) {
+        if (safeSupplier.email) {
           const from = process.env.GMAIL_EMAIL || 'no-reply@example.com';
-          const to = safeUser.email;
+          const to = safeSupplier.email;
           const sub = `Welcome to RetailIQ!`;
           const html = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h2>Welcome to RetailIQ</h2>
-              <p>Hi ${safeUser.firstname},</p>
+              <p>Hi ${safeSupplier.name || 'Supplier'},</p>
               <p>Your supplier account has been created by an administrator.</p>
-              <p><strong>Login email:</strong> ${safeUser.email}</p>
+              <p><strong>Login email:</strong> ${safeSupplier.email}</p>
               <p><strong>Temporary password:</strong> ${rawPassword}</p>
               <p>Please log in and change your password immediately.</p>
               <hr/>
@@ -614,7 +596,7 @@ exports.createSupplier = async (req, res) => {
 
     return res.status(201).json({
       message: 'Supplier created successfully',
-      supplier: safeUser,
+      supplier: safeSupplier,
     });
   } catch (err) {
     console.error('create supplier error', err);
@@ -1088,6 +1070,58 @@ exports.listSupplierOrders = async (req, res) => {
     return res.status(500).json({ message: 'Failed to load supplier orders' });
   }
 };
+
+// Admin: list payments for a supply order
+exports.listSupplyPayments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const payments = await db('supply_payments')
+      .where('supply_payments.supply_order_id', id)
+      .select('supply_payments.*')
+      .orderBy('supply_payments.payment_date', 'desc');
+    return res.json({ payments });
+  } catch (err) {
+    console.error('listSupplyPayments error', err);
+    return res.status(500).json({ message: 'Failed to list supply payments' });
+  }
+}
+
+// Admin: record a payment for a supply order
+exports.createSupplyPayment = async (req, res) => {
+  try {
+    const { id } = req.params; // supply_order id
+    const { amount, payment_date, method, payment_ref } = req.body;
+    if (!amount || Number(amount) <= 0) return res.status(400).json({ message: 'Amount must be greater than 0' });
+
+    const order = await db('supply_orders').where('id', id).first();
+    if (!order) return res.status(404).json({ message: 'Supply order not found' });
+
+    const supplier_id = order.supplier_id;
+    const [pid] = await db('supply_payments').insert({ supply_order_id: id, supplier_id, amount, payment_date: payment_date || null, method: method || 'CASH', payment_ref: payment_ref || null });
+    const payment = await db('supply_payments').where('id', pid).first();
+
+    // Optionally notify supplier
+    try {
+      const supplierUser = await db('suppliers').where('id', supplier_id).first();
+      if (supplierUser) {
+        const u = await db('users').where('id', supplierUser.cust_id).first();
+        if (u && u.email) {
+          const subject = `Payment recorded for order ${order.order_no}`;
+          const html = `<p>A payment of $${Number(amount).toFixed(2)} has been recorded for order ${order.order_no}.</p>`;
+          const emailService = require('../services/mailService');
+          emailService(process.env.GMAIL_EMAIL, u.email, subject, html).catch(e => console.error('notify supplier email failed', e));
+        }
+      }
+    } catch (e) {
+      console.error('notify supplier on payment failed', e);
+    }
+
+    return res.json({ payment });
+  } catch (err) {
+    console.error('createSupplyPayment error', err);
+    return res.status(500).json({ message: 'Failed to record payment' });
+  }
+}
 
 // Admin: update supply order status and optionally delivery/date/amount
 exports.updateSupplyOrderStatus = async (req, res) => {

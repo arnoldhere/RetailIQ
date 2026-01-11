@@ -123,25 +123,50 @@ module.exports = {
 
       const { identifier, password } = req.body;
 
-      // Find user by email or phone
+      // Try to find a user in users table
       const user = await db('users')
         .where(function () {
           this.where('email', identifier).orWhere('phone', identifier);
         })
         .first();
 
-      if (!user) return res.status(401).json({ errors: [{ field: 'identifier', msg: 'Invalid credentials' }] });
+      if (user) {
+        // Prevent login if user account is deactivated
+        if (typeof user.is_active !== 'undefined' && user.is_active === 0) {
+          return res.status(403).json({ errors: [{ field: 'identifier', msg: 'Account is deactivated' }] });
+        }
 
-      // Prevent login if user account is deactivated
-      if (typeof user.is_active !== 'undefined' && user.is_active === 0) {
-        return res.status(403).json({ errors: [{ field: 'identifier', msg: 'Account is deactivated' }] });
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(401).json({ errors: [{ field: 'password', msg: 'Invalid credentials' }] });
+
+        const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+
+        const isProd = process.env.NODE_ENV === 'production';
+        res.cookie(TOKEN_NAME, token, {
+          httpOnly: true,
+          secure: !!isProd,
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        return res.json({ user: safeUser(user), token });
       }
 
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) return res.status(401).json({ errors: [{ field: 'password', msg: 'Invalid credentials' }] });
+      // If no user found, try suppliers table
+      const supplier = await db('suppliers')
+        .where(function () {
+          this.where('email', identifier).orWhere('phone', identifier);
+        })
+        .first();
 
-      const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+      if (!supplier) return res.status(401).json({ errors: [{ field: 'identifier', msg: 'Invalid credentials' }] });
 
+      if (supplier.is_active === 0) return res.status(403).json({ errors: [{ field: 'identifier', msg: 'Account is deactivated' }] });
+
+      const isMatchSupplier = await bcrypt.compare(password, supplier.password || '');
+      if (!isMatchSupplier) return res.status(401).json({ errors: [{ field: 'password', msg: 'Invalid credentials' }] });
+
+      const token = jwt.sign({ supplierId: supplier.id, role: 'supplier' }, JWT_SECRET, { expiresIn: '7d' });
       const isProd = process.env.NODE_ENV === 'production';
       res.cookie(TOKEN_NAME, token, {
         httpOnly: true,
@@ -150,7 +175,17 @@ module.exports = {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      return res.json({ user: safeUser(user), token });
+      // Build a simple user-like object for frontend convenience
+      const supplierUser = {
+        id: supplier.id,
+        role: 'supplier',
+        name: supplier.name,
+        email: supplier.email,
+        phone: supplier.phone,
+        created_at: supplier.created_at,
+      };
+
+      return res.json({ user: supplierUser, token });
     } catch (err) {
       console.error('login error', err);
       return res.status(500).json({ message: 'Internal Server Error' });
@@ -159,6 +194,14 @@ module.exports = {
 
   me: async (req, res) => {
     try {
+      // If supplier authenticated via supplierId in token
+      if (req.user && req.user.supplierId) {
+        const supplier = await db('suppliers').where({ id: req.user.supplierId }).first();
+        if (!supplier) return res.status(404).json({ message: 'Supplier not found' });
+        const userLike = { id: supplier.id, role: 'supplier', name: supplier.name, email: supplier.email, phone: supplier.phone, created_at: supplier.created_at };
+        return res.json({ user: userLike });
+      }
+
       const user = await db('users').where({ id: req.user.userId }).first();
       return res.json({ user: safeUser(user) });
     } catch (err) {
@@ -188,27 +231,43 @@ module.exports = {
 
       const { identifier, channel } = req.body;
 
-      const user = await db('users')
+      // Try to find user in users table
+      let user = await db('users')
         .where(function () {
           this.where('email', identifier).orWhere('phone', identifier);
         })
         .first();
 
+      let target = 'user';
       if (!user) {
-        return res.status(404).json({ errors: [{ field: 'identifier', msg: 'User not found' }] });
+        // Try suppliers
+        const supplier = await db('suppliers')
+          .where(function () {
+            this.where('email', identifier).orWhere('phone', identifier);
+          })
+          .first();
+        if (!supplier) {
+          return res.status(404).json({ errors: [{ field: 'identifier', msg: 'User not found' }] });
+        }
+        user = supplier; // reuse variable name for convenience
+        target = 'supplier';
       }
 
       // Generate OTP
       const otp = generateOTP();
       const otpGeneratedAt = new Date();
 
-      // Store OTP in database
-      await db('users').where({ id: user.id }).update({ otp, otpGeneratedAt });
+      // Store OTP in database (users or suppliers)
+      if (target === 'user') {
+        await db('users').where({ id: user.id }).update({ otp, otpGeneratedAt });
+      } else {
+        await db('suppliers').where({ id: user.id }).update({ otp, otpGeneratedAt });
+      }
 
       // Send OTP via selected channel
       try {
         if (channel === 'email') {
-          await sendOTPEmail(user.email, otp, user.firstname);
+          await sendOTPEmail(user.email, otp, user.firstname || user.name || '');
         } else if (channel === 'sms') {
           if (!user.phone) {
             return res.status(400).json({ errors: [{ field: 'channel', msg: 'No phone number on file' }] });
@@ -219,7 +278,8 @@ module.exports = {
         }
       } catch (sendErr) {
         console.error('OTP send error:', sendErr);
-        await db('users').where({ id: user.id }).update({ otp: null, otpGeneratedAt: null });
+        if (target === 'user') await db('users').where({ id: user.id }).update({ otp: null, otpGeneratedAt: null });
+        else await db('suppliers').where({ id: user.id }).update({ otp: null, otpGeneratedAt: null });
         return res.status(500).json({ message: 'Failed to send OTP. Please try again.' });
       }
 
@@ -241,14 +301,22 @@ module.exports = {
 
       const { identifier, otp } = req.body;
 
-      const user = await db('users')
+      // Try to find in users first, otherwise suppliers
+      let user = await db('users')
         .where(function () {
           this.where('email', identifier).orWhere('phone', identifier);
         })
         .first();
-
+      let target = 'user';
       if (!user) {
-        return res.status(404).json({ errors: [{ field: 'identifier', msg: 'User not found' }] });
+        const supplier = await db('suppliers')
+          .where(function () {
+            this.where('email', identifier).orWhere('phone', identifier);
+          })
+          .first();
+        if (!supplier) return res.status(404).json({ errors: [{ field: 'identifier', msg: 'User not found' }] });
+        user = supplier;
+        target = 'supplier';
       }
 
       // Check if OTP matches
@@ -258,12 +326,13 @@ module.exports = {
 
       // Check if OTP is still valid (10 minutes)
       if (!isOTPValid(user.otpGeneratedAt)) {
-        await db('users').where({ id: user.id }).update({ otp: null, otpGeneratedAt: null });
+        if (target === 'user') await db('users').where({ id: user.id }).update({ otp: null, otpGeneratedAt: null });
+        else await db('suppliers').where({ id: user.id }).update({ otp: null, otpGeneratedAt: null });
         return res.status(401).json({ errors: [{ field: 'otp', msg: 'OTP expired' }] });
       }
 
       // Generate a temporary token for password reset (valid for 5 minutes)
-      const resetToken = jwt.sign({ userId: user.id, type: 'reset' }, JWT_SECRET, { expiresIn: '5m' });
+      const resetToken = target === 'user' ? jwt.sign({ userId: user.id, type: 'reset' }, JWT_SECRET, { expiresIn: '5m' }) : jwt.sign({ supplierId: user.id, type: 'reset' }, JWT_SECRET, { expiresIn: '5m' });
 
       return res.json({ resetToken });
     } catch (err) {
@@ -295,18 +364,32 @@ module.exports = {
         return res.status(401).json({ errors: [{ field: 'resetToken', msg: 'Invalid token type' }] });
       }
 
-      const user = await db('users').where({ id: decoded.userId }).first();
-      if (!user) {
-        return res.status(404).json({ errors: [{ field: 'resetToken', msg: 'User not found' }] });
+      // If reset is for user
+      if (decoded.userId) {
+        const user = await db('users').where({ id: decoded.userId }).first();
+        if (!user) return res.status(404).json({ errors: [{ field: 'resetToken', msg: 'User not found' }] });
+
+        // Hash new password
+        const hashed = await bcrypt.hash(newPassword, 10);
+
+        // Update password and clear OTP
+        await db('users').where({ id: user.id }).update({ password: hashed, otp: null, otpGeneratedAt: null });
+
+        return res.json({ message: 'Password reset successfully' });
       }
 
-      // Hash new password
-      const hashed = await bcrypt.hash(newPassword, 10);
+      // If reset is for supplier
+      if (decoded.supplierId) {
+        const supplier = await db('suppliers').where({ id: decoded.supplierId }).first();
+        if (!supplier) return res.status(404).json({ errors: [{ field: 'resetToken', msg: 'Supplier not found' }] });
 
-      // Update password and clear OTP
-      await db('users').where({ id: user.id }).update({ password: hashed, otp: null, otpGeneratedAt: null });
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await db('suppliers').where({ id: supplier.id }).update({ password: hashed, otp: null, otpGeneratedAt: null });
 
-      return res.json({ message: 'Password reset successfully' });
+        return res.json({ message: 'Password reset successfully' });
+      }
+
+      return res.status(400).json({ errors: [{ field: 'resetToken', msg: 'Invalid token' }] });
     } catch (err) {
       console.error('reset password error', err);
       return res.status(500).json({ message: 'Internal Server Error' });

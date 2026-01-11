@@ -26,6 +26,13 @@ import {
     InputLeftElement,
     FormControl,
     FormLabel,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalFooter,
+    ModalCloseButton,
 } from '@chakra-ui/react'
 import { SearchIcon } from '@chakra-ui/icons'
 import Navbar from '../../components/Navbar'
@@ -97,6 +104,49 @@ export default function SupplierOrdersPage() {
 
     const totalPages = Math.ceil(total / limit)
     const currentPage = Math.floor(offset / limit) + 1
+
+    // payments modal state
+    const [paymentsOpen, setPaymentsOpen] = useState(false)
+    const [currentOrderId, setCurrentOrderId] = useState(null)
+    const [payments, setPayments] = useState([])
+    const [paymentForm, setPaymentForm] = useState({ amount: '', payment_date: '', method: 'CASH', payment_ref: '' })
+    const [savingPayment, setSavingPayment] = useState(false)
+
+    const openPayments = async (orderId) => {
+        setCurrentOrderId(orderId)
+        setPaymentsOpen(true)
+        try {
+            const res = await adminApi.getSupplyPayments(orderId)
+            setPayments(res.data.payments || [])
+        } catch (err) {
+            console.error('Failed to load payments', err)
+            setPayments([])
+        }
+    }
+
+    const closePayments = () => {
+        setPaymentsOpen(false)
+        setCurrentOrderId(null)
+        setPayments([])
+        setPaymentForm({ amount: '', payment_date: '', method: 'CASH', payment_ref: '' })
+    }
+
+    const handleRecordPayment = async () => {
+        if (!paymentForm.amount || Number(paymentForm.amount) <= 0) return toast({ title: 'Amount required', status: 'warning' })
+        try {
+            setSavingPayment(true)
+            await adminApi.recordSupplyPayment(currentOrderId, paymentForm)
+            toast({ title: 'Payment recorded', status: 'success' })
+            const res = await adminApi.getSupplyPayments(currentOrderId)
+            setPayments(res.data.payments || [])
+            setPaymentForm({ amount: '', payment_date: '', method: 'CASH', payment_ref: '' })
+        } catch (err) {
+            console.error('Failed to record payment', err)
+            toast({ title: 'Failed to record payment', status: 'error' })
+        } finally {
+            setSavingPayment(false)
+        }
+    }
 
     return (
         <Box minH="100vh" bg={pageBg} display="flex" flexDirection="column" w="100vw">
@@ -224,6 +274,7 @@ export default function SupplierOrdersPage() {
                                                         <Th fontWeight="700" color="white.700" textAlign="center">Status</Th>
                                                         <Th fontWeight="700" color="white.700">Delivery Date</Th>
                                                         <Th fontWeight="700" color="white.700">Date</Th>
+                                                        <Th fontWeight="700" color="white.700">Actions</Th>
                                                     </Tr>
                                                 </Thead>
                                                 <Tbody>
@@ -257,6 +308,9 @@ export default function SupplierOrdersPage() {
                                                             </Td>
                                                             <Td fontSize="sm" color={mutedText}>
                                                                 {new Date(order.created_at).toLocaleDateString()}
+                                                            </Td>
+                                                            <Td>
+                                                                <Button size="sm" onClick={() => openPayments(order.id)}>Payments</Button>
                                                             </Td>
                                                         </Tr>
                                                     ))}
@@ -299,6 +353,59 @@ export default function SupplierOrdersPage() {
             </Box>
 
             <Footer />
+
+            {/* Payments Modal */}
+            <Modal isOpen={paymentsOpen} onClose={closePayments} isCentered>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Payments for Order {currentOrderId}</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        {payments.length === 0 ? (
+                            <Text>No payments found</Text>
+                        ) : (
+                            <Table size="sm">
+                                <Thead><Tr><Th>Date</Th><Th isNumeric>Amount</Th><Th>Method</Th><Th>Ref</Th></Tr></Thead>
+                                <Tbody>
+                                    {payments.map(p => (
+                                        <Tr key={p.id}><Td>{p.payment_date || new Date(p.created_at).toLocaleDateString()}</Td><Td isNumeric>${Number(p.amount).toFixed(2)}</Td><Td>{p.method}</Td><Td>{p.payment_ref || '-'}</Td></Tr>
+                                    ))}
+                                </Tbody>
+                            </Table>
+                        )}
+
+                        <Box mt={4}>
+                            <FormControl>
+                                <FormLabel>Amount</FormLabel>
+                                <Input value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
+                            </FormControl>
+                            <FormControl mt={3}>
+                                <FormLabel>Payment Date</FormLabel>
+                                <Input type="date" value={paymentForm.payment_date} onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })} />
+                            </FormControl>
+                            <FormControl mt={3}>
+                                <FormLabel>Method</FormLabel>
+                                <Select value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}>
+                                    <option value="CASH">CASH</option>
+                                    <option value="CARD">CARD</option>
+                                    <option value="IMPS">IMPS</option>
+                                    <option value="OTHER">OTHER</option>
+                                </Select>
+                            </FormControl>
+                            <FormControl mt={3}>
+                                <FormLabel>Reference</FormLabel>
+                                <Input value={paymentForm.payment_ref} onChange={(e) => setPaymentForm({ ...paymentForm, payment_ref: e.target.value })} />
+                            </FormControl>
+                        </Box>
+                    </ModalBody>
+
+                    <ModalFooter>
+                        <Button variant="ghost" mr={3} onClick={closePayments}>Close</Button>
+                        <Button colorScheme="green" onClick={handleRecordPayment} isLoading={savingPayment}>Record Payment</Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+
         </Box>
     )
 }

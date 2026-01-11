@@ -80,11 +80,10 @@ export default function Profile() {
 			if (user.role === 'supplier') {
 				(async () => {
 					try {
-						const res = await fetch('/api/user/supplier-profile', { credentials: 'include' });
-						if (res.ok) {
-							const json = await res.json();
+						const res = await userApi.getSupplierProfile();
+						if (res?.data?.supplier) {
 							setFormData(prev => {
-								const updated = { ...prev, name: json.supplier?.name || '' };
+								const updated = { ...prev, name: res.data.supplier?.name || '' };
 								initialFormDataRef.current = updated;
 								return updated;
 							});
@@ -222,15 +221,14 @@ export default function Profile() {
 
 		try {
 			setIsSaving(true);
-			// TODO: Implement profile update API call
-			// console.log(formData);
-			const userId = localStorage.getItem("retailiq_user_id")
-			// Add userId safely
-			// setFormData(prev => ({
-			// 	...prev,
-			// 	id: userId,
-			// }));
-			const res = await userApi.editProfile(formData, userId);
+			let res;
+			if (user?.role === 'supplier') {
+				// Update supplier profile
+				res = await userApi.updateSupplierProfile(formData);
+			} else {
+				const userId = localStorage.getItem('retailiq_user_id');
+				res = await userApi.editProfile(formData, userId);
+			}
 			if (!res) {
 				toast({
 					title: 'Error in profile update... Try again',
@@ -240,7 +238,7 @@ export default function Profile() {
 					isClosable: true,
 					position: 'top-right',
 				});
-				throw new Error("Profile update failed..");
+				throw new Error('Profile update failed..');
 
 			}
 			// For now, show success

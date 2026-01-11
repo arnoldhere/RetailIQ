@@ -1,46 +1,46 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ChakraProvider, Box } from '@chakra-ui/react'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { CartProvider } from './context/CartContext'
-import { WishlistProvider } from './context/WishlistContext'
-
+import Categories from "./pages/admin/Categories"
+import Products from "./pages/admin/Products"
+import StoresPage from './pages/Admin/Stores'
+import StoreManagersPage from './pages/Admin/StoreManagers'
+import FeedbacksPage from "./pages/Admin/Feedbacks"
+import SuppliersPage from './pages/Admin/Suppliers'
+import AskSuppliers from './pages/Admin/AskSuppliers'
+import CustomerOrdersPage from "./pages/Admin/CustomerOrders"
+import SupplierOrdersPage from './pages/supplier/Orders'
 // Auth Pages
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
 import RequestOTP from './pages/auth/RequestOTP'
 import VerifyOTP from './pages/auth/VerifyOTP'
 import ResetPassword from './pages/auth/ResetPassword'
+// import About from './pages/AboutUs'
+import Contactus from "./pages/ContactUs"
 
 // Dashboard Pages
 import AdminDashboard from './pages/Admin/Dashboard'
 import SupplierDashboard from './pages/supplier/Dashboard'
-import SupplierBids from './pages/supplier/Bids'
+import Orders from './pages/supplier/Orders'
+import OrderDetail from './pages/supplier/OrderDetail'
+import Bids from './pages/supplier/Bids'
+import ProductDetail from './pages/customer/ProductDetail'
+import SupplierProductsPage from './pages/supplier/Products'
+import CartPage from './pages/customer/Cart'
+import WishlistPage from './pages/customer/Wishlist'
+import Profile from './pages/Profile'
 import CustomerHome from './pages/customer/Home'
 
 // Error Page
 import NotFound from './pages/NotFound'
 import UsersList from './pages/Admin/UsersList'
-import Categories from './pages/Admin/Categories'
-import Products from './pages/Admin/Products'
-
-// Customer Pages
-import CustomerProducts from './pages/customer/Products'
-import ProductDetail from './pages/customer/ProductDetail'
-import Cart from './pages/customer/Cart'
-import Wishlist from './pages/customer/Wishlist'
-import Profile from './pages/Profile'
-import OrderConfirmation from './pages/customer/OrderConfirmation'
-import MyOrders from './pages/customer/MyOrders'
-
-// Public Pages
 import AboutUs from './pages/AboutUs'
-import ContactUs from './pages/ContactUs'
-import FeedbacksPage from './pages/Admin/Feedbacks'
-import SuppliersPage from './pages/Admin/Suppliers'
-import StoresPage from './pages/Admin/Stores'
-import StoreManagersPage from './pages/Admin/StoreManagers'
-import CustomerOrdersPage from './pages/Admin/CustomerOrders'
-import SupplierOrdersPage from './pages/Admin/SupplierOrders'
+// import { ProductsPage as CustomerProductPage } from './pages/customer/Products';
+import CustomerProductPage from './pages/customer/Products';
+import { CartProvider } from './context/CartContext'
+import { WishlistProvider } from './context/WishlistContext'
+
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -58,11 +58,7 @@ function AppRoutes() {
       <Route path="/auth/verify-otp" element={!user ? <VerifyOTP /> : <Navigate to="/" replace />} />
       <Route path="/auth/reset-password" element={!user ? <ResetPassword /> : <Navigate to="/" replace />} />
 
-      {/* Public Pages - Accessible to all */}
-      <Route path="/about-us" element={<AboutUs />} />
-      <Route path="/contact-us" element={<ContactUs />} />
-
-      {/* Public Routes - Home page accessible to all (redirects based on role) */}
+      {/* Protected Routes - Role Based */}
       <Route
         path="/"
         element={
@@ -71,24 +67,27 @@ function AppRoutes() {
               user.role === 'supplier' ? <Navigate to="/supplier/dashboard" replace /> :
                 <Navigate to="/customer/home" replace />
           ) : (
-            <Navigate to="/customer/home" replace />
+            <Navigate to="/auth/login" replace />
           )
         }
       />
 
-      {/* Profile Route - Protected for all logged-in users */}
-      <Route path="/profile" element={user ? <Profile /> : <Navigate to="/auth/login" replace />} />
-
       <Route path="/admin/dashboard" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/dashboard" element={user?.role === 'supplier' ? <SupplierDashboard /> : <Navigate to="/auth/login" replace />} />
-      <Route path="/supplier/products" element={user?.role === 'supplier' ? <CustomerProducts /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/orders" element={user?.role === 'supplier' ? <Orders /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/orders/:id" element={user?.role === 'supplier' ? <OrderDetail /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/bids" element={user?.role === 'supplier' ? <Bids /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/products" element={user?.role === 'supplier' ? <SupplierProductsPage /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/products/:id" element={user?.role === 'supplier' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
-      <Route path="/supplier/bids" element={user?.role === 'supplier' ? <SupplierBids /> : <Navigate to="/auth/login" replace />} />
-      <Route path="/supplier/products" element={user?.role === 'supplier' ? <CustomerProducts /> : <Navigate to="/auth/login" replace />} />
-      <Route path="/supplier/products/:id" element={user?.role === 'supplier' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
-      <Route path="/supplier/bids" element={user?.role === 'supplier' ? <SupplierBids /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/supplier/profile" element={user?.role === 'supplier' ? <Profile /> : <Navigate to="/auth/login" replace />} />
       <Route path="/customer/home" element={user?.role === 'customer' ? <CustomerHome /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/customer/products' element={user?.role === "customer" ? <CustomerProductPage /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/customer/products/:id' element={user?.role === 'customer' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/customer/cart" element={user?.role === 'customer' ? <CartPage /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/customer/wishlist" element={user?.role === 'customer' ? <WishlistPage /> : <Navigate to="/auth/login" replace />} />
 
+      {/* Other Admin Routes */}
+      <Route path='/admin/users' element={user?.role === 'admin' ? <UsersList /> : <Navigate to="/auth/login" replace />} />
       {/* Other Admin Routes */}
       <Route path='/admin/users' element={user?.role === 'admin' ? <UsersList /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/categories' element={user?.role === 'admin' ? <Categories /> : <Navigate to="/auth/login" replace />} />
@@ -101,17 +100,11 @@ function AppRoutes() {
       <Route path='/admin/customer-orders' element={user?.role === 'admin' ? <CustomerOrdersPage /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/supplier-orders' element={user?.role === 'admin' ? <SupplierOrdersPage /> : <Navigate to="/auth/login" replace />} />
 
-
-      {/* Customer Routes */}
-      <Route path='/customer/products' element={user?.role === 'customer' ? <CustomerProducts /> : <Navigate to="/auth/login" replace />} />
-      <Route path='/customer/products/:id' element={user?.role === 'customer' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
-      <Route path='/customer/cart' element={user?.role === 'customer' ? <Cart /> : <Navigate to="/auth/login" replace />} />
-      <Route path='/customer/wishlist' element={user?.role === 'customer' ? <Wishlist /> : <Navigate to="/auth/login" replace />} />
-        <Route path='/customer/order-confirmation/:orderId' element={user?.role === 'customer' ? <OrderConfirmation /> : <Navigate to="/auth/login" replace />} />
-        <Route path='/customer/my-orders' element={user?.role === 'customer' ? <MyOrders /> : <Navigate to="/auth/login" replace />} />
-
       {/* 404 Catch All */}
       <Route path="*" element={<NotFound />} />
+      {/* other routes */}
+      <Route path='/about-us' element={<AboutUs />} />
+      <Route path='/contact-us' element={<Contactus />} />
     </Routes>
   )
 }
@@ -119,13 +112,13 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <WishlistProvider>
-          <ChakraProvider>
+      <ChakraProvider>
+        <CartProvider>
+          <WishlistProvider>
             <AppRoutes />
-          </ChakraProvider>
-        </WishlistProvider>
-      </CartProvider>
+          </WishlistProvider>
+        </CartProvider>
+      </ChakraProvider>
     </AuthProvider>
   )
 }

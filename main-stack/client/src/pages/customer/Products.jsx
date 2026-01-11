@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import  { useState, useEffect, useRef } from 'react'
 import * as productApi from '../../api/products'
 import {
     Box,
@@ -34,8 +34,6 @@ import {
     NumberInputStepper,
     NumberIncrementStepper,
     NumberDecrementStepper,
-    Input,
-    Select,
     // chakra,
     VisuallyHidden,
 } from '@chakra-ui/react'
@@ -356,7 +354,8 @@ export default function ProductsPage() {
     }, [filters, offset, limit, toast])
 
     const handleViewDetail = (productId) => {
-        navigate(`/customer/products/${productId}`)
+        const detailPath = user?.role === 'supplier' ? `/supplier/products/${productId}` : `/customer/products/${productId}`
+        navigate(detailPath)
     }
 
     const handleAddCart = (product) => {

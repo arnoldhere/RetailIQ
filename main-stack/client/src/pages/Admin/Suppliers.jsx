@@ -47,7 +47,7 @@ export default function SuppliersPage() {
     const { isOpen, onOpen, onClose } = useDisclosure()
     const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
 
-    const handleAddSupplierOpen = () => { setEditingSupplierId(null); setFormData({ firstname: '', lastname: '', email: '', phone: '', password: '' }); onOpen() }
+    const handleAddSupplierOpen = () => { setEditingSupplierId(null); setFormData({ name: '', email: '', phone: '', password: '' }); onOpen() }
 
     const pageBg = useColorModeValue('gray.50', 'gray.900')
     const subtleCard = useColorModeValue('white', 'gray.800')

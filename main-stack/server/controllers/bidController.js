@@ -24,13 +24,23 @@ module.exports = {
       const offset = parseInt(req.query.offset) || 0
       const status = req.query.status || null
 
-      let q = db('asks').select('asks.*', 'products.name as product_name').leftJoin('products', 'asks.product_id', 'products.id')
-      if (status) q = q.where('asks.status', status)
+      // Base query (no select yet)
+      let baseQuery = db('asks').leftJoin('products', 'asks.product_id', 'products.id')
 
-      const totalRes = await q.clone().count({ count: 'asks.id' }).first()
+      if (status) baseQuery = baseQuery.where('asks.status', status)
+
+      // 1️⃣ TOTAL COUNT (clean, no extra columns)
+      const totalRes = await baseQuery.clone().count({ count: 'asks.id' }).first()
       const total = Number(totalRes.count || 0)
 
-      const asks = await q.orderBy('asks.created_at', 'desc').limit(limit).offset(offset)
+      // 2️⃣ DATA QUERY
+      const asks = await baseQuery
+        .clone()
+        .select('asks.*', 'products.name as product_name')
+        .orderBy('asks.created_at', 'desc')
+        .limit(limit)
+        .offset(offset)
+
       return res.json({ asks, total, limit, offset })
     } catch (err) {
       console.error('listAsks error', err)
@@ -69,10 +79,17 @@ module.exports = {
     const trx = await db.transaction()
     try {
       const { id } = req.params // bid id
+      const { store_id, deliver_at } = req.body || {}
       const bid = await trx('bids').where('id', id).first()
       if (!bid) {
         await trx.rollback()
         return res.status(404).json({ message: 'Bid not found' })
+      }
+
+      // require store_id to create a supply order
+      if (!store_id) {
+        await trx.rollback()
+        return res.status(400).json({ message: 'store_id required to accept bid and create supply order' })
       }
 
       // mark all other bids for this ask as rejected
@@ -82,20 +99,59 @@ module.exports = {
       // close the ask
       await trx('asks').where('id', bid.ask_id).update({ status: 'closed' })
 
-      // TODO: create supplier_order / notify parties - for now, just email supplier
+      // create supply order and items based on bid
+      // map bid.supplier_id -> suppliers table
+      // Support both legacy: bids.supplier_id -> users.id (cust_id on suppliers)
+      // and new flow where bids.supplier_id is suppliers.id directly
+      let supplierProfile = await trx('suppliers').where({ cust_id: bid.supplier_id }).first()
+      if (!supplierProfile) {
+        supplierProfile = await trx('suppliers').where({ id: bid.supplier_id }).first()
+      }
+
+      if (!supplierProfile) {
+        await trx.rollback()
+        return res.status(404).json({ message: 'Supplier profile not found for this bid' })
+      }
+
+      const ask = await trx('asks').where('id', bid.ask_id).first()
+      const order_no = `SO-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`
+      const total = Number(bid.price) * Number(bid.quantity)
+
+      const [orderId] = await trx('supply_orders').insert({
+        order_no,
+        supplier_id: supplierProfile.id,
+        store_id,
+        ordered_by: req.user.id,
+        status: 'pending',
+        total_amount: total,
+        deliver_at: deliver_at || null,
+      })
+
+      await trx('supply_order_items').insert({
+        supply_order_id: orderId,
+        product_id: ask.product_id,
+        qty: bid.quantity,
+        cost: bid.price,
+        total_amount: total,
+      })
+
+      // notify supplier - try users table first, fall back to supplierProfile.email
       try {
-        const supplier = await trx('users').where('id', bid.supplier_id).first()
-        if (supplier && supplier.email) {
-          const subject = `Your bid #${id} has been accepted`
-          const html = `<p>Hi ${supplier.firstname || ''},</p><p>Your bid for ask #${bid.ask_id} has been accepted by admin. Please coordinate next steps.</p>`
-          sendEmail(process.env.GMAIL_EMAIL, supplier.email, subject, html).catch((e) => console.error('Bid accepted email failed', e))
+        const supplierUser = await trx('users').where('id', bid.supplier_id).first()
+        const emailTo = (supplierUser && supplierUser.email) ? supplierUser.email : supplierProfile.email
+        const name = (supplierUser && (supplierUser.firstname || supplierUser.lastname)) ? `${supplierUser.firstname || ''} ${supplierUser.lastname || ''}` : (supplierProfile.name || '')
+        if (emailTo) {
+          const subject = `Your bid #${id} has been accepted and order ${order_no} created`
+          const html = `<p>Hi ${name},</p><p>Your bid for ask #${bid.ask_id} has been accepted by admin and a supply order (${order_no}) has been created. Order total: $${total.toFixed(2)}</p>`
+          sendEmail(process.env.GMAIL_EMAIL, emailTo, subject, html).catch((e) => console.error('Bid accepted email failed', e))
         }
       } catch (e) {
         console.error('notify supplier error', e)
       }
 
       await trx.commit()
-      return res.json({ message: 'Bid accepted' })
+      const created = await db('supply_orders').where('id', orderId).first()
+      return res.json({ message: 'Bid accepted', order: created })
     } catch (err) {
       await trx.rollback()
       console.error('acceptBid error', err)

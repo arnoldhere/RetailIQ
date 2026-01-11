@@ -34,7 +34,8 @@ export async function getPublicProducts(limit = 100, offset = 0, filters = {}) {
   if (filters.sort) params.append('sort', filters.sort)
   if (filters.order) params.append('order', filters.order)
 
-  return fetch(`http://localhost:8888/api/products?${params}`, {
+  const BASE = import.meta.env.VITE_BACKEND_URL || ''
+  return fetch(`${BASE}/api/products?${params}`, {
     credentials: 'include',
   }).then((res) => {
     if (!res.ok) throw new Error('Failed to fetch products')
@@ -43,7 +44,8 @@ export async function getPublicProducts(limit = 100, offset = 0, filters = {}) {
 }
 
 export async function getProductById(id) {
-  return fetch(`http://localhost:8888/api/products/${id}`, {
+  const BASE = import.meta.env.VITE_BACKEND_URL || ''
+  return fetch(`${BASE}/api/products/${id}`, {
     credentials: 'include',
   }).then((res) => {
     if (!res.ok) throw new Error('Product not found')

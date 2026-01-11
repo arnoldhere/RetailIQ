@@ -71,12 +71,32 @@ router.get('/supplier/orders', authMiddleware, async (req, res, next) => {
     }
 })
 
+// Supplier: get single supply order details
+router.get('/supplier/orders/:id', authMiddleware, async (req, res, next) => {
+    try {
+        if (!req.user || req.user.role !== 'supplier') return res.status(403).json({ message: 'Forbidden' });
+        return UserController.supplierGetOrder(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
 // Supplier: view open asks
 router.get('/supplier/asks', authMiddleware, async (req, res, next) => {
     try {
         if (!req.user || req.user.role !== 'supplier') return res.status(403).json({ message: 'Forbidden' });
         const bidController = require('../controllers/bidController');
         return bidController.supplierListAsks(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
+// Supplier: update own profile (for suppliers authenticated from suppliers table)
+router.put('/supplier/profile', authMiddleware, async (req, res, next) => {
+    try {
+        if (!req.user || req.user.role !== 'supplier') return res.status(403).json({ message: 'Forbidden' });
+        return UserController.updateSupplierProfile(req, res);
     } catch (err) {
         next(err);
     }

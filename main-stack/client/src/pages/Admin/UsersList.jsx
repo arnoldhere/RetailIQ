@@ -422,7 +422,7 @@ export default function UsersList() {
                                                                     variant={item.is_active === 1 ? 'outline' : 'solid'}
                                                                     onClick={() => toggleUserStatus(item)}
                                                                 >
-                                                                    {console.log(item)}
+                                                                    {/* {console.log(item)} */}
                                                                     {item.is_active === 1 ? 'Deactivate' : 'Activate'}
                                                                 </Button>
                                                             </Td>

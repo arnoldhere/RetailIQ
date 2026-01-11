@@ -136,6 +136,8 @@ export default function ProductDetailPage() {
   const infoBoxBorderColor = useColorModeValue('blue.100', 'whiteAlpha.200')
   const secondaryCardBorderColor = useColorModeValue('gray.100', 'whiteAlpha.200')
 
+  const productListPath = user?.role === 'supplier' ? '/supplier/products' : '/customer/products'
+
   useEffect(() => {
     async function fetchProduct() {
       try {
@@ -144,13 +146,13 @@ export default function ProductDetailPage() {
       } catch (err) {
         console.error('Failed to fetch product:', err)
         toast({ title: 'Product not found', status: 'error', duration: 2000 })
-        setTimeout(() => navigate('/customer/products'), 2000)
+        setTimeout(() => navigate(productListPath), 2000)
       } finally {
         setLoading(false)
       }
     }
     if (id) fetchProduct()
-  }, [id, toast, navigate])
+  }, [id, toast, navigate, productListPath])
 
   if (loading) {
     return (
@@ -191,7 +193,7 @@ export default function ProductDetailPage() {
             <Button
               leftIcon={<ArrowBackIcon />}
               colorScheme="blue"
-              onClick={() => navigate('/customer/products')}
+              onClick={() => navigate(productListPath)}
             >
               Back to Products
             </Button>
@@ -286,7 +288,7 @@ export default function ProductDetailPage() {
               fontSize="sm"
             >
               <BreadcrumbItem>
-                <BreadcrumbLink onClick={() => navigate('/customer/products')}>
+                <BreadcrumbLink onClick={() => navigate(productListPath)}>
                   Products
                 </BreadcrumbLink>
               </BreadcrumbItem>
@@ -304,7 +306,7 @@ export default function ProductDetailPage() {
               leftIcon={<ArrowBackIcon />}
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/customer/products')}
+              onClick={() => navigate(productListPath)}
             >
               Back
             </Button>
@@ -508,7 +510,7 @@ export default function ProductDetailPage() {
                       colorScheme="purple"
                       size="md"
                       onClick={openSupplyModal}
-                      isDisabled={product.stock_available === 0}
+                      isDisabled={user.role ==="user" && product.stock_available === 0}
                       boxShadow="md"
                       _hover={{ boxShadow: 'xl', transform: 'translateY(-1px)' }}
                       transition="all 0.15s ease-out"
@@ -544,7 +546,7 @@ export default function ProductDetailPage() {
                     >
                       {isInWishlist(product.id) ? 'In Wishlist' : 'Wishlist'}
                     </Button>
-                  )
+                  )}
                 </HStack>
 
                 {/* Info strip */}

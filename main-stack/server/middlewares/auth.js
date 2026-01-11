@@ -18,7 +18,12 @@ module.exports = function (req, res, next) {
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // { userId, role }
+    // Normalize token payload for convenience: set a common `id` field
+    // so controllers can always reference `req.user.id` regardless of token shape
+    const normalized = { ...decoded };
+    if (decoded.userId) normalized.id = decoded.userId;
+    else if (decoded.supplierId) normalized.id = decoded.supplierId;
+    req.user = normalized; // e.g., { id, userId?, supplierId?, role }
     next();
   } catch (err) {
     console.error('auth middleware error', err);

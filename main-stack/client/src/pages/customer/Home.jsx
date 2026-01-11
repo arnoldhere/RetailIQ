@@ -35,8 +35,8 @@ export default function CustomerHome() {
 	const toast = useToast();
 	const [stats, setStats] = useState([]);
 
-	const cardBg = useColorModeValue("white", "gray.800");
-	const textColor = useColorModeValue("gray.700", "gray.300");
+	// const cardBg = useColorModeValue("white", "gray.800");
+	// const textColor = useColorModeValue("gray.700", "gray.300");
 	// const mutedText = useColorModeValue("gray.600", "gray.400");
 
 	const features = [

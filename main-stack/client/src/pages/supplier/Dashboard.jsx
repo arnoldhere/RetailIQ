@@ -15,7 +15,9 @@ import {
 	Flex,
 	Badge,
 	Container,
+	SimpleGrid,
 } from "@chakra-ui/react";
+import SupplierSidebar from "../../components/SupplierSidebar";
 import { ArrowUpIcon, ArrowDownIcon } from "@chakra-ui/icons";
 import { FiTrendingUp } from "react-icons/fi";
 import Navbar from "../../components/Navbar";
@@ -91,228 +93,85 @@ export default function SupplierDashboard() {
 		<Box minH="100vh" bg="#020617" display="flex" flexDirection="column">
 			<Navbar />
 
-			{/* main content – now full width */}
-			<Container
-				maxW="100vw"
-				width="100vw"
-				px={{ base: 1, md: 6, lg: 8 }}
-				py={5}
-				centerContent={true}
-				flex={1}
-			>
-				<VStack spacing={8} align="stretch">
-					<Box>
-						<Heading size="lg" mb={2} color="gray.100">
-							Supplier Dashboard
-						</Heading>
-						<Text color="gray.400">
-							Manage orders, inventory, and performance metrics
-						</Text>
-					</Box>
+{/* main content with sidebar */}
+			<Box flex={1} py={{ base: 6, md: 10 }}>
+				<Box maxW="7xl" mx="auto" px={{ base: 4, md: 8 }}>
+					<SimpleGrid columns={{ base: 1, lg: 5 }} spacing={6} alignItems="flex-start">
+						{/* Sidebar */}
+						<Box as="aside" display={{ base: 'none', lg: 'block' }} rounded="2xl" overflow="hidden" boxShadow="sm" bg="whiteAlpha.50" border="1px solid" borderColor="whiteAlpha.200">
+							<SupplierSidebar />
+						</Box>
 
-					{/* Stats Cards */}
-					<Grid
-						templateColumns={{
-							base: "1fr",
-							md: "repeat(2, 1fr)",
-							lg: "repeat(4, 1fr)",
-						}}
-						gap={6}
-					>
-						{stats.map((stat, idx) => (
-							<GridItem key={idx}>
-								<Box
-									bg="whiteAlpha.50"
-									p={6}
-									borderRadius="xl"
-									boxShadow="md"
-									border="1px"
-									borderColor="whiteAlpha.200"
-									_hover={{
-										transform: "translateY(-4px)",
-										boxShadow: "xl",
-										bg: "whiteAlpha.100",
-									}}
-									transition="all 0.2s ease-out"
-								>
-									<Stat>
-										<StatLabel color="gray.300" fontSize="sm" fontWeight="500">
-											{stat.label}
-										</StatLabel>
-										<StatNumber
-											fontSize="3xl"
-											fontWeight="bold"
-											color="gray.50"
-											mt={2}
-										>
-											{stat.value}
-										</StatNumber>
-										<StatHelpText
-											color={stat.isPositive ? "green.400" : "red.400"}
-											fontWeight="600"
-											mt={2}
-										>
-											<Flex align="center" gap={1}>
-												<stat.icon />
-												<Text>{stat.change}</Text>
-											</Flex>
-										</StatHelpText>
-									</Stat>
+						{/* Main content */}
+						<Box gridColumn={{ base: '1 / -1', lg: 'span 4' }}>
+							<VStack spacing={8} align="stretch">
+								<Box>
+									<Heading size="lg" mb={2} color="gray.100">Supplier Dashboard</Heading>
+									<Text color="gray.400">Manage orders, inventory, and performance metrics</Text>
 								</Box>
-							</GridItem>
-						))}
-					</Grid>
 
-					{/* Recent Orders + Quick Actions */}
-					<Grid templateColumns={{ base: "1fr", lg: "repeat(3, 1fr)" }} gap={6}>
-						<GridItem colSpan={{ base: 1, lg: 2 }}>
-							<Box
-								bg="whiteAlpha.50"
-								p={6}
-								borderRadius="xl"
-								boxShadow="md"
-								border="1px"
-								borderColor="whiteAlpha.200"
-							>
-								<Heading size="md" mb={4} color="gray.100">
-									Recent Orders
-								</Heading>
-								<VStack spacing={3} align="stretch">
-									{recentOrders.map((order) => (
-										<Box
-											key={order.id}
-											p={4}
-											borderRadius="lg"
-											bg="whiteAlpha.100"
-											border="1px"
-											borderColor="whiteAlpha.200"
-										>
-											<Flex justify="space-between" align="center" mb={2}>
-												<HStack spacing={3}>
-													<Text fontWeight="600" fontSize="sm" color="gray.100">
-														{order.id}
-													</Text>
-													<Text color="gray.400" fontSize="sm">
-														{order.store}
-													</Text>
-												</HStack>
-												<Badge
-													colorScheme={getStatusColor(order.status)}
-													fontSize="xs"
-													borderRadius="full"
-													px={2}
-													py={0.5}
-												>
-													{order.status.toUpperCase()}
-												</Badge>
-											</Flex>
-											<Flex justify="space-between" align="center">
-												<Text fontSize="sm" color="gray.400">
-													{order.date}
-												</Text>
-												<Text fontWeight="bold" color="green.400">
-													{order.amount}
-												</Text>
-											</Flex>
-										</Box>
+								<Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
+									{stats.map((stat, idx) => (
+										<GridItem key={idx}>
+											<Box bg="whiteAlpha.50" p={6} borderRadius="xl" boxShadow="md" border="1px" borderColor="whiteAlpha.200">
+												<Stat>
+													<StatLabel color="gray.300" fontSize="sm" fontWeight="500">{stat.label}</StatLabel>
+													<StatNumber fontSize="3xl" fontWeight="bold" color="gray.50" mt={2}>{stat.value}</StatNumber>
+													<StatHelpText color={stat.isPositive ? 'green.400' : 'red.400'} fontWeight="600" mt={2}><Flex align="center" gap={1}><stat.icon /><Text>{stat.change}</Text></Flex></StatHelpText>
+												</Stat>
+											</Box>
+										</GridItem>
 									))}
-								</VStack>
-							</Box>
-						</GridItem>
+								</Grid>
 
-						<GridItem>
-							<Box
-								bg="whiteAlpha.50"
-								p={6}
-								borderRadius="xl"
-								boxShadow="md"
-								border="1px"
-								borderColor="whiteAlpha.200"
-							>
-								<Heading size="md" mb={4} color="gray.100">
-									Quick Actions
-								</Heading>
-								<VStack spacing={3} align="stretch">
-									<Button
-										colorScheme="blue"
-										variant="ghost"
-										size="sm"
-										fontWeight="500"
-										justifyContent="flex-start"
-										_hover={{ bg: "whiteAlpha.200" }}
-									>
-										New Order
-									</Button>
-									<Button
-										colorScheme="green"
-										variant="ghost"
-										size="sm"
-										fontWeight="500"
-										justifyContent="flex-start"
-										_hover={{ bg: "whiteAlpha.200" }}
-									>
-										Update Inventory
-									</Button>
-									<Button
-										colorScheme="purple"
-										variant="ghost"
-										size="sm"
-										fontWeight="500"
-										justifyContent="flex-start"
-										_hover={{ bg: "whiteAlpha.200" }}
-									>
-										View Analytics
-									</Button>
-									<Button
-										colorScheme="orange"
-										variant="ghost"
-										size="sm"
-										fontWeight="500"
-										justifyContent="flex-start"
-										_hover={{ bg: "whiteAlpha.200" }}
-									>
-										Settings
-									</Button>
-								</VStack>
-							</Box>
-						</GridItem>
-					</Grid>
+								<Grid templateColumns={{ base: '1fr', lg: 'repeat(3, 1fr)' }} gap={6}>
+									<GridItem colSpan={{ base: 1, lg: 2 }}>
+										<Box bg="whiteAlpha.50" p={6} borderRadius="xl" boxShadow="md" border="1px" borderColor="whiteAlpha.200">
+											<Heading size="md" mb={4} color="gray.100">Recent Orders</Heading>
+											<VStack spacing={3} align="stretch">
+												{recentOrders.map((order) => (
+													<Box key={order.id} p={4} borderRadius="lg" bg="whiteAlpha.100" border="1px" borderColor="whiteAlpha.200">
+														<Flex justify="space-between" align="center" mb={2}>
+															<HStack spacing={3}>
+																<Text fontWeight="600" fontSize="sm" color="gray.100">{order.id}</Text>
+																<Text color="gray.400" fontSize="sm">{order.store}</Text>
+															</HStack>
+															<Badge colorScheme={getStatusColor(order.status)} fontSize="xs" borderRadius="full" px={2} py={0.5}>{order.status.toUpperCase()}</Badge>
+														</Flex>
+														<Flex justify="space-between" align="center"><Text fontSize="sm" color="gray.400">{order.date}</Text><Text fontWeight="bold" color="green.400">{order.amount}</Text></Flex>
+													</Box>
+											))}
+											</VStack>
+										</Box>
+									</GridItem>
 
-					{/* Performance Banner */}
-					<Box
-						bgGradient="linear(to-r, green.700, emerald.500)"
-						p={6}
-						borderRadius="xl"
-						border="1px"
-						borderColor="green.300"
-					>
-						<Flex
-							direction={{ base: "column", md: "row" }}
-							align={{ base: "flex-start", md: "center" }}
-							justify="space-between"
-							gap={4}
-						>
-							<Box>
-								<Heading size="sm" color="white" mb={2}>
-									✅ Performance
-								</Heading>
-								<Text color="whiteAlpha.900" fontSize="sm">
-									Your orders are on track. Average delivery time: 2.3 days.
-								</Text>
-							</Box>
-							<Button
-								colorScheme="whiteAlpha"
-								variant="outline"
-								flexShrink={0}
-								fontWeight="600"
-								_hover={{ bg: "whiteAlpha.200", color: "gray.900" }}
-							>
-								View Reports
-							</Button>
-						</Flex>
+									<GridItem>
+										<Box bg="whiteAlpha.50" p={6} borderRadius="xl" boxShadow="md" border="1px" borderColor="whiteAlpha.200">
+											<Heading size="md" mb={4} color="gray.100">Quick Actions</Heading>
+											<VStack spacing={3} align="stretch">
+												<Button colorScheme="blue" variant="ghost" size="sm" fontWeight="500" justifyContent="flex-start" _hover={{ bg: 'whiteAlpha.200' }}>New Order</Button>
+												<Button colorScheme="green" variant="ghost" size="sm" fontWeight="500" justifyContent="flex-start" _hover={{ bg: 'whiteAlpha.200' }}>Update Inventory</Button>
+												<Button colorScheme="purple" variant="ghost" size="sm" fontWeight="500" justifyContent="flex-start" _hover={{ bg: 'whiteAlpha.200' }}>View Analytics</Button>
+												<Button colorScheme="orange" variant="ghost" size="sm" fontWeight="500" justifyContent="flex-start" _hover={{ bg: 'whiteAlpha.200' }}>Settings</Button>
+											</VStack>
+										</Box>
+									</GridItem>
+								</Grid>
+
+								<Box bgGradient="linear(to-r, green.700, emerald.500)" p={6} borderRadius="xl" border="1px" borderColor="green.300">
+									<Flex direction={{ base: 'column', md: 'row' }} align={{ base: 'flex-start', md: 'center' }} justify="space-between" gap={4}>
+										<Box>
+											<Heading size="sm" color="white" mb={2}>✅ Performance</Heading>
+											<Text color="whiteAlpha.900" fontSize="sm">Your orders are on track. Average delivery time: 2.3 days.</Text>
+										</Box>
+										<Button colorScheme="whiteAlpha" variant="outline" flexShrink={0} fontWeight="600" _hover={{ bg: 'whiteAlpha.200', color: 'gray.900' }}>View Reports</Button>
+									</Flex>
+								</Box>
+							</VStack>
+						</Box>
+						</SimpleGrid>
 					</Box>
-				</VStack>
-			</Container>
+				</Box>
 
 			<Footer />
 		</Box>
