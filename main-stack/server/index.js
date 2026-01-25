@@ -56,6 +56,10 @@ app.use('/api/pay', payRoutes);
 const orderRoutes = require('./routes/orders');
 app.use('/api/orders', orderRoutes);
 
+// supplier routes
+const supplierRoutes = require("./routes/supplier")
+app.use("/api/supplier", supplierRoutes);
+
 // serve media files (uploaded images)
 app.use('/media', express.static(path.join(__dirname, 'media')));
 

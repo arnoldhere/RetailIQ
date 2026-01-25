@@ -25,7 +25,7 @@ router.get("/get-users", authMiddleware, async (req, res, next) => {
 // Categories routes
 router.get('/categories', authMiddleware, async (req, res, next) => {
   try {
-    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    if (!req.user) return res.status(403).json({ message: 'Forbidden' });
     return adminController.listCategories(req, res);
   } catch (err) {
     next(err);
@@ -44,7 +44,7 @@ router.post('/categories', authMiddleware, async (req, res, next) => {
 router.put('/categories/:id', authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
-    return adminController.updateCategory (req, res);
+    return adminController.updateCategory(req, res);
   } catch (err) {
     next(err);
   }
@@ -241,7 +241,7 @@ router.post('/users/:id/reactivate', authMiddleware, async (req, res, next) => {
 
 router.get('/supplier-orders', authMiddleware, async (req, res, next) => {
   try {
-    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    if (!req.user) return res.status(403).json({ message: 'Forbidden' });
     return adminController.listSupplierOrders(req, res);
   } catch (err) {
     next(err);

@@ -50,6 +50,7 @@ import { useWishlist } from '../../context/WishlistContext'
 import { useAuth } from '../../context/AuthContext'
 import { FaHeart, FaShoppingCart } from 'react-icons/fa'
 import * as bidsApi from '../../api/bids'
+import * as productApi from "../../api/products"
 
 export default function ProductDetailPage() {
   const { id } = useParams()
@@ -74,10 +75,9 @@ export default function ProductDetailPage() {
 
   async function fetchStores() {
     try {
-      const res = await fetch('/api/stores', { credentials: 'include' })
-      if (!res.ok) throw new Error('Failed to fetch stores')
-      const data = await res.json()
-      const arr = data.stores || []
+      const res = await productApi.getStores();
+
+      const arr = res.data.stores || []
       setStores(arr)
       if (arr.length > 0) setSupplyStoreId(arr[0].id)
     } catch (err) {
@@ -510,7 +510,7 @@ export default function ProductDetailPage() {
                       colorScheme="purple"
                       size="md"
                       onClick={openSupplyModal}
-                      isDisabled={user.role ==="user" && product.stock_available === 0}
+                      isDisabled={user.role === "user" && product.stock_available === 0}
                       boxShadow="md"
                       _hover={{ boxShadow: 'xl', transform: 'translateY(-1px)' }}
                       transition="all 0.15s ease-out"

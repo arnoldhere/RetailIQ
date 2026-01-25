@@ -4,11 +4,11 @@ export async function getOverview() {
   return client.get('/api/admin/overview')
 }
 
-export async function getProducts(){
+export async function getProducts() {
   return client.get("/api/admin/products")
 }
 
-export async function getUsers(){
+export async function getUsers() {
   return client.get("/api/admin/get-users")
 }
 
@@ -133,4 +133,8 @@ export async function getSupplyPayments(orderId) {
 
 export async function recordSupplyPayment(orderId, data) {
   return client.post(`/api/admin/supplier-orders/${orderId}/payments`, data)
+}
+
+export async function updateSupplyOrderStatus(orderId, status) {
+  return client.post(`/api/admin/supplier-orders/${orderId}/status`, { status })
 }

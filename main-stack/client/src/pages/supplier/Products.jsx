@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import * as productApi from '../../api/products'
 import {
     Box,
@@ -35,11 +35,9 @@ import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
-import { getPublicProducts } from '../../api/products'
-import { useAuth } from '../../context/AuthContext'
 import * as bidsApi from '../../api/bids'
 
-function ProductCard({ product, onViewDetail, onAskSupply, isInWishlist }) {
+function ProductCard({ product, onViewDetail, onAskSupply }) {
     const cardRef = useRef()
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
@@ -47,7 +45,6 @@ function ProductCard({ product, onViewDetail, onAskSupply, isInWishlist }) {
     const cardShadow = useColorModeValue('sm', 'dark-lg')
     const muted = useColorModeValue('gray.600', 'gray.300')
     const priceColor = useColorModeValue('green.600', 'green.300')
-    const badgeBg = useColorModeValue('whiteAlpha.900', 'blackAlpha.500')
 
     useEffect(() => {
         if (cardRef.current) {
@@ -139,13 +136,11 @@ function ProductCard({ product, onViewDetail, onAskSupply, isInWishlist }) {
 export default function SupplierProductsPage() {
     const toast = useToast()
     const navigate = useNavigate()
-    const { user } = useAuth()
 
     const pageBg = useColorModeValue('gray.50', 'gray.900')
     const [products, setProducts] = useState([])
     const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(false)
-    const [total, setTotal] = useState(0)
 
     const [filters, setFilters] = useState({ search: '', category_id: '', sort: 'name', order: 'asc' })
     const [limit] = useState(12)
@@ -160,11 +155,24 @@ export default function SupplierProductsPage() {
     const [supplyStoreId, setSupplyStoreId] = useState(null)
     const [placingSupply, setPlacingSupply] = useState(false)
 
+    const fetchProducts = useCallback(async () => {
+        try {
+            setLoading(true)
+            const res = await productApi.getPublicProducts(limit, offset, filters)
+            setProducts(res?.data?.products || [])
+        } catch (err) {
+            console.error('Failed to fetch products:', err)
+            toast({ title: 'Failed to load products', status: 'error', duration: 3000 })
+        } finally {
+            setLoading(false)
+        }
+    }, [limit, offset, filters, toast])
+
     useEffect(() => {
         fetchCategories()
         fetchProducts()
         fetchStores()
-    }, [filters, offset, limit])
+    }, [filters, offset, limit, fetchProducts])
 
     async function fetchCategories() {
         try {
@@ -187,21 +195,6 @@ export default function SupplierProductsPage() {
             console.error('Failed to fetch stores:', err)
             setStores([])
             setSupplyStoreId(null)
-        }
-    }
-
-    async function fetchProducts() {
-        setLoading(true)
-        try {
-            const data = await getPublicProducts(limit, offset, filters)
-            setProducts(data.products || [])
-            setTotal(data.total || 0)
-        } catch (err) {
-            console.error('Failed to fetch products:', err)
-            toast({ title: 'Failed to load products', status: 'error', duration: 2000 })
-            setProducts([])
-        } finally {
-            setLoading(false)
         }
     }
 

@@ -216,6 +216,16 @@ exports.supplierCreateSupplyOrder = async (req, res) => {
 }
 
 // Supplier: list own supply orders
+/**
+ * Supplier: List all supply orders for the authenticated supplier
+ * Fetches orders created by the supplier (either direct supply orders or from accepted bids)
+ * Supports pagination and returns order count + details (supplier_id, store, amount, status, dates)
+ * 
+ * Query Parameters: { limit?, offset? }
+ * Returns: { orders[], total, limit, offset }
+ * 
+ * Access: Supplier role only
+ */
 exports.supplierListOrders = async (req, res) => {
     try {
         const supplier = await resolveSupplierFromReq(req);
@@ -224,7 +234,7 @@ exports.supplierListOrders = async (req, res) => {
         const limit = Math.min(parseInt(req.query.limit) || 20, 500);
         const offset = parseInt(req.query.offset) || 0;
 
-        // Base filter
+        // Base filter: only orders for this supplier
         const baseQuery = db('supply_orders')
             .where('supply_orders.supplier_id', supplier.id);
 
@@ -232,7 +242,7 @@ exports.supplierListOrders = async (req, res) => {
         const countRes = await baseQuery.clone().count({ count: 'supply_orders.id' }).first();
         const total = Number(countRes.count || 0);
 
-        // Actual data query
+        // Actual data query with store details
         const orders = await baseQuery
             .clone()
             .select('supply_orders.*', 'stores.name as store_name')
@@ -250,29 +260,56 @@ exports.supplierListOrders = async (req, res) => {
 };
 
 
-// Supplier: get single supply order details (items & payments)
+/**
+ * Supplier: Get single supply order details
+ * Returns complete order information including:
+ * - Order header (order_no, store, amount, status, delivery date, etc.)
+ * - Order items (products, quantities, costs)
+ * - Payment records (payment status, method, Razorpay details)
+ * 
+ * Path Parameters: id (supply_order.id)
+ * Returns: { order, items[], payments[] }
+ * 
+ * Access: Supplier role only - suppliers can only view their own orders
+ */
 exports.supplierGetOrder = async (req, res) => {
     try {
         const supplier = await resolveSupplierFromReq(req);
         if (!supplier) return res.status(404).json({ message: 'Supplier profile not found' });
 
         const { id } = req.params;
+
+        // Fetch order with store details
+        // Auth check: only allow if supply_orders.supplier_id matches authenticated supplier
         const order = await db('supply_orders')
-            .where({ id, supplier_id: supplier.id })
-            .select('supply_orders.*', 'stores.name as store_name')
             .leftJoin('stores', 'supply_orders.store_id', 'stores.id')
+            .where({
+                'supply_orders.id': id,
+                'supply_orders.supplier_id': supplier.id
+            })
+            .select('supply_orders.*', 'stores.name as store_name')
             .first();
+
         if (!order) return res.status(404).json({ message: 'Order not found' });
 
-        const items = await db('supply_order_items').where({ supply_order_id: id }).leftJoin('products', 'supply_order_items.product_id', 'products.id').select('supply_order_items.*', 'products.name as product_name');
-        const payments = await db('supply_payments').where({ supply_order_id: id }).orderBy('payment_date', 'desc');
+        // Fetch order items (line items with product details)
+        const items = await db('supply_order_items')
+            .leftJoin('products', 'supply_order_items.product_id', 'products.id')
+            .where({ 'supply_order_items.supply_order_id': id })
+            .select('supply_order_items.*', 'products.name as product_name');
+
+        // Fetch payment records (all payments for this order, newest first)
+        const payments = await db('supply_payments')
+            .where({ supply_order_id: id })
+            .orderBy('payment_date', 'desc');
 
         return res.json({ order, items, payments });
+
     } catch (err) {
         console.error('supplierGetOrder error', err);
         return res.status(500).json({ message: 'Failed to load order' });
     }
-}
+};
 
 // Update supplier profile (for suppliers authenticated from suppliers table or linked users)
 exports.updateSupplierProfile = async (req, res) => {

@@ -1018,12 +1018,40 @@ exports.reactivateUser = async (req, res) => {
   }
 }
 
+/**
+ * listSupplierOrders - Fetch all supply orders with filtering, sorting, and pagination
+ * Query Parameters:
+ *   - limit: page size (default: 12, max: 500)
+ *   - offset: pagination offset (default: 0)
+ *   - search: search by order number, supplier name, or store name
+ *   - status: filter by status (pending, sent, received, cancelled)
+ *   - sortBy: field to sort by (created_at, total_amount, status, supplier_name, deliver_at)
+ *   - sortDir: sort direction (ASC or DESC, default: DESC)
+ */
 exports.listSupplierOrders = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 12, 500);
     const offset = parseInt(req.query.offset) || 0;
     const search = req.query.search;
     const status = req.query.status;
+    const sortBy = req.query.sortBy || 'created_at'; // Default sort by date
+    const sortDir = (req.query.sortDir || 'DESC').toUpperCase(); // ASC or DESC
+
+    // Validate sort field to prevent SQL injection
+    const allowedSortFields = ['created_at', 'total_amount', 'status', 'supplier_name', 'deliver_at'];
+    const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const validSortDir = ['ASC', 'DESC'].includes(sortDir) ? sortDir : 'DESC';
+
+    // Determine which column to use for ordering
+    const sortColumn = validSortBy === 'supplier_name'
+      ? 'suppliers.name'
+      : validSortBy === 'status'
+        ? 'supply_orders.status'
+        : validSortBy === 'total_amount'
+          ? 'supply_orders.total_amount'
+          : validSortBy === 'deliver_at'
+            ? 'supply_orders.deliver_at'
+            : 'supply_orders.created_at';
 
     let query = db('supply_orders')
       .select(
@@ -1038,6 +1066,7 @@ exports.listSupplierOrders = async (req, res) => {
       .leftJoin('stores', 'supply_orders.store_id', 'stores.id')
       .leftJoin('users', 'supply_orders.ordered_by', 'users.id');
 
+    // Apply search filter (checks order number, supplier name, store name)
     if (search) {
       query = query.where(function () {
         this.where('supply_orders.order_no', 'like', `%${search}%`)
@@ -1046,10 +1075,12 @@ exports.listSupplierOrders = async (req, res) => {
       });
     }
 
+    // Apply status filter
     if (status) {
       query = query.where('supply_orders.status', status);
     }
 
+    // Count total results for pagination metadata
     const countQuery = query.clone();
     const countResult = await countQuery
       .clearSelect()
@@ -1059,8 +1090,9 @@ exports.listSupplierOrders = async (req, res) => {
 
     const total = Number(countResult.count || 0);
 
+    // Execute main query with sorting and pagination
     const orders = await query
-      .orderBy('supply_orders.created_at', 'desc')
+      .orderBy(sortColumn, validSortDir)
       .limit(limit)
       .offset(offset);
 
@@ -1148,7 +1180,7 @@ exports.updateSupplyOrderStatus = async (req, res) => {
         const sendEmail = require('../services/mailService');
         const subject = `Supply order ${updated.order_no} is now ${updated.status}`;
         const html = `<p>Your supply order (${updated.order_no}) status has been updated to <strong>${updated.status}</strong>.</p>`;
-        sendEmail(process.env.GMAIL_EMAIL, supplier.email, subject, html).catch(e=>console.error('notify supplier failed', e));
+        sendEmail(process.env.GMAIL_EMAIL, supplier.email, subject, html).catch(e => console.error('notify supplier failed', e));
       }
     } catch (e) { console.error('post-update notify failed', e) }
 

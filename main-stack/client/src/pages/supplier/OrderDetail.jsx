@@ -38,7 +38,7 @@ export default function SupplierOrderDetail() {
   if (!order) return (<Box minH="80vh"><Text>No order found</Text></Box>)
 
   return (
-    <Box minH="100vh" bg="#020617" display="flex" flexDirection="column">
+    <Box minH="100vh" bg="#020617" display="flex" flexDirection="column" w="100vw">
       <Navbar />
       <Box px={{ base: 4, md: 8 }} py={8} maxW="7xl" mx="auto">
         <VStack align="stretch" spacing={6}>
@@ -46,7 +46,7 @@ export default function SupplierOrderDetail() {
           <Box bg="whiteAlpha.50" p={4} borderRadius="md">
             <Text><strong>Store:</strong> {order.store_name || '-'}</Text>
             <Text><strong>Status:</strong> <Badge colorScheme={getStatusColor(order.status)}>{order.status}</Badge></Text>
-            <Text><strong>Total:</strong> ${Number(order.total_amount||0).toFixed(2)}</Text>
+            <Text><strong>Total:</strong> ${Number(order.total_amount || 0).toFixed(2)}</Text>
           </Box>
 
           <Box bg="whiteAlpha.50" p={4} borderRadius="md">
@@ -68,7 +68,7 @@ export default function SupplierOrderDetail() {
                 <Thead><Tr><Th>Date</Th><Th isNumeric>Amount</Th><Th>Method</Th><Th>Ref</Th></Tr></Thead>
                 <Tbody>
                   {payments.map(p => (
-                    <Tr key={p.id}><Td>{p.payment_date || new Date(p.created_at).toLocaleDateString()}</Td><Td isNumeric>${Number(p.amount).toFixed(2)}</Td><Td>{p.method}</Td><Td>{p.payment_ref||'-'}</Td></Tr>
+                    <Tr key={p.id}><Td>{p.payment_date || new Date(p.created_at).toLocaleDateString()}</Td><Td isNumeric>${Number(p.amount).toFixed(2)}</Td><Td>{p.method}</Td><Td>{p.payment_ref || '-'}</Td></Tr>
                   ))}
                 </Tbody>
               </Table>

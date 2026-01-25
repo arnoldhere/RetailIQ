@@ -1,8 +1,19 @@
 const db = require('../config/db')
 const sendEmail = require('../services/mailService')
 
+/**
+ * BidController - Handles the ask-bid flow for supplier orders
+ * This controller manages:
+ * 1. Admin creating asks for products (RFQ - Request For Quotation)
+ * 2. Suppliers viewing open asks and placing bids
+ * 3. Admin accepting bids and auto-creating supply orders
+ * 4. Supplier viewing their bids status
+ */
 module.exports = {
-  // Admin: create an ask for product
+  /**
+   * Admin: Create an ask (RFQ) for a product
+   * Body: { product_id, quantity, min_price?, expires_at?, note? }
+   */
   async createAsk(req, res) {
     try {
       const { product_id, quantity, min_price, expires_at, note } = req.body
@@ -18,6 +29,10 @@ module.exports = {
     }
   },
 
+  /**
+   * Admin: List all asks with optional status filter
+   * Query: { limit, offset, status? }
+   */
   async listAsks(req, res) {
     try {
       const limit = Math.min(parseInt(req.query.limit) || 20, 500)
@@ -48,6 +63,10 @@ module.exports = {
     }
   },
 
+  /**
+   * Admin: Get ask details including all bids placed
+   * Returns: { ask, bids[] }
+   */
   async getAskDetails(req, res) {
     try {
       const { id } = req.params
@@ -61,6 +80,9 @@ module.exports = {
     }
   },
 
+  /**
+   * Admin: Close an ask (no more bids can be placed)
+   */
   async closeAsk(req, res) {
     try {
       const { id } = req.params
@@ -74,7 +96,19 @@ module.exports = {
     }
   },
 
-  // Admin: accept a bid
+  /**
+   * Admin: Accept a bid and auto-create supply order
+   * This is a critical transaction that:
+   * 1. Marks selected bid as 'accepted'
+   * 2. Rejects all other bids for this ask
+   * 3. Closes the ask
+   * 4. Creates a supply_order with items
+   * 5. Creates supply_payments record (initial payment tracking)
+   * 6. Sends email notification to supplier
+   * 
+   * Body: { store_id (required), deliver_at? }
+   * Returns: { message, order }
+   */
   async acceptBid(req, res) {
     const trx = await db.transaction()
     try {
@@ -86,23 +120,25 @@ module.exports = {
         return res.status(404).json({ message: 'Bid not found' })
       }
 
-      // require store_id to create a supply order
+      // Store ID is mandatory to create a supply order with clear destination
       if (!store_id) {
         await trx.rollback()
         return res.status(400).json({ message: 'store_id required to accept bid and create supply order' })
       }
 
-      // mark all other bids for this ask as rejected
+      // Mark all other bids for this ask as rejected (only one bid wins)
       await trx('bids').where('ask_id', bid.ask_id).andWhere('id', '!=', id).update({ status: 'rejected' })
-      // mark this bid as accepted
+      // Mark this bid as accepted
       await trx('bids').where('id', id).update({ status: 'accepted' })
-      // close the ask
+      // Close the ask (no more bids accepted)
       await trx('asks').where('id', bid.ask_id).update({ status: 'closed' })
 
-      // create supply order and items based on bid
-      // map bid.supplier_id -> suppliers table
-      // Support both legacy: bids.supplier_id -> users.id (cust_id on suppliers)
-      // and new flow where bids.supplier_id is suppliers.id directly
+      /**
+       * Resolve supplier profile from bid.supplier_id
+       * Supports two cases:
+       * 1. Legacy: bids.supplier_id = users.id (stored as cust_id in suppliers table)
+       * 2. New: bids.supplier_id = suppliers.id directly
+       */
       let supplierProfile = await trx('suppliers').where({ cust_id: bid.supplier_id }).first()
       if (!supplierProfile) {
         supplierProfile = await trx('suppliers').where({ id: bid.supplier_id }).first()
@@ -113,20 +149,23 @@ module.exports = {
         return res.status(404).json({ message: 'Supplier profile not found for this bid' })
       }
 
+      // Generate unique order number for supply order
       const ask = await trx('asks').where('id', bid.ask_id).first()
       const order_no = `SO-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`
       const total = Number(bid.price) * Number(bid.quantity)
 
+      // Create supply order (header record)
       const [orderId] = await trx('supply_orders').insert({
         order_no,
         supplier_id: supplierProfile.id,
         store_id,
         ordered_by: req.user.id,
-        status: 'pending',
+        status: 'pending', // Initial status: awaiting fulfillment
         total_amount: total,
         deliver_at: deliver_at || null,
       })
 
+      // Create supply order items (line items for this order)
       await trx('supply_order_items').insert({
         supply_order_id: orderId,
         product_id: ask.product_id,
@@ -135,7 +174,25 @@ module.exports = {
         total_amount: total,
       })
 
-      // notify supplier - try users table first, fall back to supplierProfile.email
+      /**
+       * Initialize payment record for this supply order
+       * This tracks payment status from 'pending' → 'paid'/'failed'
+       * Supports multiple payments if partial payments are allowed
+       */
+      await trx('supply_payments').insert({
+        supply_order_id: orderId,
+        amount: total,
+        payment_status: 'pending', // Will be marked 'paid' upon payment confirmation
+        payment_method: null, // Set when payment is processed
+        payment_date: null,
+        razorpay_order_id: null,
+        razorpay_payment_id: null,
+      })
+
+      /**
+       * Notify supplier of accepted bid
+       * Tries to find supplier via users table, falls back to supplier profile email
+       */
       try {
         const supplierUser = await trx('users').where('id', bid.supplier_id).first()
         const emailTo = (supplierUser && supplierUser.email) ? supplierUser.email : supplierProfile.email
@@ -147,6 +204,7 @@ module.exports = {
         }
       } catch (e) {
         console.error('notify supplier error', e)
+        // Non-blocking error - continue even if email fails
       }
 
       await trx.commit()
@@ -159,18 +217,41 @@ module.exports = {
     }
   },
 
-  // Supplier: list open asks
+  /**
+   * Supplier: List open asks (RFQ - Request For Quotation)
+   * Suppliers view asks created by admin and can place bids
+   * This is part of the ask-bid-order flow:
+   * 1. Admin creates ask for product
+   * 2. Supplier views open asks (this endpoint)
+   * 3. Supplier places bid with price/quantity
+   * 4. Admin accepts winning bid
+   * 5. Supply order auto-created
+   * 6. Admin manages order and payment
+   */
   async supplierListAsks(req, res) {
     try {
       const limit = Math.min(parseInt(req.query.limit) || 20, 500)
       const offset = parseInt(req.query.offset) || 0
 
-      let q = db('asks').select('asks.*', 'products.name as product_name').leftJoin('products', 'asks.product_id', 'products.id').where('asks.status', 'open')
+      // Build base query for open asks
+      const baseQuery = db('asks')
+        .leftJoin('products', 'asks.product_id', 'products.id')
+        .where('asks.status', 'open')
 
-      const totalRes = await q.clone().count({ count: 'asks.id' }).first()
-      const total = Number(totalRes.count || 0)
+      // Count total open asks (SEPARATE query to avoid GROUP BY issues)
+      const countRes = await baseQuery.clone()
+        .clearSelect()
+        .count({ count: 'asks.id' })
+        .first()
+      const total = Number(countRes.count || 0)
 
-      const asks = await q.orderBy('asks.created_at', 'desc').limit(limit).offset(offset)
+      // Fetch paginated asks with product details
+      const asks = await baseQuery.clone()
+        .select('asks.*', 'products.name as product_name')
+        .orderBy('asks.created_at', 'desc')
+        .limit(limit)
+        .offset(offset)
+
       return res.json({ asks, total, limit, offset })
     } catch (err) {
       console.error('supplierListAsks error', err)

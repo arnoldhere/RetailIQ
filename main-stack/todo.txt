@@ -12,8 +12,7 @@
     - paginations and filtering @ admin 
     - order status management
     - product listing enhanced
-    - store management @admin
+    - store management @adminx`
 -- now next
-    - add the need of the orders or products show that supplier can bid their ask 
-    - supplier dashboard and explore catalog for bid 
-    - order management -> need enhancement
+    -  improve layout and ui of the supplier orders @ admin
+    - ensure smooth auction flow and work flow 

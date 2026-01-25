@@ -9,7 +9,7 @@ import FeedbacksPage from "./pages/Admin/Feedbacks"
 import SuppliersPage from './pages/Admin/Suppliers'
 import AskSuppliers from './pages/Admin/AskSuppliers'
 import CustomerOrdersPage from "./pages/Admin/CustomerOrders"
-import SupplierOrdersPage from './pages/supplier/Orders'
+import AdminSupplierOrdersPage from './pages/Admin/SupplierOrders'
 // Auth Pages
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
@@ -98,7 +98,7 @@ function AppRoutes() {
       <Route path='/admin/suppliers' element={user?.role === 'admin' ? <SuppliersPage /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/asks' element={user?.role === 'admin' ? <AskSuppliers /> : <Navigate to="/auth/login" replace />} />
       <Route path='/admin/customer-orders' element={user?.role === 'admin' ? <CustomerOrdersPage /> : <Navigate to="/auth/login" replace />} />
-      <Route path='/admin/supplier-orders' element={user?.role === 'admin' ? <SupplierOrdersPage /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/admin/supplier-orders' element={user?.role === 'admin' ? <AdminSupplierOrdersPage /> : <Navigate to="/auth/login" replace />} />
 
       {/* 404 Catch All */}
       <Route path="*" element={<NotFound />} />

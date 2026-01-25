@@ -6,7 +6,7 @@ const authMiddleware = require('../middlewares/auth');
 
 router.get('/get-product-categories', authMiddleware, async (req, res, next) => {
     try {
-        if (!req.user || req.user.role !== 'customer') return res.status(403).json({ message: 'Forbidden' });
+        if (!req.user) return res.status(403).json({ message: 'Forbidden' });
         return UserController.getProductCategories(req, res);
     } catch (err) { }
     console.log("Error in fetching categories for user...  ", error)

@@ -42,7 +42,7 @@ import * as adminApi from '../../api/admin'
 
 export default function SupplierOrdersPage() {
     const toast = useToast()
-    
+
     const pageBg = useColorModeValue('gray.50', 'gray.900')
     const subtleCard = useColorModeValue('white', 'gray.800')
     const mutedText = useColorModeValue('gray.600', 'gray.300')
@@ -62,6 +62,8 @@ export default function SupplierOrdersPage() {
     const [filters, setFilters] = useState({
         search: '',
         status: '',
+        sortBy: 'created_at', // field to sort by
+        sortDir: 'DESC', // ASC or DESC
     })
     const [limit] = useState(12)
     const [offset, setOffset] = useState(0)
@@ -92,6 +94,17 @@ export default function SupplierOrdersPage() {
         setFilters((prev) => ({ ...prev, [key]: value }))
     }
 
+    /**
+     * Toggle sort direction (ASC/DESC) for the selected sort field
+     * Helpful for quickly reversing sort order while staying on same column
+     */
+    const toggleSortDir = () => {
+        setFilters((prev) => ({
+            ...prev,
+            sortDir: prev.sortDir === 'ASC' ? 'DESC' : 'ASC',
+        }))
+    }
+
     const getStatusColor = (status) => {
         const colors = {
             pending: 'yellow',
@@ -108,12 +121,21 @@ export default function SupplierOrdersPage() {
     // payments modal state
     const [paymentsOpen, setPaymentsOpen] = useState(false)
     const [currentOrderId, setCurrentOrderId] = useState(null)
+    const [currentOrder, setCurrentOrder] = useState(null)
     const [payments, setPayments] = useState([])
     const [paymentForm, setPaymentForm] = useState({ amount: '', payment_date: '', method: 'CASH', payment_ref: '' })
     const [savingPayment, setSavingPayment] = useState(false)
+    const inputBg = useColorModeValue('white', 'gray.700')
 
-    const openPayments = async (orderId) => {
+    // order details modal state
+    const [detailsOpen, setDetailsOpen] = useState(false)
+    const [selectedOrder, setSelectedOrder] = useState(null)
+    const [orderItems, setOrderItems] = useState([])
+    const [updatingStatus, setUpdatingStatus] = useState(false)
+
+    const openPayments = async (orderId, order) => {
         setCurrentOrderId(orderId)
+        setCurrentOrder(order)
         setPaymentsOpen(true)
         try {
             const res = await adminApi.getSupplyPayments(orderId)
@@ -121,6 +143,42 @@ export default function SupplierOrdersPage() {
         } catch (err) {
             console.error('Failed to load payments', err)
             setPayments([])
+        }
+    }
+
+    const openDetails = async (order) => {
+        setSelectedOrder(order)
+        setCurrentOrder(null)
+        setPayments([])
+        setPaymentForm({ amount: '', payment_date: '', method: 'CASH', payment_ref: '' })
+    }
+
+    const closeDetails = () => {
+        setDetailsOpen(false)
+        setSelectedOrder(null)
+        setOrderItems([])
+    }
+
+    const handleUpdateOrderStatus = async (orderId, newStatus) => {
+        try {
+            setUpdatingStatus(true)
+            await adminApi.updateSupplyOrderStatus(orderId, newStatus)
+            toast({ title: `Order status updated to ${newStatus}`, status: 'success', duration: 2000 })
+            fetchOrders()
+        } catch (err) {
+            console.error('Failed to update order status', err)
+            toast({ title: 'Failed to update status', status: 'error' })
+        } finally {
+            setUpdatingStatus(false)
+        }
+        // The backend doesn't have a dedicated endpoint, but items data can be stored
+        try {
+            // Items would typically be fetched from backend
+            // For now, we'll show order info and payments
+            setOrderItems([])
+        } catch (err) {
+            console.error('Failed to load order details', err)
+            setOrderItems([])
         }
     }
 
@@ -192,7 +250,7 @@ export default function SupplierOrdersPage() {
 
                             {/* Filters */}
                             <Box bg={subtleCard} p={{ base: 4, md: 6 }} borderRadius="xl" boxShadow="sm" mb={6} border="1px solid" borderColor={borderColor}>
-                                <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} alignItems="end">
+                                <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4} alignItems="end">
                                     <FormControl>
                                         <FormLabel fontSize="sm" fontWeight="600" color={mutedText}>
                                             Search
@@ -233,6 +291,54 @@ export default function SupplierOrdersPage() {
                                             <option value="received">Received</option>
                                             <option value="cancelled">Cancelled</option>
                                         </Select>
+                                    </FormControl>
+
+                                    {/* Sort By dropdown */}
+                                    <FormControl>
+                                        <FormLabel fontSize="sm" fontWeight="600" color={mutedText}>
+                                            Sort By
+                                        </FormLabel>
+                                        <Select
+                                            value={filters.sortBy}
+                                            onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                                            borderRadius="lg"
+                                            bg={useColorModeValue('white', 'gray.700')}
+                                            borderColor={borderColor}
+                                        >
+                                            <option value="created_at">Date Created</option>
+                                            <option value="total_amount">Amount</option>
+                                            <option value="status">Status</option>
+                                            <option value="supplier_name">Supplier Name</option>
+                                            <option value="deliver_at">Delivery Date</option>
+                                        </Select>
+                                    </FormControl>
+
+                                    {/* Sort Direction toggle */}
+                                    <FormControl>
+                                        <FormLabel fontSize="sm" fontWeight="600" color={mutedText}>
+                                            Direction
+                                        </FormLabel>
+                                        <Flex gap={2}>
+                                            <Select
+                                                value={filters.sortDir}
+                                                onChange={(e) => handleFilterChange('sortDir', e.target.value)}
+                                                borderRadius="lg"
+                                                bg={useColorModeValue('white', 'gray.700')}
+                                                borderColor={borderColor}
+                                                flex={1}
+                                            >
+                                                <option value="ASC">Ascending</option>
+                                                <option value="DESC">Descending</option>
+                                            </Select>
+                                            <Button
+                                                colorScheme="blue"
+                                                variant="outline"
+                                                onClick={toggleSortDir}
+                                                title="Quick toggle sort direction"
+                                            >
+                                                ↕️
+                                            </Button>
+                                        </Flex>
                                     </FormControl>
                                 </SimpleGrid>
                             </Box>
@@ -310,7 +416,10 @@ export default function SupplierOrdersPage() {
                                                                 {new Date(order.created_at).toLocaleDateString()}
                                                             </Td>
                                                             <Td>
-                                                                <Button size="sm" onClick={() => openPayments(order.id)}>Payments</Button>
+                                                                <HStack spacing={2}>
+                                                                    <Button size="sm" colorScheme="blue" variant="outline" onClick={() => openDetails(order)}>Details</Button>
+                                                                    <Button size="sm" colorScheme="green" variant="outline" onClick={() => openPayments(order.id, order)}>Payments</Button>
+                                                                </HStack>
                                                             </Td>
                                                         </Tr>
                                                     ))}
@@ -355,53 +464,199 @@ export default function SupplierOrdersPage() {
             <Footer />
 
             {/* Payments Modal */}
-            <Modal isOpen={paymentsOpen} onClose={closePayments} isCentered>
+            <Modal isOpen={paymentsOpen} onClose={closePayments} isCentered scrollBehavior="inside" size="lg">
                 <ModalOverlay />
                 <ModalContent>
-                    <ModalHeader>Payments for Order {currentOrderId}</ModalHeader>
+                    <ModalHeader>
+                        <VStack align="flex-start" spacing={1}>
+                            <Text fontSize="lg" fontWeight="700">Payments for Order {currentOrder?.order_no}</Text>
+                            <Text fontSize="sm" color={mutedText}>Supplier: {currentOrder?.supplier_name}</Text>
+                        </VStack>
+                    </ModalHeader>
                     <ModalCloseButton />
                     <ModalBody>
-                        {payments.length === 0 ? (
-                            <Text>No payments found</Text>
-                        ) : (
-                            <Table size="sm">
-                                <Thead><Tr><Th>Date</Th><Th isNumeric>Amount</Th><Th>Method</Th><Th>Ref</Th></Tr></Thead>
-                                <Tbody>
-                                    {payments.map(p => (
-                                        <Tr key={p.id}><Td>{p.payment_date || new Date(p.created_at).toLocaleDateString()}</Td><Td isNumeric>${Number(p.amount).toFixed(2)}</Td><Td>{p.method}</Td><Td>{p.payment_ref || '-'}</Td></Tr>
-                                    ))}
-                                </Tbody>
-                            </Table>
-                        )}
+                        <VStack spacing={6} align="stretch">
+                            {/* Existing Payments */}
+                            <Box>
+                                <Text fontWeight="600" mb={3}>Payment History</Text>
+                                {payments.length === 0 ? (
+                                    <Box bg="yellow.50" p={3} borderRadius="md" textAlign="center">
+                                        <Text fontSize="sm" color="gray.600">No payments recorded yet</Text>
+                                    </Box>
+                                ) : (
+                                    <Box borderRadius="lg" overflow="hidden" border="1px solid" borderColor={borderColor}>
+                                        <Table size="sm">
+                                            <Thead bg={tableHeadBg}>
+                                                <Tr>
+                                                    <Th>Date</Th>
+                                                    <Th isNumeric>Amount</Th>
+                                                    <Th>Method</Th>
+                                                    <Th>Reference</Th>
+                                                </Tr>
+                                            </Thead>
+                                            <Tbody>
+                                                {payments.map(p => (
+                                                    <Tr key={p.id}>
+                                                        <Td fontSize="sm">{p.payment_date || new Date(p.created_at).toLocaleDateString()}</Td>
+                                                        <Td isNumeric fontWeight="600" color="green.600">${Number(p.amount).toFixed(2)}</Td>
+                                                        <Td fontSize="sm">{p.method}</Td>
+                                                        <Td fontSize="sm">{p.payment_ref || '-'}</Td>
+                                                    </Tr>
+                                                ))}
+                                            </Tbody>
+                                        </Table>
+                                    </Box>
+                                )}
+                            </Box>
 
-                        <Box mt={4}>
-                            <FormControl>
-                                <FormLabel>Amount</FormLabel>
-                                <Input value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
-                            </FormControl>
-                            <FormControl mt={3}>
-                                <FormLabel>Payment Date</FormLabel>
-                                <Input type="date" value={paymentForm.payment_date} onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })} />
-                            </FormControl>
-                            <FormControl mt={3}>
-                                <FormLabel>Method</FormLabel>
-                                <Select value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}>
-                                    <option value="CASH">CASH</option>
-                                    <option value="CARD">CARD</option>
-                                    <option value="IMPS">IMPS</option>
-                                    <option value="OTHER">OTHER</option>
-                                </Select>
-                            </FormControl>
-                            <FormControl mt={3}>
-                                <FormLabel>Reference</FormLabel>
-                                <Input value={paymentForm.payment_ref} onChange={(e) => setPaymentForm({ ...paymentForm, payment_ref: e.target.value })} />
-                            </FormControl>
-                        </Box>
+                            {/* Record New Payment */}
+                            <Box borderTop="1px" borderColor={borderColor} pt={4}>
+                                <Text fontWeight="600" mb={3}>Record New Payment</Text>
+                                <VStack spacing={3} align="stretch">
+                                    <FormControl>
+                                        <FormLabel fontSize="sm">Amount *</FormLabel>
+                                        <Input
+                                            type="number"
+                                            placeholder="0.00"
+                                            value={paymentForm.amount}
+                                            onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                                            borderRadius="md"
+                                        />
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel fontSize="sm">Payment Date</FormLabel>
+                                        <Input
+                                            type="date"
+                                            value={paymentForm.payment_date}
+                                            onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })}
+                                            borderRadius="md"
+                                        />
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel fontSize="sm">Payment Method</FormLabel>
+                                        <Select
+                                            value={paymentForm.method}
+                                            onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
+                                            borderRadius="md"
+                                        >
+                                            <option value="CASH">Cash</option>
+                                            <option value="CARD">Card</option>
+                                            <option value="IMPS">IMPS</option>
+                                            <option value="BANK_TRANSFER">Bank Transfer</option>
+                                            <option value="CHEQUE">Cheque</option>
+                                            <option value="OTHER">Other</option>
+                                        </Select>
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel fontSize="sm">Reference (Optional)</FormLabel>
+                                        <Input
+                                            placeholder="Transaction ID / Cheque no etc."
+                                            value={paymentForm.payment_ref}
+                                            onChange={(e) => setPaymentForm({ ...paymentForm, payment_ref: e.target.value })}
+                                            borderRadius="md"
+                                        />
+                                    </FormControl>
+                                </VStack>
+                            </Box>
+                        </VStack>
                     </ModalBody>
 
                     <ModalFooter>
                         <Button variant="ghost" mr={3} onClick={closePayments}>Close</Button>
                         <Button colorScheme="green" onClick={handleRecordPayment} isLoading={savingPayment}>Record Payment</Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+
+            {/* Order Details Modal */}
+            <Modal isOpen={detailsOpen} onClose={closeDetails} isCentered scrollBehavior="inside" size="2xl">
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>
+                        <VStack align="flex-start" spacing={1}>
+                            <Text fontSize="lg" fontWeight="700">Order Details</Text>
+                            <HStack spacing={3}>
+                                <Badge colorScheme={getStatusColor(selectedOrder?.status)} fontSize="md" px={3} py={1}>
+                                    {selectedOrder?.status}
+                                </Badge>
+                                <Text fontSize="sm" color={mutedText}>{selectedOrder?.order_no}</Text>
+                            </HStack>
+                        </VStack>
+                    </ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        {selectedOrder && (
+                            <VStack spacing={6} align="stretch">
+                                {/* Order Info */}
+                                <Box borderRadius="lg" border="1px solid" borderColor={borderColor} p={4} bg={inputBg}>
+                                    <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                                        <Box>
+                                            <Text fontSize="xs" fontWeight="600" color={mutedText} mb={1}>Supplier</Text>
+                                            <Text fontWeight="600">{selectedOrder.supplier_name || '-'}</Text>
+                                            <Text fontSize="sm" color={mutedText}>{selectedOrder.supplier_email || '-'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" fontWeight="600" color={mutedText} mb={1}>Store</Text>
+                                            <Text fontWeight="600">{selectedOrder.store_name || '-'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" fontWeight="600" color={mutedText} mb={1}>Order Amount</Text>
+                                            <Text fontSize="lg" fontWeight="700" color="green.600">${Number(selectedOrder.total_amount || 0).toFixed(2)}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" fontWeight="600" color={mutedText} mb={1}>Order Date</Text>
+                                            <Text fontWeight="600">{new Date(selectedOrder.created_at).toLocaleDateString()}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" fontWeight="600" color={mutedText} mb={1}>Delivery Date</Text>
+                                            <Text fontWeight="600">{selectedOrder.deliver_at ? new Date(selectedOrder.deliver_at).toLocaleDateString() : 'Not set'}</Text>
+                                        </Box>
+                                        <Box>
+                                            <Text fontSize="xs" fontWeight="600" color={mutedText} mb={1}>Ordered By</Text>
+                                            <Text fontWeight="600">
+                                                {selectedOrder.ordered_by_firstname && selectedOrder.ordered_by_lastname
+                                                    ? `${selectedOrder.ordered_by_firstname} ${selectedOrder.ordered_by_lastname}`
+                                                    : '-'}
+                                            </Text>
+                                        </Box>
+                                    </SimpleGrid>
+                                </Box>
+
+                                {/* Status Management */}
+                                <Box borderTop="1px" borderColor={borderColor} pt={4}>
+                                    <Text fontWeight="600" mb={3}>Update Status</Text>
+                                    <HStack spacing={2}>
+                                        {['pending', 'sent', 'received', 'cancelled'].map((st) => (
+                                            <Button
+                                                key={st}
+                                                size="sm"
+                                                colorScheme={selectedOrder.status === st ? getStatusColor(st) : 'gray'}
+                                                variant={selectedOrder.status === st ? 'solid' : 'outline'}
+                                                onClick={() => handleUpdateOrderStatus(selectedOrder.id, st)}
+                                                isLoading={updatingStatus}
+                                                isDisabled={selectedOrder.status === st}
+                                                textTransform="capitalize"
+                                            >
+                                                {st}
+                                            </Button>
+                                        ))}
+                                    </HStack>
+                                </Box>
+
+                                {/* Quick Actions */}
+                                <Box borderTop="1px" borderColor={borderColor} pt={4}>
+                                    <Text fontWeight="600" mb={3}>Quick Actions</Text>
+                                    <HStack spacing={2}>
+                                        <Button size="sm" colorScheme="blue" onClick={() => { openPayments(selectedOrder.id, selectedOrder); closeDetails() }}>View Payments</Button>
+                                        <Button size="sm" colorScheme="green" onClick={() => window.open(`/invoice/${selectedOrder.id}`, '_blank')}>Generate Invoice</Button>
+                                    </HStack>
+                                </Box>
+                            </VStack>
+                        )}
+                    </ModalBody>
+
+                    <ModalFooter>
+                        <Button colorScheme="blue" onClick={closeDetails}>Close</Button>
                     </ModalFooter>
                 </ModalContent>
             </Modal>

@@ -11,9 +11,9 @@ export default function SupplierBids() {
 	const [asks, setAsks] = useState([])
 	const [isOpen, setIsOpen] = useState(false)
 	const [activeAsk, setActiveAsk] = useState(null)
-	const [form, setForm] = useState({ price: '', quantity: '' , message: ''})
+	const [form, setForm] = useState({ price: '', quantity: '', message: '' })
 
-	useEffect(()=>{ fetchAsks() }, [])
+	useEffect(() => { fetchAsks() }, [])
 
 	async function fetchAsks() {
 		try {
@@ -22,10 +22,10 @@ export default function SupplierBids() {
 		} catch (err) { console.error(err) }
 	}
 
-	const openBidModal = (ask) => { setActiveAsk(ask); setForm({ price: '', quantity: ask.quantity }); setIsOpen(true)}
-	const closeModal = ()=>{ setIsOpen(false); setActiveAsk(null) }
+	const openBidModal = (ask) => { setActiveAsk(ask); setForm({ price: '', quantity: ask.quantity }); setIsOpen(true) }
+	const closeModal = () => { setIsOpen(false); setActiveAsk(null) }
 
-	const submitBid = async ()=>{
+	const submitBid = async () => {
 		try {
 			if (!form.price || !form.quantity) return toast({ title: 'Price and quantity required', status: 'warning' })
 			await bidApi.placeBid(activeAsk.id, form)
@@ -35,7 +35,7 @@ export default function SupplierBids() {
 	}
 
 	return (
-		<Box minH="100vh" bg="#020617" display="flex" flexDirection="column">
+		<Box minH="100vh" bg="#020617" display="flex" flexDirection="column" w="100vw">
 			<Navbar />
 			<Container maxW="container.md" py={12}>
 				<VStack spacing={6} align="stretch">
@@ -45,8 +45,8 @@ export default function SupplierBids() {
 					<Table variant="simple" colorScheme="whiteAlpha" bg="whiteAlpha.50" p={4} borderRadius="md">
 						<Thead><Tr><Th>Product</Th><Th>Qty</Th><Th>Min Price</Th><Th>Expires At</Th><Th>Action</Th></Tr></Thead>
 						<Tbody>
-							{asks.map(a=> (
-								<Tr key={a.id}><Td>{a.product_name}</Td><Td>{a.quantity}</Td><Td>{a.min_price||'—'}</Td><Td>{a.expires_at||'—'}</Td><Td><Button size="sm" onClick={()=>openBidModal(a)}>Place Bid</Button></Td></Tr>
+							{asks.map(a => (
+								<Tr key={a.id}><Td>{a.product_name}</Td><Td>{a.quantity}</Td><Td>{a.min_price || '—'}</Td><Td>{a.expires_at || '—'}</Td><Td><Button size="sm" onClick={() => openBidModal(a)}>Place Bid</Button></Td></Tr>
 							))}
 						</Tbody>
 					</Table>
@@ -59,15 +59,15 @@ export default function SupplierBids() {
 							<ModalBody>
 								<FormControl>
 									<FormLabel>Price</FormLabel>
-									<Input value={form.price} onChange={(e)=>setForm({...form, price: e.target.value})} />
+									<Input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
 								</FormControl>
 								<FormControl mt={3}>
 									<FormLabel>Quantity</FormLabel>
-									<Input value={form.quantity} onChange={(e)=>setForm({...form, quantity: e.target.value})} />
+									<Input value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
 								</FormControl>
 								<FormControl mt={3}>
 									<FormLabel>Message (optional)</FormLabel>
-									<Input value={form.message} onChange={(e)=>setForm({...form, message: e.target.value})} />
+									<Input value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
 								</FormControl>
 							</ModalBody>
 							<ModalFooter>

@@ -1,6 +1,6 @@
 import client from './auth'
 
-export async function getAsks(limit=12, offset=0) {
+export async function getAsks(limit = 12, offset = 0) {
   return client.get('/api/user/supplier/asks', { params: { limit, offset } })
 }
 
@@ -12,7 +12,7 @@ export async function getSupplierBids() {
   return client.get('/api/user/supplier/bids')
 }
 
-export async function getAdminAsks(limit=12, offset=0) {
+export async function getAdminAsks(limit = 12, offset = 0) {
   return client.get('/api/admin/asks', { params: { limit, offset } })
 }
 
@@ -38,7 +38,7 @@ export async function placeSupplyOrder(data) {
 }
 
 export async function getSupplierOrders(limit = 12, offset = 0) {
-  return client.get('/api/user/supplier/orders', { params: { limit, offset } })
+  return client.get('/api/admin/supplier-orders', { params: { limit, offset } })
 }
 
 export async function getSupplierOrder(id) {

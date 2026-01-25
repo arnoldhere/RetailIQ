@@ -24,6 +24,11 @@ export async function deleteProduct(id) {
   return client.delete(`/api/admin/products/${id}`)
 }
 
+export async function getStores() {
+  return client.get(`/api/supplier/get-stores`)
+}
+
+
 // Customer product endpoints (public - no auth required)
 export async function getPublicProducts(limit = 100, offset = 0, filters = {}) {
   const params = new URLSearchParams()

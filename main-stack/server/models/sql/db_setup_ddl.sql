@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS supply_payments (
   supplier_id INT NOT NULL,
   amount DECIMAL(14,2) NOT NULL DEFAULT 0.00,
   payment_date DATE,
-  method ENUM('IMPS','NEFT','RTGS','CASH','CARD','OTHER') NOT NULL DEFAULT 'IMPS',
+  method ENUM('IMPS','NEFT','RTGS','CASH','CARD','OTHER', 'BANK TRANSFER' , 'CHEQUE') NOT NULL DEFAULT 'IMPS',
   payment_ref VARCHAR(255),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_supplypayments_order (supply_order_id),
