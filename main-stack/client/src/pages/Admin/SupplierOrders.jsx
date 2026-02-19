@@ -132,6 +132,8 @@ export default function SupplierOrdersPage() {
     const [selectedOrder, setSelectedOrder] = useState(null)
     const [orderItems, setOrderItems] = useState([])
     const [updatingStatus, setUpdatingStatus] = useState(false)
+    const [paymentSummary, setPaymentSummary] = useState(null)
+    const [notifyingSupplier, setNotifyingSupplier] = useState(false)
 
     const openPayments = async (orderId, order) => {
         setCurrentOrderId(orderId)
@@ -148,15 +150,24 @@ export default function SupplierOrdersPage() {
 
     const openDetails = async (order) => {
         setSelectedOrder(order)
-        setCurrentOrder(null)
-        setPayments([])
-        setPaymentForm({ amount: '', payment_date: '', method: 'CASH', payment_ref: '' })
+        setDetailsOpen(true)
+        setPaymentSummary(null)
+
+        // Fetch payment summary
+        try {
+            const res = await adminApi.getSupplyPaymentSummary(order.id)
+            setPaymentSummary(res.data)
+        } catch (err) {
+            console.error('Failed to load payment summary', err)
+            setPaymentSummary(null)
+        }
     }
 
     const closeDetails = () => {
         setDetailsOpen(false)
         setSelectedOrder(null)
         setOrderItems([])
+        setPaymentSummary(null)
     }
 
     const handleUpdateOrderStatus = async (orderId, newStatus) => {
@@ -165,26 +176,36 @@ export default function SupplierOrdersPage() {
             await adminApi.updateSupplyOrderStatus(orderId, newStatus)
             toast({ title: `Order status updated to ${newStatus}`, status: 'success', duration: 2000 })
             fetchOrders()
+            // Refresh payment summary if details modal is open
+            if (selectedOrder) {
+                const res = await adminApi.getSupplyPaymentSummary(orderId)
+                setPaymentSummary(res.data)
+            }
         } catch (err) {
             console.error('Failed to update order status', err)
             toast({ title: 'Failed to update status', status: 'error' })
         } finally {
             setUpdatingStatus(false)
         }
-        // The backend doesn't have a dedicated endpoint, but items data can be stored
+    }
+
+    const handleNotifySupplierPayment = async (orderId) => {
         try {
-            // Items would typically be fetched from backend
-            // For now, we'll show order info and payments
-            setOrderItems([])
+            setNotifyingSupplier(true)
+            await adminApi.notifySupplierIncompletePayment(orderId)
+            toast({ title: 'Supplier notification sent successfully!', status: 'success', duration: 3000 })
         } catch (err) {
-            console.error('Failed to load order details', err)
-            setOrderItems([])
+            console.error('Failed to send notification', err)
+            toast({ title: err.response?.data?.message || 'Failed to send notification', status: 'error' })
+        } finally {
+            setNotifyingSupplier(false)
         }
     }
 
     const closePayments = () => {
         setPaymentsOpen(false)
         setCurrentOrderId(null)
+        setCurrentOrder(null)
         setPayments([])
         setPaymentForm({ amount: '', payment_date: '', method: 'CASH', payment_ref: '' })
     }
@@ -193,10 +214,28 @@ export default function SupplierOrdersPage() {
         if (!paymentForm.amount || Number(paymentForm.amount) <= 0) return toast({ title: 'Amount required', status: 'warning' })
         try {
             setSavingPayment(true)
-            await adminApi.recordSupplyPayment(currentOrderId, paymentForm)
-            toast({ title: 'Payment recorded', status: 'success' })
-            const res = await adminApi.getSupplyPayments(currentOrderId)
-            setPayments(res.data.payments || [])
+            const res = await adminApi.recordSupplyPayment(currentOrderId, paymentForm)
+            toast({ title: 'Payment recorded successfully!', status: 'success', duration: 2000 })
+
+            // Refresh payments list
+            const paymentsRes = await adminApi.getSupplyPayments(currentOrderId)
+            setPayments(paymentsRes.data.payments || [])
+
+            // Refresh payment summary if it's open in details modal
+            if (selectedOrder && selectedOrder.id === currentOrderId) {
+                const summaryRes = await adminApi.getSupplyPaymentSummary(currentOrderId)
+                setPaymentSummary(summaryRes.data)
+
+                // If order is now fully paid, show notification
+                if (summaryRes.data.isFullyPaid && selectedOrder.status !== 'received') {
+                    toast({ title: 'Order fully paid! Status updated to Received', status: 'info', duration: 3000 })
+                    setSelectedOrder({ ...selectedOrder, status: 'received' })
+                }
+            }
+
+            // Refresh main orders list
+            fetchOrders()
+
             setPaymentForm({ amount: '', payment_date: '', method: 'CASH', payment_ref: '' })
         } catch (err) {
             console.error('Failed to record payment', err)
@@ -622,7 +661,82 @@ export default function SupplierOrdersPage() {
                                     </SimpleGrid>
                                 </Box>
 
-                                {/* Status Management */}
+                                {/* Payment Summary */}
+                                {paymentSummary && (
+                                    <Box borderRadius="lg" border="2px solid" borderColor={paymentSummary.isFullyPaid ? 'green.400' : 'orange.400'} p={4} bg={paymentSummary.isFullyPaid ? useColorModeValue('green.50', 'green.900') : useColorModeValue('orange.50', 'orange.900')}>
+                                        <HStack mb={3} justify="space-between">
+                                            <Text fontWeight="700" fontSize="lg">Payment Summary</Text>
+                                            <Badge colorScheme={paymentSummary.isFullyPaid ? 'green' : 'orange'} fontSize="md" px={3} py={1}>
+                                                {paymentSummary.isFullyPaid ? '✓ Fully Paid' : '⚠ Partial Payment'}
+                                            </Badge>
+                                        </HStack>
+                                        <SimpleGrid columns={1} spacing={2}>
+                                            <HStack justify="space-between">
+                                                <Text color={mutedText}>Total Order Amount:</Text>
+                                                <Text fontWeight="700">${paymentSummary.totalAmount.toFixed(2)}</Text>
+                                            </HStack>
+                                            <HStack justify="space-between" borderBottom="1px" borderColor={borderColor} pb={2}>
+                                                <Text color={mutedText}>Total Paid:</Text>
+                                                <Text fontWeight="700" color="green.600">${paymentSummary.totalPaid.toFixed(2)}</Text>
+                                            </HStack>
+                                            <HStack justify="space-between" pt={2}>
+                                                <Text fontWeight="600" color={paymentSummary.isFullyPaid ? 'green.600' : 'red.600'}>Remaining Balance:</Text>
+                                                <Text fontWeight="700" fontSize="lg" color={paymentSummary.isFullyPaid ? 'green.600' : 'red.600'}>
+                                                    ${paymentSummary.remainingAmount.toFixed(2)}
+                                                </Text>
+                                            </HStack>
+                                            <Text fontSize="xs" color={mutedText} mt={1}>
+                                                {paymentSummary.paymentCount} payment(s) recorded
+                                            </Text>
+                                        </SimpleGrid>
+                                    </Box>
+                                )}
+
+                                {/* Incomplete Payment Notification */}
+                                {paymentSummary && !paymentSummary.isFullyPaid && (
+                                    <Box borderRadius="lg" border="1px dashed" borderColor="orange.400" p={4} bg={useColorModeValue('orange.50', 'orange.900')}>
+                                        <VStack spacing={3} align="stretch">
+                                            <HStack>
+                                                <Box color="orange.600" fontSize="lg">⚠</Box>
+                                                <Text fontWeight="600">Outstanding Payment</Text>
+                                            </HStack>
+                                            <Text fontSize="sm" color={mutedText}>
+                                                This order has an outstanding balance of <strong>${paymentSummary.remainingAmount.toFixed(2)}</strong>.
+                                                You can send a payment reminder to the supplier.
+                                            </Text>
+                                            <Button
+                                                size="sm"
+                                                colorScheme="orange"
+                                                onClick={() => handleNotifySupplierPayment(selectedOrder.id)}
+                                                isLoading={notifyingSupplier}
+                                                leftIcon={<Text>📧</Text>}
+                                            >
+                                                Send Payment Reminder Email
+                                            </Button>
+                                        </VStack>
+                                    </Box>
+                                )}
+
+                                {paymentSummary && paymentSummary.isFullyPaid && (
+                                    <Box borderRadius="lg" border="1px solid" borderColor="green.400" p={4} bg={useColorModeValue('green.50', 'green.900')}>
+                                        <HStack>
+                                            <Box color="green.600" fontSize="xl">✓</Box>
+                                            <VStack align="flex-start" spacing={0}>
+                                                <Text fontWeight="600" color="green.600">Payment Complete</Text>
+                                                <Text fontSize="sm" color={mutedText}>All payment has been received for this order.</Text>
+                                            </VStack>
+                                        </HStack>
+                                    </Box>
+                                )}
+
+                                {/* Quick Actions */}
+                                <Box borderTop="1px" borderColor={borderColor} pt={4}>
+                                    <Text fontWeight="600" mb={3}>Quick Actions</Text>
+                                    <HStack spacing={2}>
+                                        <Button size="sm" colorScheme="blue" onClick={() => { openPayments(selectedOrder.id, selectedOrder) }}>View/Add Payments</Button>
+                                        <Button size="sm" colorScheme="purple" variant="outline" onClick={() => window.open(`/invoice/${selectedOrder.id}`, '_blank')}>Generate Invoice</Button>
+                                    </HStack>
+                                </Box>
                                 <Box borderTop="1px" borderColor={borderColor} pt={4}>
                                     <Text fontWeight="600" mb={3}>Update Status</Text>
                                     <HStack spacing={2}>
@@ -640,15 +754,6 @@ export default function SupplierOrdersPage() {
                                                 {st}
                                             </Button>
                                         ))}
-                                    </HStack>
-                                </Box>
-
-                                {/* Quick Actions */}
-                                <Box borderTop="1px" borderColor={borderColor} pt={4}>
-                                    <Text fontWeight="600" mb={3}>Quick Actions</Text>
-                                    <HStack spacing={2}>
-                                        <Button size="sm" colorScheme="blue" onClick={() => { openPayments(selectedOrder.id, selectedOrder); closeDetails() }}>View Payments</Button>
-                                        <Button size="sm" colorScheme="green" onClick={() => window.open(`/invoice/${selectedOrder.id}`, '_blank')}>Generate Invoice</Button>
                                     </HStack>
                                 </Box>
                             </VStack>

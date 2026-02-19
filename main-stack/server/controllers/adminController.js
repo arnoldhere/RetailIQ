@@ -1129,29 +1129,221 @@ exports.createSupplyPayment = async (req, res) => {
     if (!order) return res.status(404).json({ message: 'Supply order not found' });
 
     const supplier_id = order.supplier_id;
-    const [pid] = await db('supply_payments').insert({ supply_order_id: id, supplier_id, amount, payment_date: payment_date || null, method: method || 'CASH', payment_ref: payment_ref || null });
+    const [pid] = await db('supply_payments').insert({
+      supply_order_id: id,
+      supplier_id,
+      amount,
+      payment_date: payment_date || null,
+      method: method || 'CASH',
+      payment_ref: payment_ref || null
+    });
     const payment = await db('supply_payments').where('id', pid).first();
 
-    // Optionally notify supplier
+    // Calculate total paid so far (including this payment)
+    const paymentSummary = await db('supply_payments')
+      .where('supply_order_id', id)
+      .sum('amount as total_paid')
+      .first();
+
+    const totalPaid = Number(paymentSummary?.total_paid || 0);
+    const totalAmount = Number(order.total_amount || 0);
+    const remainingAmount = totalAmount - totalPaid;
+    const isFullyPaid = remainingAmount <= 0;
+
+    // Auto-complete order if fully paid
+    if (isFullyPaid && order.status !== 'received') {
+      await db('supply_orders').where('id', id).update({ status: 'received' });
+    }
+
+    // Notify supplier about payment
     try {
-      const supplierUser = await db('suppliers').where('id', supplier_id).first();
-      if (supplierUser) {
-        const u = await db('users').where('id', supplierUser.cust_id).first();
-        if (u && u.email) {
-          const subject = `Payment recorded for order ${order.order_no}`;
-          const html = `<p>A payment of $${Number(amount).toFixed(2)} has been recorded for order ${order.order_no}.</p>`;
+      const supplier = await db('suppliers').where('id', supplier_id).first();
+      if (supplier) {
+        // Try direct email from suppliers table first, then fallback to linked user
+        let supplierEmail = supplier.email;
+        let supplierName = supplier.name;
+
+        // If supplier is linked to users table, get email from there too
+        if (supplier.cust_id) {
+          const linkedUser = await db('users').where('id', supplier.cust_id).first();
+          if (linkedUser) {
+            supplierEmail = linkedUser.email || supplier.email;
+            supplierName = `${linkedUser.firstname || ''} ${linkedUser.lastname || ''}`.trim() || supplier.name;
+          }
+        }
+
+        if (supplierEmail) {
           const emailService = require('../services/mailService');
-          emailService(process.env.GMAIL_EMAIL, u.email, subject, html).catch(e => console.error('notify supplier email failed', e));
+          let html = `<p>Hi ${supplierName},</p>`;
+          html += `<p>A payment of $${Number(amount).toFixed(2)} has been recorded for order <strong>${order.order_no}</strong>.</p>`;
+          html += `<p><strong>Payment Summary:</strong></p>`;
+          html += `<ul>`;
+          html += `<li>Total Amount: $${totalAmount.toFixed(2)}</li>`;
+          html += `<li>Amount Paid: $${totalPaid.toFixed(2)}</li>`;
+          html += `<li>Remaining: $${Math.max(0, remainingAmount).toFixed(2)}</li>`;
+          html += `</ul>`;
+
+          if (isFullyPaid) {
+            html += `<p style="color: green; font-weight: bold;">✓ Payment Complete! Order status has been updated to 'Received'.</p>`;
+          } else {
+            html += `<p style="color: orange;">Note: Partial payment received. Awaiting remaining payment of $${remainingAmount.toFixed(2)}.</p>`;
+          }
+
+          html += `<p>Thank you!</p>`;
+
+          const subject = isFullyPaid
+            ? `Payment Complete for Order ${order.order_no}`
+            : `Partial Payment Received for Order ${order.order_no}`;
+
+          emailService(process.env.GMAIL_EMAIL, supplierEmail, subject, html)
+            .catch(e => console.error('notify supplier email failed', e));
         }
       }
     } catch (e) {
       console.error('notify supplier on payment failed', e);
     }
 
-    return res.json({ payment });
+    return res.json({
+      payment,
+      orderStatus: isFullyPaid ? 'received' : order.status,
+      paymentSummary: {
+        totalAmount,
+        totalPaid,
+        remainingAmount: Math.max(0, remainingAmount),
+        isFullyPaid
+      }
+    });
   } catch (err) {
     console.error('createSupplyPayment error', err);
     return res.status(500).json({ message: 'Failed to record payment' });
+  }
+}
+
+// Admin: Get payment summary for a supply order
+exports.getSupplyPaymentSummary = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await db('supply_orders').where('id', id).first();
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Get all payments for this order
+    const payments = await db('supply_payments')
+      .where('supply_order_id', id)
+      .select('*')
+      .orderBy('payment_date', 'desc');
+
+    // Calculate totals
+    const totalAmount = Number(order.total_amount || 0);
+    const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const remainingAmount = totalAmount - totalPaid;
+    const isFullyPaid = remainingAmount <= 0;
+
+    return res.json({
+      orderId: id,
+      orderNo: order.order_no,
+      orderStatus: order.status,
+      totalAmount,
+      totalPaid,
+      remainingAmount: Math.max(0, remainingAmount),
+      isFullyPaid,
+      paymentCount: payments.length,
+      payments
+    });
+  } catch (err) {
+    console.error('getSupplyPaymentSummary error', err);
+    return res.status(500).json({ message: 'Failed to get payment summary' });
+  }
+}
+
+// Admin: Notify supplier about incomplete payment
+exports.notifySupplierIncompletePayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await db('supply_orders').where('id', id).first();
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Get payment summary
+    const paymentSummary = await db('supply_payments')
+      .where('supply_order_id', id)
+      .sum('amount as total_paid')
+      .first();
+
+    const totalPaid = Number(paymentSummary?.total_paid || 0);
+    const totalAmount = Number(order.total_amount || 0);
+    const remainingAmount = totalAmount - totalPaid;
+
+    if (remainingAmount <= 0) {
+      return res.status(400).json({ message: 'Order is already fully paid' });
+    }
+
+    // Get supplier and send email
+    const supplier = await db('suppliers').where('id', order.supplier_id).first();
+    if (!supplier) return res.status(404).json({ message: 'Supplier not found' });
+
+    let supplierEmail = supplier.email;
+    let supplierName = supplier.name;
+
+    if (supplier.cust_id) {
+      const linkedUser = await db('users').where('id', supplier.cust_id).first();
+      if (linkedUser) {
+        supplierEmail = linkedUser.email || supplier.email;
+        supplierName = `${linkedUser.firstname || ''} ${linkedUser.lastname || ''}`.trim() || supplier.name;
+      }
+    }
+
+    if (supplierEmail) {
+      const emailService = require('../services/mailService');
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <p>Hi ${supplierName},</p>
+          <p>We are writing to inform you about the payment status for your supply order <strong>${order.order_no}</strong>.</p>
+          
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #333;">Payment Details:</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;"><strong>Total Order Amount:</strong></td>
+                <td style="padding: 8px; text-align: right;">$${totalAmount.toFixed(2)}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;"><strong>Amount Paid:</strong></td>
+                <td style="padding: 8px; text-align: right; color: green;">$${totalPaid.toFixed(2)}</td>
+              </tr>
+              <tr style="background-color: #fff3cd;">
+                <td style="padding: 8px;"><strong>Outstanding Balance:</strong></td>
+                <td style="padding: 8px; text-align: right; color: #ff6b6b;"><strong>$${remainingAmount.toFixed(2)}</strong></td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="color: #ff6b6b; font-weight: bold;">⚠ Action Required: Please arrange payment of the outstanding balance of <strong>$${remainingAmount.toFixed(2)}</strong> at your earliest convenience.</p>
+
+          <p>Once we receive the remaining payment, we will update your order status accordingly.</p>
+          
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">
+            If you have any questions or concerns, please don't hesitate to contact us.<br/>
+            Thank you for your business!<br/>
+            <br/>
+            RetailIQ - Smart Retail Analytics Platform
+          </p>
+        </div>
+      `;
+
+      const subject = `Pending Payment Notification for Order ${order.order_no}`;
+
+      await emailService(process.env.GMAIL_EMAIL, supplierEmail, subject, html);
+
+      return res.json({
+        message: 'Supplier notification sent',
+        supplierEmail,
+        outstandingBalance: remainingAmount
+      });
+    }
+
+    return res.status(400).json({ message: 'No email address found for supplier' });
+  } catch (err) {
+    console.error('notifySupplierIncompletePayment error', err);
+    return res.status(500).json({ message: 'Failed to send notification' });
   }
 }
 

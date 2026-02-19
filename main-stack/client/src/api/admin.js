@@ -135,6 +135,14 @@ export async function recordSupplyPayment(orderId, data) {
   return client.post(`/api/admin/supplier-orders/${orderId}/payments`, data)
 }
 
+export async function getSupplyPaymentSummary(orderId) {
+  return client.get(`/api/admin/supplier-orders/${orderId}/payment-summary`)
+}
+
+export async function notifySupplierIncompletePayment(orderId) {
+  return client.post(`/api/admin/supplier-orders/${orderId}/notify-payment`)
+}
+
 export async function updateSupplyOrderStatus(orderId, status) {
   return client.post(`/api/admin/supplier-orders/${orderId}/status`, { status })
 }

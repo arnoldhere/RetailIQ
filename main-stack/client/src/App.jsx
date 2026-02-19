@@ -10,6 +10,7 @@ import SuppliersPage from './pages/Admin/Suppliers'
 import AskSuppliers from './pages/Admin/AskSuppliers'
 import CustomerOrdersPage from "./pages/Admin/CustomerOrders"
 import AdminSupplierOrdersPage from './pages/Admin/SupplierOrders'
+import OrderConfirmation from "./pages/customer/OrderConfirmation"
 // Auth Pages
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
@@ -40,6 +41,7 @@ import AboutUs from './pages/AboutUs'
 import CustomerProductPage from './pages/customer/Products';
 import { CartProvider } from './context/CartContext'
 import { WishlistProvider } from './context/WishlistContext'
+import MyOrders from './pages/customer/MyOrders'
 
 
 function AppRoutes() {
@@ -77,14 +79,18 @@ function AppRoutes() {
       <Route path="/supplier/orders" element={user?.role === 'supplier' ? <Orders /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/orders/:id" element={user?.role === 'supplier' ? <OrderDetail /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/bids" element={user?.role === 'supplier' ? <Bids /> : <Navigate to="/auth/login" replace />} />
-      <Route path="/supplier/products" element={user?.role === 'supplier' ? <SupplierProductsPage /> : <Navigate to="/auth/login" replace />} />
-      <Route path="/supplier/products/:id" element={user?.role === 'supplier' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
+      {/* <Route path="/supplier/products" element={user?.role === 'supplier' ? <SupplierProductsPage /> : <Navigate to="/auth/login" replace />} /> */}
+      {/* <Route path="/supplier/products/:id" element={user?.role === 'supplier' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} /> */}
       <Route path="/supplier/profile" element={user?.role === 'supplier' ? <Profile /> : <Navigate to="/auth/login" replace />} />
       <Route path="/customer/home" element={user?.role === 'customer' ? <CustomerHome /> : <Navigate to="/auth/login" replace />} />
       <Route path='/customer/products' element={user?.role === "customer" ? <CustomerProductPage /> : <Navigate to="/auth/login" replace />} />
       <Route path='/customer/products/:id' element={user?.role === 'customer' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
       <Route path="/customer/cart" element={user?.role === 'customer' ? <CartPage /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/customer/my-orders" element={user?.role === 'customer' ? <MyOrders /> : <Navigate to="/auth/login" replace />} />
       <Route path="/customer/wishlist" element={user?.role === 'customer' ? <WishlistPage /> : <Navigate to="/auth/login" replace />} />
+      <Route path='/customer/order-confirmation/:orderId' element={user?.role === 'customer' ? <OrderConfirmation /> : <Navigate to="/auth/login" replace />} />
+      {/* <Route path='/customer/my-orders' element={user?.role === 'customer' ? <MyOrders /> : <Navigate to="/auth/login" replace />} /> */}
+
 
       {/* Other Admin Routes */}
       <Route path='/admin/users' element={user?.role === 'admin' ? <UsersList /> : <Navigate to="/auth/login" replace />} />

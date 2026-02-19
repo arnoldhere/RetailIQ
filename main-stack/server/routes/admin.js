@@ -278,6 +278,26 @@ router.post('/supplier-orders/:id/payments', authMiddleware, async (req, res, ne
   }
 });
 
+// Admin: Get payment summary for a supply order
+router.get('/supplier-orders/:id/payment-summary', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getSupplyPaymentSummary(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Admin: Notify supplier about incomplete payment
+router.post('/supplier-orders/:id/notify-payment', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.notifySupplierIncompletePayment(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/sendAssurance/:id', authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });

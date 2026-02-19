@@ -87,8 +87,8 @@ export default function Navbar() {
 						>
 							Explore
 						</ChakraLink>					{user?.role === 'supplier' && (
-						<>
-							<ChakraLink
+							<>
+								{/* <ChakraLink
 								fontSize="sm"
 								color="gray.300"
 								_hover={{ color: "cyan.400", textDecoration: "none" }}
@@ -96,18 +96,18 @@ export default function Navbar() {
 								onClick={() => navigate("/supplier/products")}
 							>
 								Catalog
-							</ChakraLink>
-							<ChakraLink
-								fontSize="sm"
-								color="gray.300"
-								_hover={{ color: "cyan.400", textDecoration: "none" }}
-								transition="color 0.2s"
-								onClick={() => navigate("/supplier/bids")}
-							>
-								Bids
-							</ChakraLink>
-						</>
-					)}						{user?.role !== 'admin' && (
+							</ChakraLink> */}
+								<ChakraLink
+									fontSize="sm"
+									color="gray.300"
+									_hover={{ color: "cyan.400", textDecoration: "none" }}
+									transition="color 0.2s"
+									onClick={() => navigate("/supplier/bids")}
+								>
+									Bids
+								</ChakraLink>
+							</>
+						)}						{user?.role !== 'admin' && (
 							<>
 								<ChakraLink
 									fontSize="sm"
@@ -197,12 +197,12 @@ export default function Navbar() {
 										bg="rgba(11,18,32,0.98)"
 										backdropFilter="blur(10px)"
 									>
-										
+
 										<MenuItem
 											_hover={{ bg: "whiteAlpha.200" }}
 											fontSize="sm"
 											color="gray.200"
-									>
+										>
 											Settings
 										</MenuItem>
 										<MenuDivider />

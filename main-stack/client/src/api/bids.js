@@ -1,7 +1,9 @@
 import client from './auth'
 
-export async function getAsks(limit = 12, offset = 0) {
-  return client.get('/api/user/supplier/asks', { params: { limit, offset } })
+export async function getAsks(limit = 12, offset = 0, filters = {}) {
+  const params = { limit, offset }
+  if (filters.status) params.status = filters.status
+  return client.get('/api/user/supplier/asks', { params })
 }
 
 export async function placeBid(askId, data) {
@@ -12,8 +14,10 @@ export async function getSupplierBids() {
   return client.get('/api/user/supplier/bids')
 }
 
-export async function getAdminAsks(limit = 12, offset = 0) {
-  return client.get('/api/admin/asks', { params: { limit, offset } })
+export async function getAdminAsks(limit = 12, offset = 0, filters = {}) {
+  const params = { limit, offset }
+  if (filters.status) params.status = filters.status
+  return client.get('/api/admin/asks', { params })
 }
 
 export async function createAsk(data) {
