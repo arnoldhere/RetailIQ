@@ -22,7 +22,7 @@ import { getUserOrders, cancelOrder } from '../../api/orders'
 export default function OrdersPage() {
     const navigate = useNavigate()
     const toast = useToast()
-    
+
     const pageBg = useColorModeValue('gray.50', 'gray.900')
     const subtleCard = useColorModeValue('white', 'gray.800')
     const mutedText = useColorModeValue('gray.600', 'gray.300')
