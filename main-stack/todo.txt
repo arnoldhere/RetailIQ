@@ -12,7 +12,7 @@
     - paginations and filtering @ admin 
     - order status management
     - product listing enhanced
-    - store management @adminx`
--- now next
+    - store management @admin
     -  improve layout and ui of the supplier orders @ admin
     - ensure smooth auction flow and work flow 
+-- now next

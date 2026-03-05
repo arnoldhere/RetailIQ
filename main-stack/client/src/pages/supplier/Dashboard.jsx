@@ -18,6 +18,8 @@ import {
 	Spinner,
 	useToast,
 	useColorModeValue,
+	Alert,
+	AlertIcon,
 } from "@chakra-ui/react";
 import SupplierSidebar from "../../components/SupplierSidebar";
 import { ArrowUpIcon, ArrowDownIcon } from "@chakra-ui/icons";
@@ -25,115 +27,114 @@ import { FiTrendingUp } from "react-icons/fi";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import * as bidsApi from "../../api/bids";
+import { useAuth } from "../../context/AuthContext";
 
-/**
- * SupplierDashboard Component
- * Displays real-time KPI metrics including total revenue, pending orders,
- * delivered orders, and recent supply order history.
- * Data is fetched from the supplier's supply orders API endpoint.
- */
 export default function SupplierDashboard() {
 	const toast = useToast();
-	const [kpis, setKpis] = useState(null);
+	const { user } = useAuth();
+	const [kpis, setKpis] = useState({
+		totalRevenue: 0,
+		pendingOrders: 0,
+		sentOrders: 0,
+		receivedOrders: 0,
+		totalOrders: 0,
+		completionRate: 0,
+		avgOrderValue: 0,
+		revenueGrowthPct: 0,
+	});
 	const [recentOrders, setRecentOrders] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
 
-	// Color mode values for light/dark theme
-	const pageBg = useColorModeValue('gray.50', '#020617');
-	const cardBg = useColorModeValue('white', 'whiteAlpha.50');
-	const textMuted = useColorModeValue('gray.600', 'gray.400');
-	const borderColor = useColorModeValue('gray.100', 'whiteAlpha.200');
-	const textPrimary = useColorModeValue('gray.900', 'gray.100');
-	const orderBg = useColorModeValue('gray.50', 'whiteAlpha.100');
-	const orderHoverBg = useColorModeValue('gray.100', 'whiteAlpha.200');
+	const pageBg = useColorModeValue("gray.50", "#020617");
+	const cardBg = useColorModeValue("white", "whiteAlpha.50");
+	const textMuted = useColorModeValue("gray.600", "gray.400");
+	const borderColor = useColorModeValue("gray.100", "whiteAlpha.200");
+	const textPrimary = useColorModeValue("gray.900", "gray.100");
+	const orderBg = useColorModeValue("gray.50", "whiteAlpha.100");
+	const orderHoverBg = useColorModeValue("gray.100", "whiteAlpha.200");
 
-	/**
-	 * Fetch supplier KPI metrics on component mount
-	 * Calculates real metrics from the supplier's supply orders
-	 */
 	useEffect(() => {
-		const fetchKPIs = async () => {
+		const fetchSupplierKPIs = async () => {
 			try {
 				setLoading(true);
-				// Fetch all supplier orders to calculate real KPI metrics
-				const res = await bidsApi.getSupplierOrders(100, 0);
-				const orders = res?.data?.orders || [];
+				setError(null);
 
-				// Calculate KPI metrics from orders
-				const totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
-				const pendingCount = orders.filter(o => o.status === 'pending').length;
-				const sentCount = orders.filter(o => o.status === 'sent').length;
-				const receivedCount = orders.filter(o => o.status === 'received').length;
-				const totalOrders = orders.length;
-				// Calculate completion rate (received / total * 100)
-				const completionRate = totalOrders > 0 ? ((receivedCount / totalOrders) * 100).toFixed(1) : 0;
+				// Verify user is authenticated as supplier
+				if (!user || user.role !== 'supplier') {
+					setError('Access denied: Supplier role required');
+					return;
+				}
 
-				// Store KPI metrics
+				// Fetch supplier-specific dashboard metrics from backend
+				const res = await bidsApi.getSupplierDashboardMetrics();
+				const metrics = res?.data?.metrics || {};
+				const supplier = res?.data?.supplier || {};
+
+				// Validate that we got data for the current user's supplier
+				if (res?.data?.supplier?.id) {
+					console.log(`✓ Dashboard loaded for Supplier ID: ${supplier.id} (${supplier.name})`);
+				}
+
 				setKpis({
-					totalRevenue: totalRevenue.toFixed(2),
-					pendingOrders: pendingCount,
-					sentOrders: sentCount,
-					receivedOrders: receivedCount,
-					totalOrders: totalOrders,
-					completionRate: completionRate,
+					totalRevenue: Number(metrics.totalRevenue || 0),
+					pendingOrders: Number(metrics.pendingOrders || 0),
+					sentOrders: Number(metrics.sentOrders || 0),
+					receivedOrders: Number(metrics.receivedOrders || 0),
+					totalOrders: Number(metrics.totalOrders || 0),
+					completionRate: Number(metrics.completionRate || 0),
+					avgOrderValue: Number(metrics.avgOrderValue || 0),
+					revenueGrowthPct: Number(metrics.revenueGrowthPct || 0),
 				});
-
-				// Set recent orders (last 5 most recent)
-				setRecentOrders(orders.slice(0, 5));
+				setRecentOrders(res?.data?.recentOrders || []);
 			} catch (err) {
-				console.error('Failed to fetch KPIs:', err);
+				console.error("Failed to fetch supplier KPI data:", err);
+				setError(err?.response?.data?.message || "Could not fetch supplier metrics");
 				toast({
-					title: 'Failed to load dashboard',
-					description: 'Could not fetch supplier metrics',
-					status: 'error',
+					title: "Failed to load dashboard",
+					description: err?.response?.data?.message || "Could not fetch supplier metrics",
+					status: "error",
 					duration: 3000,
 				});
 			} finally {
 				setLoading(false);
 			}
 		};
-		fetchKPIs();
-	}, [toast]);
 
-	/**
-	 * Dynamic stats array populated from real KPI data
-	 * Updates whenever kpis state changes
-	 */
+		fetchSupplierKPIs();
+	}, [user, toast]);
+
 	const stats = [
 		{
 			label: "Total Revenue",
-			value: kpis ? `$${kpis.totalRevenue}` : "$0.00",
-			change: "From all supply orders",
+			value: `$${kpis.totalRevenue.toFixed(2)}`,
+			change: "From your supply orders",
 			isPositive: true,
 			icon: ArrowUpIcon,
 		},
 		{
 			label: "Orders Pending",
-			value: kpis ? kpis.pendingOrders : "0",
-			change: `Out of ${kpis?.totalOrders || 0} total`,
-			isPositive: kpis?.pendingOrders === 0,
+			value: `${kpis.pendingOrders}`,
+			change: `Out of ${kpis.totalOrders} total`,
+			isPositive: kpis.pendingOrders === 0,
 			icon: FiTrendingUp,
 		},
 		{
 			label: "Delivered Orders",
-			value: kpis ? kpis.receivedOrders : "0",
-			change: `${kpis?.completionRate || 0}% completion rate`,
+			value: `${kpis.receivedOrders}`,
+			change: `${kpis.completionRate}% completion rate`,
 			isPositive: true,
 			icon: ArrowUpIcon,
 		},
 		{
-			label: "In Transit",
-			value: kpis ? kpis.sentOrders : "0",
-			change: "Orders being delivered",
+			label: "Average Order Value",
+			value: `$${kpis.avgOrderValue.toFixed(2)}`,
+			change: "For your account only",
 			isPositive: true,
 			icon: ArrowDownIcon,
 		},
 	];
 
-	/**
-	 * Map order status to Chakra UI color scheme
-	 * Used in Badge components to visually represent order status
-	 */
 	const getStatusColor = (status) => {
 		const colors = {
 			received: "green",
@@ -144,17 +145,13 @@ export default function SupplierDashboard() {
 		return colors[status] || "gray";
 	};
 
-	/**
-	 * Format ISO date string to readable format
-	 * Example: 2025-01-15T10:30:00Z → Jan 15, 2025
-	 */
 	const formatDate = (dateStr) => {
-		if (!dateStr) return '-';
+		if (!dateStr) return "-";
 		try {
-			return new Date(dateStr).toLocaleDateString('en-US', {
-				month: 'short',
-				day: 'numeric',
-				year: 'numeric'
+			return new Date(dateStr).toLocaleDateString("en-US", {
+				month: "short",
+				day: "numeric",
+				year: "numeric",
 			});
 		} catch {
 			return dateStr;
@@ -165,20 +162,28 @@ export default function SupplierDashboard() {
 		<Box minH="100vh" bg={pageBg} display="flex" flexDirection="column">
 			<Navbar />
 
-			{/* Main dashboard content section */}
 			<Box flex={1} py={{ base: 6, md: 10 }}>
 				<Box maxW="7xl" mx="auto" px={{ base: 4, md: 8 }}>
+					{/* Error state */}
+					{error && (
+						<Alert status="error" mb={6} borderRadius="md">
+							<AlertIcon />
+							<Box>
+								<Text fontWeight="bold">Error loading dashboard</Text>
+								<Text fontSize="sm">{error}</Text>
+							</Box>
+						</Alert>
+					)}
+
 					{loading ? (
-						// Loading spinner while fetching KPI data
 						<Flex justify="center" py={20}>
 							<Spinner size="lg" color="blue.500" />
 						</Flex>
 					) : (
 						<SimpleGrid columns={{ base: 1, lg: 5 }} spacing={6} alignItems="flex-start">
-							{/* Left sidebar navigation */}
 							<Box
 								as="aside"
-								display={{ base: 'none', lg: 'block' }}
+								display={{ base: "none", lg: "block" }}
 								rounded="2xl"
 								overflow="hidden"
 								boxShadow="sm"
@@ -190,22 +195,19 @@ export default function SupplierDashboard() {
 								<SupplierSidebar />
 							</Box>
 
-							{/* Main content area */}
-							<Box gridColumn={{ base: '1 / -1', lg: 'span 4' }}>
+							<Box gridColumn={{ base: "1 / -1", lg: "span 4" }}>
 								<VStack spacing={8} align="stretch">
-									{/* Header section */}
 									<Box>
 										<Heading size="lg" mb={2} color={textPrimary}>
 											Supplier Dashboard
 										</Heading>
 										<Text color={textMuted}>
-											View real-time KPI metrics, revenue tracking, and order performance
+											Your account-level KPI metrics, revenue tracking, and order performance
 										</Text>
 									</Box>
 
-									{/* KPI Stats Grid - 4 column layout */}
 									<Grid
-										templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }}
+										templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" }}
 										gap={6}
 									>
 										{stats.map((stat, idx) => (
@@ -217,30 +219,18 @@ export default function SupplierDashboard() {
 													boxShadow="md"
 													border="1px"
 													borderColor={borderColor}
-													_hover={{
-														boxShadow: 'lg',
-														transform: 'translateY(-2px)',
-													}}
+													_hover={{ boxShadow: "lg", transform: "translateY(-2px)" }}
 													transition="all 0.2s"
 												>
 													<Stat>
-														<StatLabel
-															color={textMuted}
-															fontSize="sm"
-															fontWeight="500"
-														>
+														<StatLabel color={textMuted} fontSize="sm" fontWeight="500">
 															{stat.label}
 														</StatLabel>
-														<StatNumber
-															fontSize="3xl"
-															fontWeight="bold"
-															color={textPrimary}
-															mt={2}
-														>
+														<StatNumber fontSize="3xl" fontWeight="bold" color={textPrimary} mt={2}>
 															{stat.value}
 														</StatNumber>
 														<StatHelpText
-															color={stat.isPositive ? 'green.500' : 'orange.500'}
+															color={stat.isPositive ? "green.500" : "orange.500"}
 															fontWeight="600"
 															mt={2}
 														>
@@ -255,12 +245,7 @@ export default function SupplierDashboard() {
 										))}
 									</Grid>
 
-									{/* Recent Orders and Quick Actions section */}
-									<Grid
-										templateColumns={{ base: '1fr', lg: 'repeat(3, 1fr)' }}
-										gap={6}
-									>
-										{/* Recent Orders Card - spans 2 columns on large screens */}
+									<Grid templateColumns={{ base: "1fr", lg: "repeat(3, 1fr)" }} gap={6}>
 										<GridItem colSpan={{ base: 1, lg: 2 }}>
 											<Box
 												bg={cardBg}
@@ -283,33 +268,17 @@ export default function SupplierDashboard() {
 																bg={orderBg}
 																border="1px"
 																borderColor={borderColor}
-																_hover={{
-																	bg: orderHoverBg,
-																}}
-
+																_hover={{ bg: orderHoverBg }}
 															>
-																<Flex
-																	justify="space-between"
-																	align="center"
-																	mb={2}
-																>
+																<Flex justify="space-between" align="center" mb={2}>
 																	<HStack spacing={3}>
-																		{/* Order number and store */}
-																		<Text
-																			fontWeight="600"
-																			fontSize="sm"
-																			color={textPrimary}
-																		>
+																		<Text fontWeight="600" fontSize="sm" color={textPrimary}>
 																			{order.order_no}
 																		</Text>
-																		<Text
-																			color={textMuted}
-																			fontSize="sm"
-																		>
-																			{order.store_name || '-'}
+																		<Text color={textMuted} fontSize="sm">
+																			{order.store_name || "-"}
 																		</Text>
 																	</HStack>
-																	{/* Status badge */}
 																	<Badge
 																		colorScheme={getStatusColor(order.status)}
 																		fontSize="xs"
@@ -320,15 +289,8 @@ export default function SupplierDashboard() {
 																		{order.status?.toUpperCase()}
 																	</Badge>
 																</Flex>
-																{/* Date and amount */}
-																<Flex
-																	justify="space-between"
-																	align="center"
-																>
-																	<Text
-																		fontSize="sm"
-																		color={textMuted}
-																	>
+																<Flex justify="space-between" align="center">
+																	<Text fontSize="sm" color={textMuted}>
 																		{formatDate(order.created_at)}
 																	</Text>
 																	<Text fontWeight="bold" color="green.500">
@@ -338,19 +300,14 @@ export default function SupplierDashboard() {
 															</Box>
 														))
 													) : (
-														<Text
-															color={textMuted}
-															textAlign="center"
-															py={4}
-														>
-															No orders yet. Start browsing products to place a supply order!
+														<Text color={textMuted} textAlign="center" py={4}>
+															No supply orders found for your account.
 														</Text>
 													)}
 												</VStack>
 											</Box>
 										</GridItem>
 
-										{/* Quick Links Card */}
 										<GridItem>
 											<Box
 												bg={cardBg}
@@ -365,40 +322,16 @@ export default function SupplierDashboard() {
 													Quick Links
 												</Heading>
 												<VStack spacing={3} align="stretch">
-													<Button
-														colorScheme="blue"
-														variant="outline"
-														size="sm"
-														fontWeight="500"
-														justifyContent="flex-start"
-													>
+													<Button colorScheme="blue" variant="outline" size="sm" fontWeight="500" justifyContent="flex-start">
 														View All Orders
 													</Button>
-													<Button
-														colorScheme="purple"
-														variant="outline"
-														size="sm"
-														fontWeight="500"
-														justifyContent="flex-start"
-													>
+													<Button colorScheme="purple" variant="outline" size="sm" fontWeight="500" justifyContent="flex-start">
 														Browse Products
 													</Button>
-													<Button
-														colorScheme="green"
-														variant="outline"
-														size="sm"
-														fontWeight="500"
-														justifyContent="flex-start"
-													>
+													<Button colorScheme="green" variant="outline" size="sm" fontWeight="500" justifyContent="flex-start">
 														View Bids
 													</Button>
-													<Button
-														colorScheme="orange"
-														variant="outline"
-														size="sm"
-														fontWeight="500"
-														justifyContent="flex-start"
-													>
+													<Button colorScheme="orange" variant="outline" size="sm" fontWeight="500" justifyContent="flex-start">
 														Update Profile
 													</Button>
 												</VStack>
@@ -406,26 +339,19 @@ export default function SupplierDashboard() {
 										</GridItem>
 									</Grid>
 
-									{/* Performance Summary Banner */}
-									<Box
-										bgGradient="linear(to-r, blue.600, blue.400)"
-										p={6}
-										borderRadius="xl"
-										border="1px"
-										borderColor="blue.300"
-									>
+									<Box bgGradient="linear(to-r, blue.600, blue.400)" p={6} borderRadius="xl" border="1px" borderColor="blue.300">
 										<Flex
-											direction={{ base: 'column', md: 'row' }}
-											align={{ base: 'flex-start', md: 'center' }}
+											direction={{ base: "column", md: "row" }}
+											align={{ base: "flex-start", md: "center" }}
 											justify="space-between"
 											gap={4}
 										>
 											<Box>
 												<Heading size="sm" color="white" mb={2}>
-													📊 Performance Summary
+													Performance Summary
 												</Heading>
 												<Text color="whiteAlpha.900" fontSize="sm">
-													{kpis?.completionRate}% of your orders have been successfully delivered. Keep up the great work!
+													{kpis.completionRate}% orders delivered. Revenue growth vs last month: {kpis.revenueGrowthPct}%.
 												</Text>
 											</Box>
 											<Button
@@ -433,7 +359,7 @@ export default function SupplierDashboard() {
 												variant="outline"
 												flexShrink={0}
 												fontWeight="600"
-												_hover={{ bg: 'whiteAlpha.200' }}
+												_hover={{ bg: "whiteAlpha.200" }}
 											>
 												View Analytics
 											</Button>

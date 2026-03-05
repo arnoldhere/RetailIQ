@@ -71,6 +71,16 @@ router.get('/supplier/orders', authMiddleware, async (req, res, next) => {
     }
 })
 
+// Supplier: dashboard metrics for logged-in supplier only
+router.get('/supplier/dashboard-metrics', authMiddleware, async (req, res, next) => {
+    try {
+        if (!req.user || req.user.role !== 'supplier') return res.status(403).json({ message: 'Forbidden' });
+        return UserController.supplierDashboardMetrics(req, res);
+    } catch (err) {
+        next(err);
+    }
+})
+
 // Supplier: get single supply order details
 router.get('/supplier/orders/:id', authMiddleware, async (req, res, next) => {
     try {

@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const fs = require('fs');
 const path = require('path');
+let supplierColumnsPromise = null;
 
 exports.getProductCategories = async (req, res) => {
     try {
@@ -127,12 +128,34 @@ exports.editProfile = async (req, res) => {
 
 // Helper to resolve supplier from token (supports supplierId or linked userId)
 async function resolveSupplierFromReq(req) {
-    if (req.user && req.user.supplierId) {
-        return await db('suppliers').where({ id: req.user.supplierId }).first();
+    if (!req.user) return null;
+
+    const supplierIdCandidates = [];
+    if (req.user.supplierId) supplierIdCandidates.push(req.user.supplierId);
+    if (req.user.id) supplierIdCandidates.push(req.user.id);
+
+    for (const sid of [...new Set(supplierIdCandidates)]) {
+        if (!sid) continue;
+        const bySupplierId = await db('suppliers').where({ id: sid }).first();
+        if (bySupplierId) return bySupplierId;
     }
-    if (req.user && req.user.userId) {
-        return await db('suppliers').where({ cust_id: req.user.userId }).first();
+
+    if (!supplierColumnsPromise) supplierColumnsPromise = db('suppliers').columnInfo();
+    const supplierColumns = await supplierColumnsPromise;
+    const hasCustId = Boolean(supplierColumns && supplierColumns.cust_id);
+
+    if (hasCustId) {
+        const userIdCandidates = [];
+        if (req.user.userId) userIdCandidates.push(req.user.userId);
+        if (req.user.id && req.user.role === 'supplier') userIdCandidates.push(req.user.id);
+
+        for (const uid of [...new Set(userIdCandidates)]) {
+            if (!uid) continue;
+            const byUserId = await db('suppliers').where({ cust_id: uid }).first();
+            if (byUserId) return byUserId;
+        }
     }
+
     return null;
 }
 
@@ -308,6 +331,97 @@ exports.supplierGetOrder = async (req, res) => {
     } catch (err) {
         console.error('supplierGetOrder error', err);
         return res.status(500).json({ message: 'Failed to load order' });
+    }
+};
+
+// Supplier: dashboard metrics (authenticated supplier only)
+// CRITICAL: Only returns metrics for the currently logged-in supplier
+exports.supplierDashboardMetrics = async (req, res) => {
+    try {
+        const supplier = await resolveSupplierFromReq(req);
+        if (!supplier) return res.status(404).json({ message: 'Supplier profile not found' });
+
+        // Security check: Ensure supplier ID is valid (prevents null/undefined queries)
+        if (!supplier.id || supplier.id <= 0) {
+            return res.status(400).json({ message: 'Invalid supplier profile' });
+        }
+
+        // CRITICAL: Only fetch orders for THIS supplier (supplier isolation)
+        const orders = await db('supply_orders')
+            .leftJoin('stores', 'supply_orders.store_id', 'stores.id')
+            .where('supply_orders.supplier_id', '=', supplier.id)
+            .select('supply_orders.*', 'stores.name as store_name')
+            .orderBy('supply_orders.created_at', 'desc');
+
+        const totalOrders = orders.length;
+        const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+        const pendingOrders = orders.filter((o) => o.status === 'pending').length;
+        const sentOrders = orders.filter((o) => o.status === 'sent').length;
+        const receivedOrders = orders.filter((o) => o.status === 'received').length;
+        const cancelledOrders = orders.filter((o) => o.status === 'cancelled').length;
+        const completionRate = totalOrders > 0 ? Number(((receivedOrders / totalOrders) * 100).toFixed(1)) : 0;
+        const avgOrderValue = totalOrders > 0 ? Number((totalRevenue / totalOrders).toFixed(2)) : 0;
+
+        const now = new Date();
+        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+        const thisMonthRows = orders.filter((o) => {
+            const d = new Date(o.created_at);
+            return !Number.isNaN(d.getTime()) && d >= thisMonthStart;
+        });
+        const lastMonthRows = orders.filter((o) => {
+            const d = new Date(o.created_at);
+            return !Number.isNaN(d.getTime()) && d >= lastMonthStart && d < thisMonthStart;
+        });
+
+        const thisMonthRevenue = thisMonthRows.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+        const lastMonthRevenue = lastMonthRows.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+        const revenueGrowthPct = lastMonthRevenue > 0
+            ? Number((((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100).toFixed(1))
+            : (thisMonthRevenue > 0 ? 100 : 0);
+
+        const topStoresMap = {};
+        for (const o of orders) {
+            const key = o.store_name || `Store-${o.store_id}`;
+            if (!topStoresMap[key]) {
+                topStoresMap[key] = { store_name: key, orders_count: 0, revenue: 0 };
+            }
+            topStoresMap[key].orders_count += 1;
+            topStoresMap[key].revenue += Number(o.total_amount) || 0;
+        }
+        const topStores = Object.values(topStoresMap)
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 5)
+            .map((s) => ({ ...s, revenue: Number(s.revenue.toFixed(2)) }));
+
+        return res.json({
+            supplier: {
+                id: supplier.id,
+                name: supplier.name || null,
+                email: supplier.email || null,
+            },
+            metrics: {
+                totalOrders,
+                totalRevenue: Number(totalRevenue.toFixed(2)),
+                pendingOrders,
+                sentOrders,
+                receivedOrders,
+                cancelledOrders,
+                completionRate,
+                avgOrderValue,
+                thisMonthOrders: thisMonthRows.length,
+                thisMonthRevenue: Number(thisMonthRevenue.toFixed(2)),
+                lastMonthOrders: lastMonthRows.length,
+                lastMonthRevenue: Number(lastMonthRevenue.toFixed(2)),
+                revenueGrowthPct,
+            },
+            recentOrders: orders.slice(0, 5),
+            topStores,
+        });
+    } catch (err) {
+        console.error('supplierDashboardMetrics error', err);
+        return res.status(500).json({ message: 'Failed to load supplier dashboard metrics' });
     }
 };
 

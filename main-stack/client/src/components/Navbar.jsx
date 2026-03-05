@@ -34,6 +34,14 @@ export default function Navbar() {
 
 	async function handleLogout() {
 		await logout();
+		// remove all items from localstorage and sessionstorage and cookies
+		localStorage.clear();
+		sessionStorage.clear();
+		document.cookie.split(";").forEach((c) => {
+			document.cookie = c
+				.replace(/^ +/, "")
+				.replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+		});
 		navigate("/auth/login");
 	}
 

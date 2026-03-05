@@ -20,14 +20,16 @@ function isExpired(dateValue) {
 }
 
 async function resolveSupplierProfile(trx, supplierRef) {
+  const conn = trx || db  // fallback to normal DB connection
+
   // Newer flow: bids.supplier_id stores suppliers.id
-  let supplier = await trx('suppliers').where({ id: supplierRef }).first()
+  let supplier = await conn('suppliers').where({ id: supplierRef }).first()
   if (supplier) return supplier
 
-  // Legacy flow: bids.supplier_id stores users.id and suppliers.cust_id links to that user
-  const supplierCols = await trx('suppliers').columnInfo()
+  // Legacy flow
+  const supplierCols = await conn('suppliers').columnInfo()
   if (supplierCols.cust_id) {
-    supplier = await trx('suppliers').where({ cust_id: supplierRef }).first()
+    supplier = await conn('suppliers').where({ cust_id: supplierRef }).first()
     if (supplier) return supplier
   }
 
@@ -135,6 +137,8 @@ module.exports = {
   /**
    * Admin: Get ask details including all bids placed
    * Returns: { ask, bids[] }
+   * 
+   * NOTE: Supplier profiles are resolved correctly even when bids.supplier_id stores user ID
    */
   async getAskDetails(req, res) {
     try {
@@ -147,20 +151,30 @@ module.exports = {
 
       if (!ask) return res.status(404).json({ message: 'Ask not found' })
 
+      // Get bids with user details (users.id = bids.supplier_id)
       const bids = await db('bids')
         .leftJoin('users', 'bids.supplier_id', 'users.id')
-        .leftJoin('suppliers', 'bids.supplier_id', 'suppliers.id')
         .where('bids.ask_id', id)
         .select(
           'bids.*',
           'users.firstname',
           'users.lastname',
-          'suppliers.name as supplier_name',
-          'suppliers.email as supplier_email',
         )
         .orderBy('bids.created_at', 'asc')
 
-      return res.json({ ask, bids })
+      // Enrich bids with correct supplier profile data
+      const enrichedBids = await Promise.all(
+        bids.map(async (bid) => {
+          const supplier = await resolveSupplierProfile(null, bid.supplier_id)
+          return {
+            ...bid,
+            supplier_name: supplier ? supplier.name : null,
+            supplier_email: supplier ? supplier.email : null,
+          }
+        })
+      )
+
+      return res.json({ ask, bids: enrichedBids })
     } catch (err) {
       console.error('getAskDetails error', err)
       return res.status(500).json({ message: 'Failed to get ask details' })
@@ -412,14 +426,10 @@ module.exports = {
       let q = db('bids')
         .select(
           'bids.*',
-          'users.firstname',
-          'users.lastname',
           'suppliers.name as supplier_name',
-          'suppliers.email as supplier_email',
           'asks.status as ask_status',
           'products.name as product_name',
         )
-        .leftJoin('users', 'bids.supplier_id', 'users.id')
         .leftJoin('suppliers', 'bids.supplier_id', 'suppliers.id')
         .leftJoin('asks', 'bids.ask_id', 'asks.id')
         .leftJoin('products', 'asks.product_id', 'products.id')
@@ -431,7 +441,19 @@ module.exports = {
         .orderBy('bids.price', 'asc')
         .orderBy('bids.created_at', 'desc')
 
-      return res.json({ bids })
+      // Enrich bids with correct supplier profile data
+      const enrichedBids = await Promise.all(
+        bids.map(async (bid) => {
+          const supplier = await resolveSupplierProfile(null, bid.supplier_id)
+          return {
+            ...bid,
+            supplier_name: supplier ? supplier.name : null,
+            supplier_email: supplier ? supplier.email : null,
+          }
+        })
+      )
+
+      return res.json({ bids: enrichedBids })
     } catch (err) {
       console.error('adminListBids error', err)
       return res.status(500).json({ message: 'Failed to list bids' })

@@ -42,9 +42,13 @@ export async function placeSupplyOrder(data) {
 }
 
 export async function getSupplierOrders(limit = 12, offset = 0) {
-  return client.get('/api/admin/supplier-orders', { params: { limit, offset } })
+  return client.get('/api/user/supplier/orders', { params: { limit, offset } })
 }
 
 export async function getSupplierOrder(id) {
   return client.get(`/api/user/supplier/orders/${id}`)
+}
+
+export async function getSupplierDashboardMetrics() {
+  return client.get('/api/user/supplier/dashboard-metrics')
 }
