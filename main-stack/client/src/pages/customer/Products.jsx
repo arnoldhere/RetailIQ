@@ -1,4 +1,4 @@
-import  { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import * as productApi from '../../api/products'
 import {
     Box,
@@ -18,9 +18,6 @@ import {
     Icon,
     FormControl,
     FormLabel,
-    useColorModeValue,
-    Avatar,
-    Stack,
     Tag,
     Modal,
     ModalOverlay,
@@ -34,11 +31,9 @@ import {
     NumberInputStepper,
     NumberIncrementStepper,
     NumberDecrementStepper,
-    // chakra,
     VisuallyHidden,
 } from '@chakra-ui/react'
-import { SearchIcon, StarIcon } from '@chakra-ui/icons'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
@@ -46,42 +41,37 @@ import { getPublicProducts } from '../../api/products'
 import { useCart } from '../../context/CartContext'
 import { useWishlist } from '../../context/WishlistContext'
 import { useAuth } from '../../context/AuthContext'
-import { FaHeart, FaShoppingCart } from 'react-icons/fa'
+import { FaHeart, FaShoppingCart, FaArrowDown } from 'react-icons/fa'
 import * as bidsApi from '../../api/bids'
+import { buildApiUrl, resolveMediaUrl } from '../../api/base'
 
 /**
- * ProductCard - purely presentational + local animations.
- * Hooks are called at top-level of this component only.
+ * ProductCard Component
  */
 function ProductCard({ product, onViewDetail, onAddCart, onToggleWishlist, isInWishlist, onAskSupply }) {
     const cardRef = useRef()
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
     const { user } = useAuth()
 
-    // theme tokens (top-level hooks)
-    const cardBg = useColorModeValue('white', 'gray.800')
-    const cardShadow = useColorModeValue('sm', 'dark-lg')
-    const muted = useColorModeValue('gray.600', 'gray.300')
-    const priceColor = useColorModeValue('green.600', 'green.300')
-    const badgeBg = useColorModeValue('whiteAlpha.900', 'blackAlpha.500')
-    const wishlistBg = useColorModeValue('white', 'gray.700')
+    const cardBg = "var(--surface-card)"
+    const cardShadow = "sm"
+    const muted = "var(--text-secondary)"
+    const priceColor = "green.600"
+    const badgeBg = "var(--surface-card)"
+    const wishlistBg = "var(--surface-card)"
 
     useEffect(() => {
         if (cardRef.current) {
-            gsap.fromTo(cardRef.current, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45 })
+            gsap.fromTo(cardRef.current,
+                { opacity: 0, y: 15 },
+                { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+            )
         }
     }, [])
 
-    const stockStatus =
-        product.stock_available > 10 ? 'In stock' : product.stock_available > 0 ? 'Low stock' : 'Out of stock'
+    const stockStatus = product.stock_available > 10 ? 'In stock' : product.stock_available > 0 ? 'Low stock' : 'Out of stock'
     const stockColor = product.stock_available > 10 ? 'green.400' : product.stock_available > 0 ? 'orange.400' : 'red.400'
+    const imageUrl = resolveMediaUrl(product.images && product.images[0])
 
-    const primaryImage = product.images && product.images[0]
-    const isBase64 = typeof primaryImage === 'string' && primaryImage.startsWith('data:')
-    // If your backend provides full URLs, use them; otherwise primaryImage might already be a full URL.
-    const imagePathUrl = primaryImage && !isBase64 ? primaryImage : primaryImage
-    const imageUrl = `${BACKEND_URL}/${imagePathUrl}`
-    // console.log('imageUrl:', imageUrl)
     return (
         <Box
             ref={cardRef}
@@ -89,13 +79,12 @@ function ProductCard({ product, onViewDetail, onAddCart, onToggleWishlist, isInW
             borderRadius="lg"
             overflow="hidden"
             boxShadow={cardShadow}
-            transition="transform 220ms, box-shadow 220ms"
-            _hover={{ transform: 'translateY(-6px)', boxShadow: 'lg' }}
+            transition="all 0.25s ease"
+            _hover={{ transform: 'translateY(-5px)', boxShadow: 'xl' }}
             display="flex"
             flexDirection="column"
             role="group"
         >
-            {/* Image */}
             <Box pos="relative" w="100%" paddingBottom="85%" bg="gray.50" overflow="hidden">
                 <Box
                     pos="absolute"
@@ -104,118 +93,46 @@ function ProductCard({ product, onViewDetail, onAddCart, onToggleWishlist, isInW
                     bgSize="cover"
                     bgPos="center"
                     bgRepeat="no-repeat"
-                    transition="transform 350ms ease"
-                    _groupHover={{ transform: 'scale(1.05)' }}
+                    transition="transform 0.5s ease"
+                    _groupHover={{ transform: 'scale(1.08)' }}
                 />
-
-                {/* top-left category / tag */}
                 {product.category_name && (
-                    <Tag
-                        pos="absolute"
-                        top={3}
-                        left={3}
-                        bg={badgeBg}
-                        color="purple.600"
-                        borderRadius="full"
-                        px={3}
-                        py={1}
-                        fontSize="xs"
-                        boxShadow="sm"
-                    >
+                    <Tag pos="absolute" top={3} left={3} bg={badgeBg} color="purple.600" borderRadius="full" px={3} py={1} fontSize="xs" boxShadow="sm">
                         {product.category_name}
                     </Tag>
                 )}
-
-                {/* wishlist button top-right (hidden for suppliers) */}
                 {user?.role !== 'supplier' && (
-                    <Tooltip label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
+                    <Tooltip label={isInWishlist ? 'Remove' : 'Add to wishlist'}>
                         <Button
-                            pos="absolute"
-                            top={3}
-                            right={3}
-                            size="sm"
-                            aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-                            onClick={() => onToggleWishlist(product)}
-                            zIndex={3}
-                            borderRadius="full"
-                            bg={isInWishlist ? 'red.500' : wishlistBg}
-                            color={isInWishlist ? 'white' : 'red.500'}
-                            _hover={{ bg: isInWishlist ? 'red.600' : 'gray.100' }}
-                            boxShadow="sm"
+                            pos="absolute" top={3} right={3} size="sm" onClick={() => onToggleWishlist(product)}
+                            zIndex={3} borderRadius="full" bg={isInWishlist ? 'red.500' : wishlistBg}
+                            color={isInWishlist ? 'white' : 'red.500'} _hover={{ bg: isInWishlist ? 'red.600' : 'gray.100' }}
                         >
                             <FaHeart />
-                            <VisuallyHidden>{isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}</VisuallyHidden>
                         </Button>
                     </Tooltip>
                 )}
-
-                {/* stock badge bottom-left */}
-                <Badge pos="absolute" bottom={3} left={3} px={2} py={1} borderRadius="full" bg="whiteAlpha.800" color={stockColor} fontSize="xs">
+                <Badge pos="absolute" bottom={3} left={3} px={2} py={1} borderRadius="full" bg="whiteAlpha.900" color={stockColor} fontSize="xs">
                     {stockStatus}
                 </Badge>
             </Box>
 
-            {/* Content */}
             <VStack align="stretch" spacing={3} p={4} flex={1}>
                 <Box>
-                    <Heading size="sm" noOfLines={2} color="orange.200">
-                        {product.name}
-                    </Heading>
-                    {product.description && (
-                        <Text fontSize="xs" color={muted} mt={1} noOfLines={2}>
-                            {product.description}
-                        </Text>
-                    )}
+                    <Heading size="sm" noOfLines={2} color="orange.200">{product.name}</Heading>
+                    {product.description && <Text fontSize="xs" color={muted} mt={1} noOfLines={2}>{product.description}</Text>}
                 </Box>
-
-                {/* rating + price */}
                 <HStack justify="space-between" align="center">
-                    {/* <HStack spacing={1}>
-                        {[...Array(5)].map((_, i) => (
-                            <Icon key={i} as={StarIcon} boxSize={3} color={i < 4 ? 'yellow.400' : 'gray.300'} />
-                        ))}
-                        <Text fontSize="xs" color="gray.500">
-                            (0)
-                        </Text>
-                    </HStack> */}
-
-                    <Heading size="md" color={priceColor} fontWeight="700">
-                        ${Number(product.sell_price).toFixed(2)}
-                    </Heading>
+                    <Heading size="md" color={priceColor} fontWeight="700">₹{Number(product.sell_price).toFixed(2)}</Heading>
                 </HStack>
-
                 <Flex direction="column" gap={3} mt={1}>
-                    <Button
-                        variant="solid"
-                        colorScheme="blue"
-                        size="sm"
-                        onClick={() => onViewDetail(product.id)}
-                        _active={{ transform: 'scale(0.99)' }}
-                        borderRadius="md"
-                    >
-                        View details
-                    </Button>
-
+                    <Button variant="solid" colorScheme="blue" size="sm" onClick={() => onViewDetail(product.id)}>View details</Button>
                     {user?.role === 'supplier' ? (
-                        <Button
-                            colorScheme="purple"
-                            size="sm"
-                            onClick={() => onAskSupply(product)}
-                            isDisabled={product.stock_available === 0}
-                            borderRadius="md"
-                        >
-                            Ask to place supply order
+                        <Button colorScheme="purple" size="sm" onClick={() => onAskSupply(product)} isDisabled={product.stock_available === 0}>
+                            Ask to supply
                         </Button>
                     ) : (
-                        <Button
-                            leftIcon={<FaShoppingCart />}
-                            colorScheme="green"
-                            size="sm"
-                            onClick={() => onAddCart(product)}
-                            isDisabled={product.stock_available === 0}
-                            borderRadius="md"
-                            _active={{ transform: 'scale(0.99)' }}
-                        >
+                        <Button leftIcon={<FaShoppingCart />} colorScheme="green" size="sm" onClick={() => onAddCart(product)} isDisabled={product.stock_available === 0}>
                             Add to cart
                         </Button>
                     )}
@@ -225,171 +142,134 @@ function ProductCard({ product, onViewDetail, onAddCart, onToggleWishlist, isInW
     )
 }
 
+/**
+ * Main Products Page
+ */
 export default function ProductsPage() {
     const toast = useToast()
     const navigate = useNavigate()
+    const { user } = useAuth()
     const { addToCart } = useCart()
     const { toggleWishlist, isInWishlist } = useWishlist()
-
-    // theme tokens (top-level)
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
-    const containerBg = useColorModeValue('white', 'gray.800')
-    const muted = useColorModeValue('gray.600', 'gray.300')
-    const accent = useColorModeValue('blue.600', 'blue.300')
-    const inputBg = useColorModeValue('white', 'gray.700')
-    const panelShadow = useColorModeValue('sm', 'dark-lg')
 
     const [products, setProducts] = useState([])
     const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(false)
+    const [loadingMore, setLoadingMore] = useState(false)
     const [total, setTotal] = useState(0)
 
-    const [filters, setFilters] = useState({
-        search: '',
-        category_id: '',
-        sort: 'name',
-        order: 'asc',
-    })
-    const [limit] = useState(12)
+    const [filters, setFilters] = useState({ search: '', category_id: '', sort: 'name', order: 'asc' })
     const [offset, setOffset] = useState(0)
+    const limit = 8 // Exactly 2 rows of 4
 
-    // supply order modal state
-    const { user } = useAuth()
+    // Theme Variables
+    const pageBg = "var(--surface-light)", containerBg = "var(--surface-card)", muted = "var(--text-secondary)", accent = "var(--primary-color)"
+
+    // Supply Modal States
     const [supplyModalOpen, setSupplyModalOpen] = useState(false)
     const [supplyProduct, setSupplyProduct] = useState(null)
     const [supplyQty, setSupplyQty] = useState(1)
     const [supplyCost, setSupplyCost] = useState(0)
     const [stores, setStores] = useState([])
-    const [supplyStoreId, setSupplyStoreId] = useState(null)
+    const [supplyStoreId, setSupplyStoreId] = useState('')
     const [placingSupply, setPlacingSupply] = useState(false)
 
-    // Fetch categories
-    async function fetchCategories() {
-        try {
-            const res = await productApi.getCategories(100, 0)
-            if (res) {
-                // console.log('Fetched categories:', res?.data)
-                setCategories(res?.data?.categories || [])
-            }
-        } catch (err) {
-            console.error('Failed to fetch categories:', err)
-        }
-    }
-
-    // fetch stores (public)
-    async function fetchStores() {
-        try {
-            const res = await fetch('/api/stores', { credentials: 'include' })
-            if (!res.ok) throw new Error('Failed to fetch stores')
-            const data = await res.json()
-            const arr = data.stores || []
-            setStores(arr)
-            if (arr.length > 0) setSupplyStoreId(arr[0].id)
-        } catch (err) {
-            console.error('Failed to fetch stores:', err)
-            setStores([])
-            setSupplyStoreId(null)
-        }
-    }
-
+    // 1. Lifecycle: Fetch Categories & Stores
     useEffect(() => {
+        fetchCategories()
         if (user?.role === 'supplier') fetchStores()
     }, [user])
 
-    function openSupplyModal(product) {
+    // 2. Lifecycle: Reset and Fetch when filters change
+    useEffect(() => {
+        setOffset(0)
+        fetchProducts(true)
+    }, [])
+
+    const fetchCategories = async () => {
+        try {
+            const res = await productApi.getCategories(100, 0)
+            if (res) setCategories(res?.data?.categories || [])
+        } catch (err) { console.error(err) }
+    }
+
+
+    /****
+     * Fetch and Load the recommandation
+     * ****/
+    const fetchRecommandation = async () => {
+        const userid = localStorage.getItem("retailiq_user_id")
+        console.log(`Loading the recommandation for user id : ${userid}`)
+        const res = await 
+    }
+
+    const fetchStores = async () => {
+        try {
+            const res = await fetch(buildApiUrl('/api/stores'), { credentials: 'include' })
+            const data = await res.json()
+            setStores(data.stores || [])
+            if (data.stores?.length) setSupplyStoreId(data.stores[0].id)
+        } catch (err) { console.error(err) }
+    }
+
+    const fetchProducts = async (isInitial = false) => {
+        if (isInitial) setLoading(true)
+        else setLoadingMore(true)
+
+        try {
+            const currentOffset = isInitial ? 0 : offset + limit
+            const data = await getPublicProducts(limit, currentOffset, filters)
+            const nextProducts = Array.isArray(data.products) ? data.products : []
+
+            setProducts(prev => isInitial ? nextProducts : [...prev, ...nextProducts])
+            setTotal(Number(data.total) || 0)
+            if (!isInitial) setOffset(currentOffset)
+        } catch (err) {
+            toast({ title: 'Failed to load products', status: 'error' })
+        } finally {
+            setLoading(false)
+            setLoadingMore(false)
+        }
+    }
+
+    const handleLoadMore = () => fetchProducts(false)
+
+    const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }))
+    const handleResetFilters = () => setFilters({ search: '', category_id: '', sort: 'name', order: 'asc' })
+
+    const openSupplyModal = (product) => {
         setSupplyProduct(product)
         setSupplyQty(1)
         setSupplyCost(product.cost_price || product.sell_price || 0)
         setSupplyModalOpen(true)
     }
 
-    function closeSupplyModal() {
-        setSupplyModalOpen(false)
-        setSupplyProduct(null)
-    }
-
-    async function handlePlaceSupplyOrder() {
-        if (!supplyProduct) return
-        if (!supplyQty || supplyQty <= 0) return toast({ title: 'Quantity must be at least 1', status: 'warning' })
-        if (!supplyCost || supplyCost <= 0) return toast({ title: 'Cost must be greater than 0', status: 'warning' })
-        if (!stores.length) return toast({ title: 'No stores available to select', status: 'error' })
-        if (!supplyStoreId) return toast({ title: 'Please select a store', status: 'warning' })
-
+    const handlePlaceSupplyOrder = async () => {
+        if (!supplyStoreId) return toast({ title: 'Select a store', status: 'warning' })
+        setPlacingSupply(true)
         try {
-            setPlacingSupply(true)
-            const store_id = supplyStoreId
-            const payload = { store_id, items: [{ product_id: supplyProduct.id, qty: supplyQty, cost: supplyCost }] }
+            const payload = { store_id: supplyStoreId, items: [{ product_id: supplyProduct.id, qty: supplyQty, cost: supplyCost }] }
             const res = await bidsApi.placeSupplyOrder(payload)
-            toast({ title: 'Supply order requested', description: `Order ${res?.data?.order?.order_no} created`, status: 'success' })
-            closeSupplyModal()
-        } catch (err) {
-            console.error('Failed to place supply order', err)
-            toast({ title: 'Failed to place supply order', status: 'error' })
-        } finally {
-            setPlacingSupply(false)
-        }
-    }
-
-
-
-    // Fetch products
-    useEffect(() => {
-        async function fetchProducts() {
-            setLoading(true)
-            try {
-                const data = await getPublicProducts(limit, offset, filters)
-                setProducts(data.products || [])
-                setTotal(data.total || 0)
-            } catch (err) {
-                console.error('Failed to fetch products:', err)
-                toast({ title: 'Failed to load products', status: 'error', duration: 2000 })
-                setProducts([])
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchProducts()
-        // console.log('Filters:', filters, 'Offset:', offset, 'Limit:', limit)
-        fetchCategories()
-    }, [filters, offset, limit, toast])
-
-    const handleViewDetail = (productId) => {
-        const detailPath = user?.role === 'supplier' ? `/supplier/products/${productId}` : `/customer/products/${productId}`
-        navigate(detailPath)
+            toast({ title: 'Success', description: `Order ${res?.data?.order?.order_no} created`, status: 'success' })
+            setSupplyModalOpen(false)
+        } catch (err) { toast({ title: 'Error', status: 'error' }) }
+        finally { setPlacingSupply(false) }
     }
 
     const handleAddCart = (product) => {
         addToCart(product, 1)
-        toast({
-            title: 'Added to cart',
-            description: `${product.name} added to your cart`,
-            status: 'success',
-            duration: 2000,
-        })
+        toast({ title: 'Added to cart', description: product.name, status: 'success', duration: 1500 })
     }
 
     const handleToggleWishlist = (product) => {
         const already = isInWishlist(product.id)
         toggleWishlist(product)
-        toast({
-            title: already ? 'Removed from wishlist' : 'Added to wishlist',
-            status: 'success',
-            duration: 1800,
-        })
+        toast({ title: already ? 'Removed' : 'Added to wishlist', status: 'success', duration: 1500 })
     }
 
-    const handleFilterChange = (key, value) => {
-        setOffset(0)
-        setFilters((prev) => ({ ...prev, [key]: value }))
-    }
+    const handleViewDetail = (id) => navigate(user?.role === 'supplier' ? `/supplier/products/${id}` : `/customer/products/${id}`)
 
-    const handleResetFilters = () => {
-        setOffset(0)
-        setFilters({ search: '', category_id: '', sort: 'name', order: 'asc' })
-    }
-
-    const totalPages = Math.ceil(total / limit)
-    const currentPage = Math.floor(offset / limit) + 1
+    const hasMore = products.length < total
 
     return (
         <Box minH="100vh" bg={pageBg} display="flex" flexDirection="column">
@@ -397,120 +277,54 @@ export default function ProductsPage() {
 
             <Box flex={1} py={{ base: 8, md: 12 }}>
                 <Box maxW="7xl" mx="auto" px={{ base: 4, md: 8 }}>
-                    {/* Header */}
                     <VStack align="start" spacing={3} mb={6}>
-                        <Heading size="xl" color="white.900">
-                            Explore Our Products
-                        </Heading>
-                        <Text color={muted} fontSize="md">
-                            Curated selection — {total} items available
-                        </Text>
+                        <Heading size="xl" color="white.900">Explore Our Products</Heading>
+                        <Text color={muted} fontSize="md">Showing {products.length} of {total} items</Text>
                     </VStack>
 
-                    {/* Filters */}
-                    <Box bg={containerBg} p={{ base: 4, md: 6 }} borderRadius="xl" boxShadow={panelShadow} mb={6} border="1px" borderColor={useColorModeValue('transparent', 'transparent')}>
+                    {/* Filter Panel */}
+                    <Box bg={containerBg} p={6} borderRadius="xl" boxShadow="sm" mb={8}>
                         <SimpleGrid columns={{ base: 1, md: 5 }} spacing={4} alignItems="end">
                             <FormControl>
-                                <FormLabel fontSize="sm" fontWeight="600" color={muted}>
-                                    Search
-                                </FormLabel>
-                                <Input
-                                    placeholder="Search products..."
-                                    value={filters.search}
-                                    onChange={(e) => handleFilterChange('search', e.target.value)}
-                                    borderRadius="lg"
-                                    bg={inputBg}
-                                    _placeholder={{ color: 'gray.400' }}
-                                    size="md"
-                                    icon={<SearchIcon />}
-                                />
+                                <FormLabel fontSize="sm" color={muted}>Search</FormLabel>
+                                <Input placeholder="Search..." value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)} bg={containerBg} />
                             </FormControl>
-
                             <FormControl>
-                                <FormLabel fontSize="sm" fontWeight="600" color={muted}>
-                                    Category
-                                </FormLabel>
-                                <Select
-                                    value={filters.category_id}
-                                    onChange={(e) => handleFilterChange('category_id', e.target.value)}
-                                    borderRadius="lg"
-                                    bg={inputBg}
-                                    size="md"
-                                >
-                                    <option value="">All categories</option>
-                                    {categories.map((cat) => (
-                                        <option key={cat.id} value={cat.id}>
-                                            {cat.name}
-                                        </option>
-                                    ))}
+                                <FormLabel fontSize="sm" color={muted}>Category</FormLabel>
+                                <Select value={filters.category_id} onChange={(e) => handleFilterChange('category_id', e.target.value)}>
+                                    <option value="">All Categories</option>
+                                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                                 </Select>
                             </FormControl>
-
                             <FormControl>
-                                <FormLabel fontSize="sm" fontWeight="600" color={muted}>
-                                    Sort
-                                </FormLabel>
-                                <Select
-                                    value={filters.sort}
-                                    onChange={(e) => handleFilterChange('sort', e.target.value)}
-                                    borderRadius="lg"
-                                    bg={inputBg}
-                                    size="md"
-                                >
+                                <FormLabel fontSize="sm" color={muted}>Sort By</FormLabel>
+                                <Select value={filters.sort} onChange={(e) => handleFilterChange('sort', e.target.value)}>
                                     <option value="name">Name</option>
                                     <option value="price">Price</option>
                                     <option value="created_at">Newest</option>
-                                    <option value="stock">Stock</option>
                                 </Select>
                             </FormControl>
-
                             <FormControl>
-                                <FormLabel fontSize="sm" fontWeight="600" color={muted}>
-                                    Order
-                                </FormLabel>
-                                <Select
-                                    value={filters.order}
-                                    onChange={(e) => handleFilterChange('order', e.target.value)}
-                                    borderRadius="lg"
-                                    bg={inputBg}
-                                    size="md"
-                                >
+                                <FormLabel fontSize="sm" color={muted}>Order</FormLabel>
+                                <Select value={filters.order} onChange={(e) => handleFilterChange('order', e.target.value)}>
                                     <option value="asc">Ascending</option>
                                     <option value="desc">Descending</option>
                                 </Select>
                             </FormControl>
-
-                            <Flex alignItems="center" justifyContent="flex-end">
-                                <Button variant="outline" onClick={handleResetFilters} borderRadius="lg" size="md">
-                                    Reset
-                                </Button>
-                            </Flex>
+                            <Button variant="outline" onClick={handleResetFilters}>Reset</Button>
                         </SimpleGrid>
-
-                        {/* active filter chips */}
-                        {(filters.search || filters.category_id) && (
-                            <HStack mt={3} spacing={3} flexWrap="wrap">
-                                {filters.search && <Badge colorScheme="blue">Search: {filters.search}</Badge>}
-                                {filters.category_id && <Badge colorScheme="purple">Category: {categories.find((c) => c.id == filters.category_id)?.name}</Badge>}
-                            </HStack>
-                        )}
                     </Box>
 
-                    {/* Products grid */}
+                    {/* Grid & Load More Logic */}
                     {loading ? (
-                        <Flex justify="center" py={20}>
-                            <Spinner size="xl" color={accent} />
-                        </Flex>
+                        <Flex justify="center" py={20}><Spinner size="xl" color={accent} /></Flex>
                     ) : products.length === 0 ? (
                         <Box bg={containerBg} p={14} borderRadius="xl" textAlign="center" border="1px dashed" borderColor="gray.200">
-                            <Heading size="md" color="gray.600" mb={2}>
-                                No products found
-                            </Heading>
-                            <Text color={muted}>Try adjusting filters or search terms.</Text>
+                            <Heading size="md" color="gray.600">No products found</Heading>
                         </Box>
                     ) : (
                         <>
-                            <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={6} mb={6}>
+                            <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={6} mb={10}>
                                 {products.map((product) => (
                                     <ProductCard
                                         key={product.id}
@@ -524,81 +338,65 @@ export default function ProductsPage() {
                                 ))}
                             </SimpleGrid>
 
-                            {/* Pagination */}
-                            {totalPages > 1 && (
-                                <Flex justify="center" gap={4} align="center" mb={8}>
+                            <Flex justify="center" direction="column" align="center" mb={12}>
+                                {hasMore ? (
                                     <Button
-                                        variant="ghost"
-                                        onClick={() => setOffset(Math.max(0, offset - limit))}
-                                        isDisabled={offset === 0}
-                                        borderRadius="md"
+                                        size="lg" colorScheme="blue" variant="outline" borderRadius="full" px={10}
+                                        onClick={handleLoadMore} isLoading={loadingMore} leftIcon={<FaArrowDown />}
+                                        _hover={{ bg: "blue.500", color: "white" }}
                                     >
-                                        Previous
+                                        Load More Products
                                     </Button>
-
-                                    <Text fontWeight="600">
-                                        Page {currentPage} of {totalPages}
-                                    </Text>
-
-                                    <Button
-                                        variant="ghost"
-                                        onClick={() => setOffset(offset + limit)}
-                                        isDisabled={currentPage === totalPages}
-                                        borderRadius="md"
-                                    >
-                                        Next
-                                    </Button>
-                                </Flex>
-                            )}
+                                ) : (
+                                    <Tag size="lg" colorScheme="gray" variant="subtle" borderRadius="full">You've reached the end</Tag>
+                                )}
+                            </Flex>
                         </>
                     )}
+
+                    {/* Recommendation Placeholder */}
+                    <Box bg={containerBg} p={6} borderRadius="xl" border="1px solid" borderColor="gray.100">
+                        <Heading size="md" mb={3}>Recommended Products</Heading>
+                        <Box w="full" borderRadius="xl" border="1px dashed" borderColor="gray.200" bg="gray.50" py={10} textAlign="center">
+                            <Text color={muted} fontWeight="600">Start purchasing for personalized recommendations.</Text>
+                        </Box>
+                    </Box>
                 </Box>
             </Box>
 
-            {/* Supply order modal (supplier only) */}
-            {user?.role === 'supplier' && (
-                <>
-                    <Modal isOpen={supplyModalOpen} onClose={closeSupplyModal} isCentered>
-                        <ModalOverlay />
-                        <ModalContent>
-                            <ModalHeader>Request Supply Order</ModalHeader>
-                            <ModalCloseButton />
-                            <ModalBody>
-                                <Text fontWeight="600">Product: {supplyProduct?.name}</Text>
-                                <FormControl mt={3}>
-                                    <FormLabel>Store</FormLabel>
-                                    <Select value={supplyStoreId || ''} onChange={(e) => setSupplyStoreId(e.target.value)}>
-                                        {stores.map((s) => (
-                                            <option key={s.id} value={s.id}>{s.name}</option>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-
-                                <FormControl mt={3}>
-                                    <FormLabel>Quantity</FormLabel>
-                                    <NumberInput min={1} value={supplyQty} onChange={(_, v) => setSupplyQty(v)}>
-                                        <NumberInputField />
-                                        <NumberInputStepper>
-                                            <NumberIncrementStepper />
-                                            <NumberDecrementStepper />
-                                        </NumberInputStepper>
-                                    </NumberInput>
-                                </FormControl>
-
-                                <FormControl mt={3}>
-                                    <FormLabel>Unit cost</FormLabel>
-                                    <Input type="number" value={supplyCost} onChange={(e) => setSupplyCost(Number(e.target.value))} />
-                                </FormControl>
-                            </ModalBody>
-
-                            <ModalFooter>
-                                <Button variant="ghost" mr={3} onClick={closeSupplyModal}>Cancel</Button>
-                                <Button colorScheme="purple" onClick={handlePlaceSupplyOrder} isLoading={placingSupply}>Request</Button>
-                            </ModalFooter>
-                        </ModalContent>
-                    </Modal>
-                </>
-            )}
+            {/* Supply Modal */}
+            <Modal isOpen={supplyModalOpen} onClose={() => setSupplyModalOpen(false)} isCentered>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>Request Supply Order</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <VStack spacing={4}>
+                            <FormControl>
+                                <FormLabel>Store</FormLabel>
+                                <Select value={supplyStoreId} onChange={(e) => setSupplyStoreId(e.target.value)}>
+                                    {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </Select>
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel>Quantity</FormLabel>
+                                <NumberInput min={1} value={supplyQty} onChange={(_, v) => setSupplyQty(v)}>
+                                    <NumberInputField />
+                                    <NumberInputStepper><NumberIncrementStepper /><NumberDecrementStepper /></NumberInputStepper>
+                                </NumberInput>
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel>Unit Cost</FormLabel>
+                                <Input type="number" value={supplyCost} onChange={(e) => setSupplyCost(Number(e.target.value))} />
+                            </FormControl>
+                        </VStack>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button variant="ghost" mr={3} onClick={() => setSupplyModalOpen(false)}>Cancel</Button>
+                        <Button colorScheme="purple" onClick={handlePlaceSupplyOrder} isLoading={placingSupply}>Request</Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
 
             <Footer />
         </Box>

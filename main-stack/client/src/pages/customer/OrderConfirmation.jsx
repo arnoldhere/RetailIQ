@@ -9,7 +9,6 @@ import {
   Button,
   Divider,
   Spinner,
-  useColorModeValue,
   Badge,
   SimpleGrid,
   Card,
@@ -31,16 +30,16 @@ export default function OrderConfirmation() {
   const [error, setError] = useState(null);
 
   // All hooks called unconditionally at top-level
-  const bgCard = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const textMuted = useColorModeValue('gray.600', 'gray.400');
-  const bgSuccess = useColorModeValue('green.50', 'green.900');
-  const borderSuccess = useColorModeValue('green.200', 'green.700');
+  const bgCard = "var(--surface-card)";
+  const borderColor = "var(--border-light)";
+  const textMuted = "var(--text-secondary)";
+  const bgSuccess = "var(--accent-light)";
+  const borderSuccess = "var(--accent-light)";
 
   // Pulled up values for places that previously called useColorModeValue inline
-  const pageBg = useColorModeValue('gray.50', 'gray.900');        // used for outer Box
-  const itemBg = useColorModeValue('gray.50', 'gray.700');       // used for each item row
-  const whatsNextBg = useColorModeValue('blue.50', 'blue.900');  // if you want dark variant (optional)
+  const pageBg = "var(--surface-light)";        // used for outer Box
+  const itemBg = "var(--surface-elevated)";       // used for each item row
+  const whatsNextBg = "var(--accent-light)";  // if you want dark variant (optional)
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -99,7 +98,7 @@ export default function OrderConfirmation() {
         <Navbar />
         <Box flex={1} display="flex" justifyContent="center" alignItems="center">
           <VStack spacing={4}>
-            <Spinner size="xl" thickness="4px" color="green.500" />
+            <Spinner size="xl" thickness="4px" color="var(--primary-color)" />
             <Text color={textMuted}>Loading order details...</Text>
           </VStack>
         </Box>

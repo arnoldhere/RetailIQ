@@ -38,22 +38,24 @@ async function resolveSupplierProfile(trx, supplierRef) {
 
 async function createInitialSupplyPayment(trx, { orderId, supplierId, total }) {
   const paymentCols = await trx('supply_payments').columnInfo()
+  const upfrontAmount = Math.min(Number(total || 0), Number((Number(total || 0) * 0.1).toFixed(2)))
   const payload = {
     supply_order_id: orderId,
-    amount: total,
+    amount: upfrontAmount,
   }
 
   // Keep compatibility with both schema variants used in this repo history.
   if (paymentCols.supplier_id) payload.supplier_id = supplierId
   if (paymentCols.payment_status) payload.payment_status = 'pending'
   if (paymentCols.payment_method) payload.payment_method = null
-  if (paymentCols.method) payload.method = 'CASH'
-  if (paymentCols.payment_date) payload.payment_date = null
-  if (paymentCols.payment_ref) payload.payment_ref = null
+  if (paymentCols.method) payload.method = 'OTHER'
+  if (paymentCols.payment_date) payload.payment_date = new Date()
+  if (paymentCols.payment_ref) payload.payment_ref = 'AUTO-INITIAL-10PCT'
   if (paymentCols.razorpay_order_id) payload.razorpay_order_id = null
   if (paymentCols.razorpay_payment_id) payload.razorpay_payment_id = null
 
   await trx('supply_payments').insert(payload)
+  return upfrontAmount
 }
 
 module.exports = {
@@ -268,13 +270,13 @@ module.exports = {
           total_amount: total,
         })
 
-        await createInitialSupplyPayment(trx, {
+        const initialPaymentAmount = await createInitialSupplyPayment(trx, {
           orderId,
           supplierId: supplierProfile.id,
           total,
         })
 
-        return { orderId, order_no, total, bid, supplierProfile }
+        return { orderId, order_no, total, bid, supplierProfile, initialPaymentAmount }
       })
 
       // Non-blocking supplier notification
@@ -286,8 +288,16 @@ module.exports = {
           : (txResult.supplierProfile.name || '')
 
         if (emailTo) {
+          const remainingAmount = Math.max(0, txResult.total - txResult.initialPaymentAmount)
           const subject = `Your bid #${id} has been accepted and order ${txResult.order_no} created`
-          const html = `<p>Hi ${name || 'Supplier'},</p><p>Your bid for ask #${txResult.bid.ask_id} has been accepted by admin and a supply order (${txResult.order_no}) has been created. Order total: $${txResult.total.toFixed(2)}</p>`
+          const html = `
+            <p>Hi ${name || 'Supplier'},</p>
+            <p>Your bid for ask #${txResult.bid.ask_id} has been accepted by admin and a supply order (${txResult.order_no}) has been created.</p>
+            <p><strong>Order total:</strong> ₹${txResult.total.toFixed(2)}</p>
+            <p><strong>Initial confirmation payment recorded:</strong> ₹${txResult.initialPaymentAmount.toFixed(2)} (10%)</p>
+            <p><strong>Remaining amount:</strong> ₹${remainingAmount.toFixed(2)}</p>
+            <p>The initial 10% payment is recorded for final order confirmation. Remaining payments can be recorded by admin as the order proceeds.</p>
+          `
           sendEmail(process.env.GMAIL_EMAIL, emailTo, subject, html).catch((e) => console.error('Bid accepted email failed', e))
         }
       } catch (e) {
@@ -295,7 +305,17 @@ module.exports = {
       }
 
       const created = await db('supply_orders').where('id', txResult.orderId).first()
-      return res.json({ message: 'Bid accepted', order: created })
+      return res.json({
+        message: 'Bid accepted. A 10% confirmation payment has been recorded; remaining balance can be paid later.',
+        order: created,
+        paymentSummary: {
+          totalAmount: txResult.total,
+          totalPaid: txResult.initialPaymentAmount,
+          remainingAmount: Math.max(0, txResult.total - txResult.initialPaymentAmount),
+          isFullyPaid: false,
+        },
+        initialPaymentAmount: txResult.initialPaymentAmount,
+      })
     } catch (err) {
       if (err.status) return res.status(err.status).json({ message: err.message })
       console.error('acceptBid error', err)

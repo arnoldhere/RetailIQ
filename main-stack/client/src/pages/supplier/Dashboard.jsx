@@ -1,31 +1,31 @@
 import React, { useEffect, useState } from "react";
 import {
-	Box,
-	Button,
-	Heading,
-	Text,
-	VStack,
-	HStack,
-	Stat,
-	StatLabel,
-	StatNumber,
-	StatHelpText,
-	Grid,
-	GridItem,
-	Flex,
-	Badge,
-	SimpleGrid,
-	Spinner,
-	useToast,
-	useColorModeValue,
 	Alert,
 	AlertIcon,
+	Badge,
+	Box,
+	Button,
+	Container,
+	Flex,
+	Grid,
+	Heading,
+	HStack,
+	Icon,
+	SimpleGrid,
+	Spinner,
+	Stat,
+	StatHelpText,
+	StatLabel,
+	StatNumber,
+	Text,
+	VStack,
+	useToast,
 } from "@chakra-ui/react";
-import SupplierSidebar from "../../components/SupplierSidebar";
-import { ArrowUpIcon, ArrowDownIcon } from "@chakra-ui/icons";
+import { ArrowDownIcon, ArrowUpIcon } from "@chakra-ui/icons";
 import { FiTrendingUp } from "react-icons/fi";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import SupplierSidebar from "../../components/SupplierSidebar";
 import * as bidsApi from "../../api/bids";
 import { useAuth } from "../../context/AuthContext";
 
@@ -46,32 +46,21 @@ export default function SupplierDashboard() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 
-	const pageBg = useColorModeValue("gray.50", "#020617");
-	const cardBg = useColorModeValue("white", "whiteAlpha.50");
-	const textMuted = useColorModeValue("gray.600", "gray.400");
-	const borderColor = useColorModeValue("gray.100", "whiteAlpha.200");
-	const textPrimary = useColorModeValue("gray.900", "gray.100");
-	const orderBg = useColorModeValue("gray.50", "whiteAlpha.100");
-	const orderHoverBg = useColorModeValue("gray.100", "whiteAlpha.200");
-
 	useEffect(() => {
 		const fetchSupplierKPIs = async () => {
 			try {
 				setLoading(true);
 				setError(null);
 
-				// Verify user is authenticated as supplier
-				if (!user || user.role !== 'supplier') {
-					setError('Access denied: Supplier role required');
+				if (!user || user.role !== "supplier") {
+					setError("Access denied: Supplier role required");
 					return;
 				}
 
-				// Fetch supplier-specific dashboard metrics from backend
 				const res = await bidsApi.getSupplierDashboardMetrics();
 				const metrics = res?.data?.metrics || {};
 				const supplier = res?.data?.supplier || {};
 
-				// Validate that we got data for the current user's supplier
 				if (res?.data?.supplier?.id) {
 					console.log(`✓ Dashboard loaded for Supplier ID: ${supplier.id} (${supplier.name})`);
 				}
@@ -107,7 +96,7 @@ export default function SupplierDashboard() {
 	const stats = [
 		{
 			label: "Total Revenue",
-			value: `$${kpis.totalRevenue.toFixed(2)}`,
+			value: `₹${kpis.totalRevenue.toFixed(2)}`,
 			change: "From your supply orders",
 			isPositive: true,
 			icon: ArrowUpIcon,
@@ -128,7 +117,7 @@ export default function SupplierDashboard() {
 		},
 		{
 			label: "Average Order Value",
-			value: `$${kpis.avgOrderValue.toFixed(2)}`,
+			value: `₹${kpis.avgOrderValue.toFixed(2)}`,
 			change: "For your account only",
 			isPositive: true,
 			icon: ArrowDownIcon,
@@ -141,6 +130,7 @@ export default function SupplierDashboard() {
 			sent: "blue",
 			processing: "orange",
 			pending: "yellow",
+			cancelled: "red",
 		};
 		return colors[status] || "gray";
 	};
@@ -159,218 +149,240 @@ export default function SupplierDashboard() {
 	};
 
 	return (
-		<Box minH="100vh" bg={pageBg} display="flex" flexDirection="column">
+		<Box minH="100vh" bg="var(--background)" display="flex" flexDirection="column">
 			<Navbar />
 
-			<Box flex={1} py={{ base: 6, md: 10 }}>
-				<Box maxW="7xl" mx="auto" px={{ base: 4, md: 8 }}>
-					{/* Error state */}
-					{error && (
-						<Alert status="error" mb={6} borderRadius="md">
-							<AlertIcon />
-							<Box>
-								<Text fontWeight="bold">Error loading dashboard</Text>
-								<Text fontSize="sm">{error}</Text>
-							</Box>
-						</Alert>
-					)}
+			<Container maxW="container.xl" py={6} flex={1}>
+				<Flex gap={6} align="flex-start" direction={{ base: "column", lg: "row" }}>
+					<Box display={{ base: "block", lg: "none" }}>
+						<SupplierSidebar />
+					</Box>
 
-					{loading ? (
-						<Flex justify="center" py={20}>
-							<Spinner size="lg" color="blue.500" />
-						</Flex>
-					) : (
-						<SimpleGrid columns={{ base: 1, lg: 5 }} spacing={6} alignItems="flex-start">
+					<Box
+						as="aside"
+						display={{ base: "none", lg: "block" }}
+						rounded="2xl"
+						overflow="hidden"
+						boxShadow="sm"
+						bg="var(--surface)"
+						border="1px solid"
+						borderColor="var(--border-light)"
+					>
+						<SupplierSidebar />
+					</Box>
+
+					<Box flex="1">
+						<VStack spacing={6} align="stretch">
 							<Box
-								as="aside"
-								display={{ base: "none", lg: "block" }}
-								rounded="2xl"
-								overflow="hidden"
-								boxShadow="sm"
-								bg={cardBg}
-								border="1px solid"
-								borderColor={borderColor}
-								h="fit-content"
+								bg="linear-gradient(135deg, #0f3d91 0%, #0066cc 60%, #0aa2dd 100%)"
+								borderRadius="3xl"
+								p={{ base: 6, md: 8 }}
+								color="white"
+								boxShadow="0 24px 60px rgba(0, 102, 204, 0.18)"
 							>
-								<SupplierSidebar />
+								<Grid templateColumns={{ base: "1fr", xl: "1.1fr 0.9fr" }} gap={8} alignItems="center">
+									<VStack align="start" spacing={3}>
+										<Text fontSize="xs" textTransform="uppercase" letterSpacing="0.18em" fontWeight="700" color="whiteAlpha.900">
+											Supplier Overview
+										</Text>
+										<Heading size="lg" color="white">
+											Track your supply performance  across the admin workspace.
+										</Heading>
+										<Text color="whiteAlpha.900" maxW="2xl">
+											View revenue, monitor order progress, and review recent supply activities.
+										</Text>
+									</VStack>
+									<SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4}>
+										<Box bg="whiteAlpha.170" border="1px solid" borderColor="whiteAlpha.260" borderRadius="2xl" p={4}>
+											<Text fontSize="sm" color="whiteAlpha.800">Total Orders</Text>
+											<Heading size="lg" color="white" mt={1}>{kpis.totalOrders}</Heading>
+										</Box>
+										<Box bg="whiteAlpha.170" border="1px solid" borderColor="whiteAlpha.260" borderRadius="2xl" p={4}>
+											<Text fontSize="sm" color="whiteAlpha.800">Sent Orders</Text>
+											<Heading size="lg" color="white" mt={1}>{kpis.sentOrders}</Heading>
+										</Box>
+										<Box bg="whiteAlpha.170" border="1px solid" borderColor="whiteAlpha.260" borderRadius="2xl" p={4}>
+											<Text fontSize="sm" color="whiteAlpha.800">Growth</Text>
+											<Heading size="lg" color="white" mt={1}>{kpis.revenueGrowthPct}%</Heading>
+										</Box>
+									</SimpleGrid>
+								</Grid>
 							</Box>
 
-							<Box gridColumn={{ base: "1 / -1", lg: "span 4" }}>
-								<VStack spacing={8} align="stretch">
+							{error && (
+								<Alert status="error" borderRadius="xl">
+									<AlertIcon />
 									<Box>
-										<Heading size="lg" mb={2} color={textPrimary}>
-											Supplier Dashboard
-										</Heading>
-										<Text color={textMuted}>
-											Your account-level KPI metrics, revenue tracking, and order performance
-										</Text>
+										<Text fontWeight="bold">Error loading dashboard</Text>
+										<Text fontSize="sm">{error}</Text>
 									</Box>
+								</Alert>
+							)}
 
-									<Grid
-										templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" }}
-										gap={6}
-									>
-										{stats.map((stat, idx) => (
-											<GridItem key={idx}>
-												<Box
-													bg={cardBg}
-													p={6}
-													borderRadius="xl"
-													boxShadow="md"
-													border="1px"
-													borderColor={borderColor}
-													_hover={{ boxShadow: "lg", transform: "translateY(-2px)" }}
-													transition="all 0.2s"
-												>
-													<Stat>
-														<StatLabel color={textMuted} fontSize="sm" fontWeight="500">
-															{stat.label}
-														</StatLabel>
-														<StatNumber fontSize="3xl" fontWeight="bold" color={textPrimary} mt={2}>
-															{stat.value}
-														</StatNumber>
-														<StatHelpText
-															color={stat.isPositive ? "green.500" : "orange.500"}
-															fontWeight="600"
-															mt={2}
-														>
-															<Flex align="center" gap={1}>
-																<stat.icon />
-																<Text>{stat.change}</Text>
-															</Flex>
-														</StatHelpText>
-													</Stat>
-												</Box>
-											</GridItem>
-										))}
-									</Grid>
-
-									<Grid templateColumns={{ base: "1fr", lg: "repeat(3, 1fr)" }} gap={6}>
-										<GridItem colSpan={{ base: 1, lg: 2 }}>
+							{loading ? (
+								<Flex justify="center" py={20}>
+									<Spinner size="lg" color="var(--primary-color)" />
+								</Flex>
+							) : (
+								<VStack spacing={6} align="stretch">
+									<SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} spacing={6}>
+										{stats.map((stat) => (
 											<Box
-												bg={cardBg}
+												key={stat.label}
+												bg="white"
 												p={6}
-												borderRadius="xl"
-												boxShadow="md"
-												border="1px"
-												borderColor={borderColor}
+												borderRadius="2xl"
+												border="1px solid"
+												borderColor="var(--border-light)"
+												boxShadow="var(--shadow-sm)"
+												transition="all var(--transition-normal)"
+												_hover={{ transform: "translateY(-4px)", boxShadow: "var(--shadow-md)" }}
 											>
-												<Heading size="md" mb={4} color={textPrimary}>
-													Recent Supply Orders
-												</Heading>
-												<VStack spacing={3} align="stretch">
-													{recentOrders.length > 0 ? (
-														recentOrders.map((order) => (
-															<Box
-																key={order.id}
-																p={4}
-																borderRadius="lg"
-																bg={orderBg}
-																border="1px"
-																borderColor={borderColor}
-																_hover={{ bg: orderHoverBg }}
-															>
-																<Flex justify="space-between" align="center" mb={2}>
-																	<HStack spacing={3}>
-																		<Text fontWeight="600" fontSize="sm" color={textPrimary}>
-																			{order.order_no}
-																		</Text>
-																		<Text color={textMuted} fontSize="sm">
-																			{order.store_name || "-"}
-																		</Text>
-																	</HStack>
-																	<Badge
-																		colorScheme={getStatusColor(order.status)}
-																		fontSize="xs"
-																		borderRadius="full"
-																		px={2}
-																		py={0.5}
-																	>
-																		{order.status?.toUpperCase()}
-																	</Badge>
-																</Flex>
-																<Flex justify="space-between" align="center">
-																	<Text fontSize="sm" color={textMuted}>
-																		{formatDate(order.created_at)}
+												<Stat>
+													<StatLabel color="var(--text-secondary)" fontSize="sm" fontWeight="500">
+														{stat.label}
+													</StatLabel>
+													<StatNumber fontSize="3xl" fontWeight="bold" color="var(--text-primary)" mt={2}>
+														{stat.value}
+													</StatNumber>
+													<StatHelpText color={stat.isPositive ? "green.500" : "orange.500"} fontWeight="600" mt={2}>
+														<Flex align="center" gap={1}>
+															<Icon as={stat.icon} />
+															<Text>{stat.change}</Text>
+														</Flex>
+													</StatHelpText>
+												</Stat>
+											</Box>
+										))}
+									</SimpleGrid>
+
+									<Grid templateColumns={{ base: "1fr", xl: "1.5fr 0.9fr" }} gap={6}>
+										<Box
+											bg="white"
+											p={6}
+											borderRadius="2xl"
+											border="1px solid"
+											borderColor="var(--border-light)"
+											boxShadow="var(--shadow-sm)"
+										>
+											<HStack justify="space-between" mb={4}>
+												<Box>
+													<Heading size="md">Recent Supply Orders</Heading>
+													<Text color="var(--text-secondary)" fontSize="sm" mt={1}>
+														Your latest order activity and delivery progress.
+													</Text>
+												</Box>
+												<Badge colorScheme="blue" borderRadius="full" px={3} py={1}>
+													{recentOrders.length} recent
+												</Badge>
+											</HStack>
+											<VStack spacing={3} align="stretch">
+												{recentOrders.length > 0 ? (
+													recentOrders.map((order) => (
+														<Box
+															key={order.id}
+															p={4}
+															borderRadius="xl"
+															bg="var(--surface-secondary)"
+															border="1px solid"
+															borderColor="var(--border-light)"
+														>
+															<Flex justify="space-between" align="center" mb={2}>
+																<HStack spacing={3} flexWrap="wrap">
+																	<Text fontWeight="700" fontSize="sm" color="var(--text-primary)">
+																		{order.order_no}
 																	</Text>
-																	<Text fontWeight="bold" color="green.500">
-																		${Number(order.total_amount || 0).toFixed(2)}
+																	<Text color="var(--text-secondary)" fontSize="sm">
+																		{order.store_name || "-"}
 																	</Text>
-																</Flex>
-															</Box>
-														))
-													) : (
-														<Text color={textMuted} textAlign="center" py={4}>
+																</HStack>
+																<Badge colorScheme={getStatusColor(order.status)} borderRadius="full" px={3} py={1}>
+																	{order.status}
+																</Badge>
+															</Flex>
+															<Flex justify="space-between" align="center">
+																<Text fontSize="sm" color="var(--text-secondary)">
+																	{formatDate(order.created_at)}
+																</Text>
+																<Text fontWeight="700" color="var(--primary-color)">
+																	₹{Number(order.total_amount || 0).toFixed(2)}
+																</Text>
+															</Flex>
+														</Box>
+													))
+												) : (
+													<Box
+														border="1px dashed"
+														borderColor="var(--border-color)"
+														borderRadius="xl"
+														p={8}
+														textAlign="center"
+													>
+														<Text color="var(--text-secondary)">
 															No supply orders found for your account.
 														</Text>
-													)}
-												</VStack>
-											</Box>
-										</GridItem>
+													</Box>
+												)}
+											</VStack>
+										</Box>
 
-										<GridItem>
+										<VStack spacing={6} align="stretch">
 											<Box
-												bg={cardBg}
+												bg="white"
 												p={6}
-												borderRadius="xl"
-												boxShadow="md"
-												border="1px"
-												borderColor={borderColor}
-												h="100%"
+												borderRadius="2xl"
+												border="1px solid"
+												borderColor="var(--border-light)"
+												boxShadow="var(--shadow-sm)"
 											>
-												<Heading size="md" mb={4} color={textPrimary}>
+												<Heading size="md" mb={3}>
+													Performance Summary
+												</Heading>
+												<Text color="var(--text-secondary)" mb={4}>
+													{kpis.completionRate}% orders delivered. Revenue growth versus last month: {kpis.revenueGrowthPct}%.
+												</Text>
+												<Box
+													bg="var(--primary-lighter)"
+													borderRadius="xl"
+													p={4}
+													border="1px solid"
+													borderColor="rgba(0, 102, 204, 0.10)"
+												>
+													<Text fontSize="sm" color="var(--primary-dark)" fontWeight="600">
+														Account status
+													</Text>
+													<Text fontSize="sm" color="var(--text-secondary)" mt={1}>
+														Your supplier dashboard reflects only your own orders, revenue, and payment activity.
+													</Text>
+												</Box>
+											</Box>
+
+											<Box
+												bg="white"
+												p={6}
+												borderRadius="2xl"
+												border="1px solid"
+												borderColor="var(--border-light)"
+												boxShadow="var(--shadow-sm)"
+											>
+												<Heading size="md" mb={4}>
 													Quick Links
 												</Heading>
 												<VStack spacing={3} align="stretch">
-													<Button colorScheme="blue" variant="outline" size="sm" fontWeight="500" justifyContent="flex-start">
-														View All Orders
-													</Button>
-													<Button colorScheme="purple" variant="outline" size="sm" fontWeight="500" justifyContent="flex-start">
-														Browse Products
-													</Button>
-													<Button colorScheme="green" variant="outline" size="sm" fontWeight="500" justifyContent="flex-start">
-														View Bids
-													</Button>
-													<Button colorScheme="orange" variant="outline" size="sm" fontWeight="500" justifyContent="flex-start">
-														Update Profile
-													</Button>
+													<Button variant="outline" justifyContent="flex-start">View All Orders</Button>
+													<Button variant="outline" justifyContent="flex-start">Browse Products</Button>
+													<Button variant="outline" justifyContent="flex-start">View Bids</Button>
+													<Button variant="outline" justifyContent="flex-start">Update Profile</Button>
 												</VStack>
 											</Box>
-										</GridItem>
+										</VStack>
 									</Grid>
-
-									<Box bgGradient="linear(to-r, blue.600, blue.400)" p={6} borderRadius="xl" border="1px" borderColor="blue.300">
-										<Flex
-											direction={{ base: "column", md: "row" }}
-											align={{ base: "flex-start", md: "center" }}
-											justify="space-between"
-											gap={4}
-										>
-											<Box>
-												<Heading size="sm" color="white" mb={2}>
-													Performance Summary
-												</Heading>
-												<Text color="whiteAlpha.900" fontSize="sm">
-													{kpis.completionRate}% orders delivered. Revenue growth vs last month: {kpis.revenueGrowthPct}%.
-												</Text>
-											</Box>
-											<Button
-												colorScheme="whiteAlpha"
-												variant="outline"
-												flexShrink={0}
-												fontWeight="600"
-												_hover={{ bg: "whiteAlpha.200" }}
-											>
-												View Analytics
-											</Button>
-										</Flex>
-									</Box>
 								</VStack>
-							</Box>
-						</SimpleGrid>
-					)}
-				</Box>
-			</Box>
+							)}
+						</VStack>
+					</Box>
+				</Flex>
+			</Container>
 
 			<Footer />
 		</Box>

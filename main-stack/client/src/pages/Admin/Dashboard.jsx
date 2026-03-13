@@ -14,7 +14,6 @@ import {
 	Badge,
 	Flex,
 	useToast,
-	useColorModeValue,
 	Icon,
 	Stack,
 	StackDivider,
@@ -69,12 +68,12 @@ export default function AdminDashboard() {
 	}, [toast]);
 
 	// Colors extracted BEFORE any loops
-	const bgCard = useColorModeValue("white", "gray.800");
-	const bgPage = useColorModeValue("gray.50", "gray.900");
-	const borderColor = useColorModeValue("gray.200", "gray.700");
-	const textMuted = useColorModeValue("gray.600", "gray.300");
-	const iconBg = useColorModeValue("gray.100", "gray.700");
-	const subtleCard = useColorModeValue("white", "gray.800");
+	const bgCard = "var(--surface-card)";
+	const bgPage = "var(--surface-light)";
+	const borderColor = "var(--border-light)";
+	const textMuted = "var(--text-secondary)";
+	const iconBg = "var(--surface-elevated)";
+	const subtleCard = "var(--surface-card)";
 
 	const stats = [
 		{
@@ -165,21 +164,22 @@ export default function AdminDashboard() {
 											key={index}
 											bg={bgCard}
 											p={6}
-											borderRadius="lg"
+											borderRadius="12px"
 											border="1px solid"
 											borderColor={borderColor}
-											boxShadow="md"
-											transition="0.25s"
+											boxShadow="var(--shadow-sm)"
+											transition="all var(--transition-normal)"
 											_hover={{
 												transform: "translateY(-6px)",
-												boxShadow: "xl",
+												boxShadow: "var(--shadow-lg)",
+												borderColor: "var(--primary-color)",
 											}}
 										>
 											<Flex justify="space-between">
 												<Box>
 													<Stat>
 														<StatLabel color={textMuted}>{s.label}</StatLabel>
-														<StatNumber>{s.value}</StatNumber>
+														<StatNumber color="var(--primary-color)" fontSize="28px" fontWeight="700">{s.value}</StatNumber>
 														<Badge
 															mt={2}
 															colorScheme={s.positive ? "green" : "red"}
@@ -199,6 +199,8 @@ export default function AdminDashboard() {
 													display="flex"
 													alignItems="center"
 													justifyContent="center"
+													color="var(--primary-color)"
+													transition="all var(--transition-fast)"
 												>
 													<Icon as={s.icon} boxSize={6} />
 												</Box>
@@ -206,7 +208,7 @@ export default function AdminDashboard() {
 
 											{/* Sparkline placeholder */}
 											<svg width="100%" height="40">
-												<path fill="none" stroke={s.positive ? "#22c55e" : "#ef4444"} strokeWidth="2" />
+												<path fill="none" stroke={s.positive ? "#10b981" : "#ef4444"} strokeWidth="2" />
 											</svg>
 										</Box>
 									);

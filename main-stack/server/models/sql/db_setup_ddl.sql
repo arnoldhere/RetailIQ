@@ -262,6 +262,9 @@ ALTER TABLE supply_payments
   ADD CONSTRAINT fk_supplypayments_order FOREIGN KEY (supply_order_id) REFERENCES supply_orders(id) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT fk_supplypayments_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE RESTRICT ON UPDATE CASCADE;
 
+ALTER TABLE supply_orders
+  ADD COLUMN stock_synced_at TIMESTAMP NULL;
+
 -- customer_orders -> users(storer), stores
 ALTER TABLE customer_orders
   ADD CONSTRAINT fk_custorders_cust FOREIGN KEY (cust_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
@@ -404,3 +407,35 @@ ALTER TABLE invoices
   ADD cgst DECIMAL(12,2) DEFAULT 0.00,
   ADD sgst DECIMAL(12,2) DEFAULT 0.00,
   ADD igst DECIMAL(12,2) DEFAULT 0.00;
+
+-- add this table for recommendations
+-- USER RECOMMENDATIONS
+CREATE TABLE IF NOT EXISTS user_recommendations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  cust_id INT NOT NULL,
+  product_id INT NOT NULL,
+  score DECIMAL(8,4) NOT NULL DEFAULT 0.0000, -- The ML confidence score
+  algorithm_version VARCHAR(50) NOT NULL,    -- Tracks which model version made the prediction (e.g., 'lightfm_v1.2')
+  reason_code VARCHAR(100) NULL,             -- UX mapping: 'bought_similar', 'popular_in_category', 'wishlist_based'
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+  
+  INDEX idx_recommendations_cust (cust_id),
+  INDEX idx_recommendations_score (score),
+  
+  -- Ensure a product is only recommended once per user in the active table
+  UNIQUE KEY unique_user_product (cust_id, product_id),
+  
+  CONSTRAINT fk_recommendations_cust FOREIGN KEY (cust_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_recommendations_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Add a table for trending items (Fallback for non-logged-in users)
+CREATE TABLE IF NOT EXISTS global_trending_products (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL UNIQUE,
+  trend_score DECIMAL(8,4) NOT NULL,
+  updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+  
+  CONSTRAINT fk_trending_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

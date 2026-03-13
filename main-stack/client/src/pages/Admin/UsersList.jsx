@@ -10,7 +10,6 @@ import {
     StatLabel,
     StatNumber,
     useToast,
-    useColorModeValue,
     Flex,
     Table,
     Thead,
@@ -47,11 +46,11 @@ export default function UsersList() {
     const [loading, setLoading] = useState(false);
     const [metrics, setMetrics] = useState({ totalUsers: 0 });
     const [users, setUsers] = useState([]);
-    const tableHeadBg = useColorModeValue('white', 'gray.800')
+    const tableHeadBg = "var(--surface-light)"
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const hoverBg = useColorModeValue('gray.50', 'gray.700')
+    const hoverBg = "var(--surface-light)"
 
     useEffect(() => {
         let mounted = true;
@@ -79,11 +78,11 @@ export default function UsersList() {
         };
     }, [toast]);
 
-    const bgPage = useColorModeValue("gray.50", "gray.900");
-    const textMuted = useColorModeValue("gray.600", "gray.300");
-    const tableBorder = useColorModeValue("gray.200", "gray.700");
-    const borderColor = useColorModeValue("gray.200", "gray.700");
-    const subtleCard = useColorModeValue("white", "gray.800");
+    const bgPage = "var(--surface-light)";
+    const textMuted = "var(--text-secondary)";
+    const tableBorder = "var(--border-light)";
+    const borderColor = "var(--border-light)";
+    const subtleCard = "var(--surface-card)";
 
     // ---- Derived data: filtering + pagination ----
     const filteredUsers = useMemo(() => {
@@ -248,7 +247,7 @@ export default function UsersList() {
                                             placeholder="Search by name, email, or phone..."
                                             value={search}
                                             onChange={(e) => setSearch(e.target.value)}
-                                            bg={useColorModeValue("white", "gray.800")}
+                                            bg={subtleCard}
                                         />
                                     </InputGroup>
                                 </Box>
@@ -262,7 +261,7 @@ export default function UsersList() {
                                         width="80px"
                                         value={pageSize}
                                         onChange={(e) => setPageSize(Number(e.target.value))}
-                                        bg={useColorModeValue("white", "gray.800")}
+                                        bg={subtleCard}
                                     >
                                         {[5, 10, 20, 50].map((size) => (
                                             <option key={size} value={size}>
@@ -278,7 +277,7 @@ export default function UsersList() {
                                 borderWidth="1px"
                                 borderRadius="md"
                                 borderColor={tableBorder}
-                                bg={useColorModeValue("white", "gray.800")}
+                                bg={subtleCard}
                                 boxShadow="sm"
                                 overflow="hidden"
                                 w="100%"

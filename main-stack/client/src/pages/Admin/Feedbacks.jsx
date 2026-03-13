@@ -18,7 +18,6 @@ import {
     TableContainer,
     Select,
     SimpleGrid,
-    useColorModeValue,
     Tooltip,
     Flex,
     Divider,
@@ -49,19 +48,16 @@ export default function FeedbacksPage() {
     // -------------------------
     // Top-level theme tokens (ALL hooks here)
     // -------------------------
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
-    const subtleCard = useColorModeValue('white', 'gray.800')
-    const mutedText = useColorModeValue('gray.600', 'gray.300')
-    const borderColor = useColorModeValue('gray.100', 'gray.700')
-    const headerBg = useColorModeValue(
-        'linear-gradient(90deg, rgba(59,130,246,0.06), rgba(99,102,241,0.03))',
-        'transparent'
-    )
-    const accent = useColorModeValue('blue.600', 'blue.300')
-    // const subtleAccentBg = useColorModeValue('blue.50', 'blue.900')
-    const tableStripe = useColorModeValue('white', 'gray.800')
-    const hoverBg = useColorModeValue('gray.50', 'gray.700')
-    const tableHeadBg = useColorModeValue('white', 'gray.800')
+    const pageBg = "var(--surface-light)"
+    const subtleCard = "var(--surface-card)"
+    const mutedText = "var(--text-secondary)"
+    const borderColor = "var(--border-light)"
+    const headerBg = 'linear-gradient(90deg, rgba(59,130,246,0.06), rgba(99,102,241,0.03))'
+    const accent = "var(--primary-color)"
+    // const subtleAccentBg = "var(--accent-light)"
+    const tableStripe = "var(--surface-card)"
+    const hoverBg = "var(--surface-light)"
+    const tableHeadBg = "var(--surface-light)"
 
     // -------------------------
     // State & refs
@@ -179,9 +175,9 @@ export default function FeedbacksPage() {
         onOpen()
     }
 
-    const msgToolBg = useColorModeValue("gray.800", "gray.700");
-    const tableBg = useColorModeValue("white", "gray.900");
-    const msgBg = useColorModeValue("gray.700", "gray.100");
+    const msgToolBg = "var(--surface-dark)";
+    const tableBg = "var(--surface-card)";
+    const msgBg = "var(--surface-light)";
     // const 
     // -------------------------
     // Render
@@ -241,7 +237,7 @@ export default function FeedbacksPage() {
                                         placeholder="Search by name or message..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        bg={useColorModeValue('white', 'gray.700')}
+                                        bg={subtleCard}
                                         borderColor={borderColor}
                                         _focus={{
                                             borderColor: accent,

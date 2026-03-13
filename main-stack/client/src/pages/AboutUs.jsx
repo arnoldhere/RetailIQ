@@ -10,7 +10,6 @@ import {
     SimpleGrid,
     Button,
     Spinner,
-    useColorModeValue,
     useToast,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
@@ -31,13 +30,10 @@ export default function AboutUs() {
     const navigate = useNavigate();
     const toast = useToast();
 
-    const bgGradient = useColorModeValue(
-        "linear(to-br, gray.50, blue.50)",
-        "linear(to-br, gray.900, gray.800)"
-    );
-    const cardBg = useColorModeValue("white", "gray.800");
-    const textColor = useColorModeValue("gray.700", "gray.300");
-    const mutedText = useColorModeValue("gray.600", "gray.400");
+    const bgGradient = "var(--surface-light)";
+    const cardBg = "var(--surface-card)";
+    const textColor = "var(--text-primary)";
+    const mutedText = "var(--text-secondary)";
 
     const [stats, setStats] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -127,9 +123,9 @@ export default function AboutUs() {
         },
         {
             icon: FaGlobeAmericas,
-            title: "Global Reach",
+            title: "Expanding Reach",
             description:
-                "Serving customers worldwide with fast, reliable delivery and support.",
+                "Serving customers with fast, reliable delivery and dedicated support as we continue to grow.",
         },
     ];
 
@@ -179,7 +175,7 @@ export default function AboutUs() {
                         >
                             About RetailIQ
                         </Heading>
-                        <Text fontSize={{ base: "lg", md: "xl" }} color="gray.300" maxW="2xl">
+                        <Text fontSize={{ base: "lg", md: "xl" }} color="black.300" maxW="2xl">
                             Revolutionizing retail with intelligent, user-centric shopping
                             solutions powered by innovation and trust.
                         </Text>
@@ -283,7 +279,7 @@ export default function AboutUs() {
             </Container>
 
             {/* WHY CHOOSE US */}
-            <Box bg={useColorModeValue("gray.100", "gray.700")} py={{ base: 12, md: 20 }}>
+            <Box bg="var(--surface-elevated)" py={{ base: 12, md: 20 }}>
                 <Container maxW="container.lg">
                     <Heading
                         size="xl"

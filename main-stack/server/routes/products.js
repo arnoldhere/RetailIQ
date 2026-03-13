@@ -68,9 +68,14 @@ router.get('/products', async (req, res) => {
         const order = (req.query.order || 'asc').toUpperCase()
 
         // Validate sort field
-        const validSortFields = ['name', 'price', 'sell_price', 'created_at', 'stock_available']
-        const sortField = validSortFields.includes(sort) ? sort : 'name'
-        const sortCol = sortField === 'price' || sortField === 'sell_price' ? 'products.sell_price' : `products.${sortField}`
+        const sortAliases = {
+            price: 'sell_price',
+            stock: 'stock_available',
+        }
+        const normalizedSort = sortAliases[sort] || sort
+        const validSortFields = ['name', 'sell_price', 'created_at', 'stock_available']
+        const sortField = validSortFields.includes(normalizedSort) ? normalizedSort : 'name'
+        const sortCol = sortField === 'sell_price' ? 'products.sell_price' : `products.${sortField}`
         const orderDir = order === 'DESC' ? 'desc' : 'asc'
 
         let query = db('products')
@@ -95,7 +100,10 @@ router.get('/products', async (req, res) => {
             query = query.where('products.category_id', categoryId)
         }
         if (search) {
-            query = query.where('products.name', 'like', `%${search}%`)
+            query = query.where(function () {
+                this.where('products.name', 'like', `%${search}%`)
+                    .orWhere('products.description', 'like', `%${search}%`)
+            })
         }
 
         // Count total before pagination

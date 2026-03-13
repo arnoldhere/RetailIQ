@@ -5,4 +5,7 @@ node_modules
 /client/node_modules
 /ml_services/retailiqenv
 demo.py
-.env.example
+# .env.example
+todo.txt
+tasks.txt
+*__pycache__/

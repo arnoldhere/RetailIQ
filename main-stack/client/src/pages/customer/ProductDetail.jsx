@@ -21,7 +21,6 @@ import {
   NumberInputField,
   NumberInputStepper,
   Divider,
-  useColorModeValue,
   NumberDecrementStepper,
   NumberIncrementStepper,
   Breadcrumb,
@@ -123,18 +122,15 @@ export default function ProductDetailPage() {
   }
 
   // ✅ All hooks at top level, not inside conditionals
-  const bgCard = useColorModeValue('white', 'gray.800')
-  const textMuted = useColorModeValue('gray.600', 'gray.400')
-  const pageBg = useColorModeValue('gray.50', 'gray.900')
-  const accent = useColorModeValue('blue.500', 'blue.300')
-  const pageBgGradient = useColorModeValue(
-    'linear(to-b, gray.50, white)',
-    'linear(to-b, gray.900, gray.800)'
-  )
-  const mainCardBorderColor = useColorModeValue('gray.100', 'whiteAlpha.200')
-  const infoBoxBg = useColorModeValue('blue.50', 'whiteAlpha.100')
-  const infoBoxBorderColor = useColorModeValue('blue.100', 'whiteAlpha.200')
-  const secondaryCardBorderColor = useColorModeValue('gray.100', 'whiteAlpha.200')
+  const bgCard = "var(--surface-card)"
+  const textMuted = "var(--text-secondary)"
+  const pageBg = "var(--surface-light)"
+  const accent = "var(--primary-color)"
+  const pageBgGradient = "var(--surface-light)"
+  const mainCardBorderColor = "var(--border-light)"
+  const infoBoxBg = "var(--accent-light)"
+  const infoBoxBorderColor = "var(--accent-light)"
+  const secondaryCardBorderColor = "var(--border-light)"
 
   const productListPath = user?.role === 'supplier' ? '/supplier/products' : '/customer/products'
 
@@ -457,7 +453,7 @@ export default function ProductDetailPage() {
                   <VStack align="start" spacing={1}>
                     <HStack spacing={3} align="baseline">
                       <Heading size="lg" color="green.500">
-                        ${product.sell_price}
+                        ₹{product.sell_price}
                       </Heading>
                       {/* {product.cost_price > 0 && (
                         <Text
@@ -465,7 +461,7 @@ export default function ProductDetailPage() {
                           color={textMuted}
                           textDecoration="line-through"
                         >
-                          ${product.cost_price}
+                          ₹{product.cost_price}
                         </Text>
                       )} */}
                     </HStack>
@@ -560,7 +556,7 @@ export default function ProductDetailPage() {
                   fontSize="sm"
                 >
                   <VStack align="start" spacing={1}>
-                    <Text>✓ Free shipping on orders over $50</Text>
+                    <Text>✓ Free shipping on orders over ₹50</Text>
                     <Text>✓ 30-day return policy</Text>
                     <Text>✓ Secure payment & checkout</Text>
                   </VStack>
@@ -647,7 +643,7 @@ export default function ProductDetailPage() {
                       <Text fontWeight="600" w="140px">
                         Price:
                       </Text>
-                      <Text color={textMuted}>${product.sell_price}</Text>
+                      <Text color={textMuted}>₹{product.sell_price}</Text>
                     </HStack>
                     <HStack>
                       <Text fontWeight="600" w="140px">

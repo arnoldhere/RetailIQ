@@ -18,7 +18,6 @@ import {
     TableContainer,
     Select,
     SimpleGrid,
-    useColorModeValue,
     Flex,
     Divider,
     Badge,
@@ -43,18 +42,15 @@ import * as adminApi from '../../api/admin'
 export default function SupplierOrdersPage() {
     const toast = useToast()
 
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
-    const subtleCard = useColorModeValue('white', 'gray.800')
-    const mutedText = useColorModeValue('gray.600', 'gray.300')
-    const borderColor = useColorModeValue('gray.100', 'gray.700')
-    const headerBg = useColorModeValue(
-        'linear-gradient(90deg, rgba(59,130,246,0.06), rgba(99,102,241,0.03))',
-        'transparent'
-    )
-    const accent = useColorModeValue('blue.600', 'blue.300')
-    const tableStripe = useColorModeValue('white', 'gray.800')
-    const hoverBg = useColorModeValue('gray.50', 'gray.700')
-    const tableHeadBg = useColorModeValue('white', 'gray.800')
+    const pageBg = "var(--surface-light)"
+    const subtleCard = "var(--surface-card)"
+    const mutedText = "var(--text-secondary)"
+    const borderColor = "var(--border-light)"
+    const headerBg = "transparent"
+    const accent = "var(--primary-color)"
+    const tableStripe = "var(--surface-card)"
+    const hoverBg = "var(--surface-light)"
+    const tableHeadBg = "var(--surface-light)"
 
     const [orders, setOrders] = useState([])
     const [loading, setLoading] = useState(false)
@@ -125,7 +121,7 @@ export default function SupplierOrdersPage() {
     const [payments, setPayments] = useState([])
     const [paymentForm, setPaymentForm] = useState({ amount: '', payment_date: '', method: 'CASH', payment_ref: '' })
     const [savingPayment, setSavingPayment] = useState(false)
-    const inputBg = useColorModeValue('white', 'gray.700')
+    const inputBg = subtleCard
 
     // order details modal state
     const [detailsOpen, setDetailsOpen] = useState(false)
@@ -140,11 +136,16 @@ export default function SupplierOrdersPage() {
         setCurrentOrder(order)
         setPaymentsOpen(true)
         try {
-            const res = await adminApi.getSupplyPayments(orderId)
-            setPayments(res.data.payments || [])
+            const [paymentsRes, summaryRes] = await Promise.all([
+                adminApi.getSupplyPayments(orderId),
+                adminApi.getSupplyPaymentSummary(orderId),
+            ])
+            setPayments(paymentsRes.data.payments || [])
+            setPaymentSummary(summaryRes.data || null)
         } catch (err) {
             console.error('Failed to load payments', err)
             setPayments([])
+            setPaymentSummary(null)
         }
     }
 
@@ -221,16 +222,18 @@ export default function SupplierOrdersPage() {
             const paymentsRes = await adminApi.getSupplyPayments(currentOrderId)
             setPayments(paymentsRes.data.payments || [])
 
-            // Refresh payment summary if it's open in details modal
-            if (selectedOrder && selectedOrder.id === currentOrderId) {
-                const summaryRes = await adminApi.getSupplyPaymentSummary(currentOrderId)
-                setPaymentSummary(summaryRes.data)
+            const summaryRes = await adminApi.getSupplyPaymentSummary(currentOrderId)
+            setPaymentSummary(summaryRes.data)
 
-                // If order is now fully paid, show notification
-                if (summaryRes.data.isFullyPaid && selectedOrder.status !== 'received') {
-                    toast({ title: 'Order fully paid! Status updated to Received', status: 'info', duration: 3000 })
-                    setSelectedOrder({ ...selectedOrder, status: 'received' })
-                }
+            if (summaryRes.data.isFullyPaid) {
+                toast({ title: 'Order fully paid! Status updated to Received', status: 'info', duration: 3000 })
+            }
+
+            if (selectedOrder && selectedOrder.id === currentOrderId) {
+                setSelectedOrder({
+                    ...selectedOrder,
+                    status: summaryRes.data.isFullyPaid ? 'received' : selectedOrder.status,
+                })
             }
 
             // Refresh main orders list
@@ -303,7 +306,7 @@ export default function SupplierOrdersPage() {
                                                 value={filters.search}
                                                 onChange={(e) => handleFilterChange('search', e.target.value)}
                                                 borderRadius="lg"
-                                                bg={useColorModeValue('white', 'gray.700')}
+                                                bg={subtleCard}
                                                 borderColor={borderColor}
                                                 _focus={{
                                                     borderColor: accent,
@@ -321,7 +324,7 @@ export default function SupplierOrdersPage() {
                                             value={filters.status}
                                             onChange={(e) => handleFilterChange('status', e.target.value)}
                                             borderRadius="lg"
-                                            bg={useColorModeValue('white', 'gray.700')}
+                                            bg={subtleCard}
                                             borderColor={borderColor}
                                         >
                                             <option value="">All statuses</option>
@@ -341,7 +344,7 @@ export default function SupplierOrdersPage() {
                                             value={filters.sortBy}
                                             onChange={(e) => handleFilterChange('sortBy', e.target.value)}
                                             borderRadius="lg"
-                                            bg={useColorModeValue('white', 'gray.700')}
+                                            bg={subtleCard}
                                             borderColor={borderColor}
                                         >
                                             <option value="created_at">Date Created</option>
@@ -362,7 +365,7 @@ export default function SupplierOrdersPage() {
                                                 value={filters.sortDir}
                                                 onChange={(e) => handleFilterChange('sortDir', e.target.value)}
                                                 borderRadius="lg"
-                                                bg={useColorModeValue('white', 'gray.700')}
+                                                bg={subtleCard}
                                                 borderColor={borderColor}
                                                 flex={1}
                                             >
@@ -441,7 +444,7 @@ export default function SupplierOrdersPage() {
                                                                     : '-'}
                                                             </Td>
                                                             <Td isNumeric fontWeight="700" color="green.600" fontSize="sm">
-                                                                ${Number(order.total_amount || 0).toFixed(2)}
+                                                                ₹{Number(order.total_amount || 0).toFixed(2)}
                                                             </Td>
                                                             <Td textAlign="center">
                                                                 <Badge colorScheme={getStatusColor(order.status)} borderRadius="full" px={3} py={0.5} textTransform="capitalize">
@@ -537,7 +540,7 @@ export default function SupplierOrdersPage() {
                                                 {payments.map(p => (
                                                     <Tr key={p.id}>
                                                         <Td fontSize="sm">{p.payment_date || new Date(p.created_at).toLocaleDateString()}</Td>
-                                                        <Td isNumeric fontWeight="600" color="green.600">${Number(p.amount).toFixed(2)}</Td>
+                                                        <Td isNumeric fontWeight="600" color="green.600">₹{Number(p.amount).toFixed(2)}</Td>
                                                         <Td fontSize="sm">{p.method}</Td>
                                                         <Td fontSize="sm">{p.payment_ref || '-'}</Td>
                                                     </Tr>
@@ -581,7 +584,7 @@ export default function SupplierOrdersPage() {
                                             <option value="CASH">Cash</option>
                                             <option value="CARD">Card</option>
                                             <option value="IMPS">IMPS</option>
-                                            <option value="BANK_TRANSFER">Bank Transfer</option>
+                                            {/* <option value="BANK_TRANSFER">Bank Transfer</option> */}
                                             <option value="CHEQUE">Cheque</option>
                                             <option value="OTHER">Other</option>
                                         </Select>
@@ -595,6 +598,24 @@ export default function SupplierOrdersPage() {
                                             borderRadius="md"
                                         />
                                     </FormControl>
+                                    {paymentSummary && !paymentSummary.isFullyPaid && (
+                                        <Box borderRadius="lg" border="1px dashed" borderColor="orange.400" p={4} bg="orange.50">
+                                            <VStack spacing={3} align="stretch">
+                                                <Text fontSize="sm" color={mutedText}>
+                                                    Remaining balance: <strong>₹{paymentSummary.remainingAmount.toFixed(2)}</strong>
+                                                </Text>
+                                                <Button
+                                                    size="sm"
+                                                    colorScheme="orange"
+                                                    variant="outline"
+                                                    onClick={() => handleNotifySupplierPayment(currentOrderId)}
+                                                    isLoading={notifyingSupplier}
+                                                >
+                                                    Notify Supplier for Remaining Payment
+                                                </Button>
+                                            </VStack>
+                                        </Box>
+                                    )}
                                 </VStack>
                             </Box>
                         </VStack>
@@ -640,7 +661,7 @@ export default function SupplierOrdersPage() {
                                         </Box>
                                         <Box>
                                             <Text fontSize="xs" fontWeight="600" color={mutedText} mb={1}>Order Amount</Text>
-                                            <Text fontSize="lg" fontWeight="700" color="green.600">${Number(selectedOrder.total_amount || 0).toFixed(2)}</Text>
+                                            <Text fontSize="lg" fontWeight="700" color="green.600">₹{Number(selectedOrder.total_amount || 0).toFixed(2)}</Text>
                                         </Box>
                                         <Box>
                                             <Text fontSize="xs" fontWeight="600" color={mutedText} mb={1}>Order Date</Text>
@@ -663,7 +684,7 @@ export default function SupplierOrdersPage() {
 
                                 {/* Payment Summary */}
                                 {paymentSummary && (
-                                    <Box borderRadius="lg" border="2px solid" borderColor={paymentSummary.isFullyPaid ? 'green.400' : 'orange.400'} p={4} bg={paymentSummary.isFullyPaid ? useColorModeValue('green.50', 'green.900') : useColorModeValue('orange.50', 'orange.900')}>
+                                    <Box borderRadius="lg" border="2px solid" borderColor={paymentSummary.isFullyPaid ? 'green.400' : 'orange.400'} p={4} bg={paymentSummary.isFullyPaid ? 'green.50' : 'orange.50'}>
                                         <HStack mb={3} justify="space-between">
                                             <Text fontWeight="700" fontSize="lg">Payment Summary</Text>
                                             <Badge colorScheme={paymentSummary.isFullyPaid ? 'green' : 'orange'} fontSize="md" px={3} py={1}>
@@ -673,16 +694,16 @@ export default function SupplierOrdersPage() {
                                         <SimpleGrid columns={1} spacing={2}>
                                             <HStack justify="space-between">
                                                 <Text color={mutedText}>Total Order Amount:</Text>
-                                                <Text fontWeight="700">${paymentSummary.totalAmount.toFixed(2)}</Text>
+                                                <Text fontWeight="700">₹{paymentSummary.totalAmount.toFixed(2)}</Text>
                                             </HStack>
                                             <HStack justify="space-between" borderBottom="1px" borderColor={borderColor} pb={2}>
                                                 <Text color={mutedText}>Total Paid:</Text>
-                                                <Text fontWeight="700" color="green.600">${paymentSummary.totalPaid.toFixed(2)}</Text>
+                                                <Text fontWeight="700" color="green.600">₹{paymentSummary.totalPaid.toFixed(2)}</Text>
                                             </HStack>
                                             <HStack justify="space-between" pt={2}>
                                                 <Text fontWeight="600" color={paymentSummary.isFullyPaid ? 'green.600' : 'red.600'}>Remaining Balance:</Text>
                                                 <Text fontWeight="700" fontSize="lg" color={paymentSummary.isFullyPaid ? 'green.600' : 'red.600'}>
-                                                    ${paymentSummary.remainingAmount.toFixed(2)}
+                                                    ₹{paymentSummary.remainingAmount.toFixed(2)}
                                                 </Text>
                                             </HStack>
                                             <Text fontSize="xs" color={mutedText} mt={1}>
@@ -694,14 +715,14 @@ export default function SupplierOrdersPage() {
 
                                 {/* Incomplete Payment Notification */}
                                 {paymentSummary && !paymentSummary.isFullyPaid && (
-                                    <Box borderRadius="lg" border="1px dashed" borderColor="orange.400" p={4} bg={useColorModeValue('orange.50', 'orange.900')}>
+                                    <Box borderRadius="lg" border="1px dashed" borderColor="orange.400" p={4} bg={'orange.50'}>
                                         <VStack spacing={3} align="stretch">
                                             <HStack>
                                                 <Box color="orange.600" fontSize="lg">⚠</Box>
                                                 <Text fontWeight="600">Outstanding Payment</Text>
                                             </HStack>
                                             <Text fontSize="sm" color={mutedText}>
-                                                This order has an outstanding balance of <strong>${paymentSummary.remainingAmount.toFixed(2)}</strong>.
+                                                This order has an outstanding balance of <strong>₹{paymentSummary.remainingAmount.toFixed(2)}</strong>.
                                                 You can send a payment reminder to the supplier.
                                             </Text>
                                             <Button
@@ -718,7 +739,7 @@ export default function SupplierOrdersPage() {
                                 )}
 
                                 {paymentSummary && paymentSummary.isFullyPaid && (
-                                    <Box borderRadius="lg" border="1px solid" borderColor="green.400" p={4} bg={useColorModeValue('green.50', 'green.900')}>
+                                    <Box borderRadius="lg" border="1px solid" borderColor="green.400" p={4} bg={'green.50'}>
                                         <HStack>
                                             <Box color="green.600" fontSize="xl">✓</Box>
                                             <VStack align="flex-start" spacing={0}>
@@ -769,4 +790,3 @@ export default function SupplierOrdersPage() {
         </Box>
     )
 }
-

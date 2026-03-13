@@ -43,7 +43,6 @@ import {
     MenuList,
     MenuItem,
     Icon,
-    useColorModeValue,
     Skeleton,
     Flex,
     Stack,
@@ -89,14 +88,14 @@ export default function CategoriesPage() {
     const tableRef = useRef(null)
 
     // UI & theme tokens (top-level hooks)
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
-    const cardBg = useColorModeValue('white', 'gray.800')
-    const borderColor = useColorModeValue('gray.200', 'gray.700')
-    const mutedText = useColorModeValue('gray.600', 'gray.300')
-    const hoverBg = useColorModeValue('gray.50', 'gray.700')
-    const tableHeadBg = useColorModeValue('gray.50', 'gray.800')
-    // const searchBg = useColorModeValue('white', 'gray.700')
-    const subtleCard = useColorModeValue('white', 'gray.800')
+    const pageBg = "var(--surface-light)"
+    const cardBg = "var(--surface-card)"
+    const borderColor = "var(--border-light)"
+    const mutedText = "var(--text-secondary)"
+    const hoverBg = "var(--surface-light)"
+    const tableHeadBg = "var(--surface-light)"
+    // const searchBg = "var(--surface-card)"
+    const subtleCard = "var(--surface-card)"
 
     // Controls: search, sort, page
     const [query, setQuery] = useState('')
@@ -321,7 +320,7 @@ export default function CategoriesPage() {
                                             setQuery(e.target.value)
                                             setPage(1)
                                         }}
-                                        bg={useColorModeValue('white', 'gray.700')}
+                                        bg={subtleCard}
                                         _placeholder={{ color: 'gray.400' }}
                                     />
                                 </InputGroup>

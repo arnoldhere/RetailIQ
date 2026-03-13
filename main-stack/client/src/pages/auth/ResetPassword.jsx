@@ -15,7 +15,6 @@ import {
     IconButton,
     Divider,
     HStack,
-    useColorModeValue,
 } from '@chakra-ui/react'
 import { LockIcon, ViewIcon, ViewOffIcon } from '@chakra-ui/icons'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
@@ -34,8 +33,9 @@ export default function ResetPasswordPage() {
     const location = useLocation()
     const { resetToken = '' } = location.state || {}
 
-    const cardBg = useColorModeValue('white', 'gray.800')
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
+    const cardBg = "var(--surface-card)"
+    const pageBg = "var(--surface-light)"
+    const inputBg = "var(--surface-card)"
 
     async function handleSubmit(e) {
         e.preventDefault()
@@ -88,7 +88,7 @@ export default function ResetPasswordPage() {
     return (
         <Box
             minH="100vh"
-            bg={pageBg}
+            bg="var(--surface-light)"
             px={4}
             display="flex"
             alignItems="center"
@@ -148,7 +148,7 @@ export default function ResetPasswordPage() {
                                                 value={newPassword}
                                                 onChange={(e) => setNewPassword(e.target.value)}
                                                 autoComplete="new-password"
-                                                bg={useColorModeValue('gray.50', 'gray.700')}
+                                                bg={inputBg}
                                                 _focus={{
                                                     borderColor: 'green.500',
                                                     boxShadow:
@@ -183,7 +183,7 @@ export default function ResetPasswordPage() {
                                                 value={confirmPassword}
                                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                                 autoComplete="new-password"
-                                                bg={useColorModeValue('gray.50', 'gray.700')}
+                                                bg={inputBg}
                                                 _focus={{
                                                     borderColor: 'green.500',
                                                     boxShadow:

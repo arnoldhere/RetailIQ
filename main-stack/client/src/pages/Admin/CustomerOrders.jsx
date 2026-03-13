@@ -18,7 +18,6 @@ import {
     TableContainer,
     Select,
     SimpleGrid,
-    useColorModeValue,
     Flex,
     Divider,
     Badge,
@@ -44,18 +43,15 @@ import * as adminApi from '../../api/admin'
 export default function CustomerOrdersPage() {
     const toast = useToast()
 
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
-    const subtleCard = useColorModeValue('white', 'gray.800')
-    const mutedText = useColorModeValue('gray.600', 'gray.300')
-    const borderColor = useColorModeValue('gray.100', 'gray.700')
-    const headerBg = useColorModeValue(
-        'linear-gradient(90deg, rgba(59,130,246,0.06), rgba(99,102,241,0.03))',
-        'transparent'
-    )
-    const accent = useColorModeValue('blue.600', 'blue.300')
-    const tableStripe = useColorModeValue('white', 'gray.800')
-    const hoverBg = useColorModeValue('gray.50', 'gray.700')
-    const tableHeadBg = useColorModeValue('white', 'gray.800')
+    const pageBg = "var(--surface-light)"
+    const subtleCard = "var(--surface-card)"
+    const mutedText = "var(--text-secondary)"
+    const borderColor = "var(--border-light)"
+    const headerBg = "transparent"
+    const accent = "var(--primary-color)"
+    const tableStripe = "var(--surface-card)"
+    const hoverBg = "var(--surface-light)"
+    const tableHeadBg = "var(--surface-light)"
 
     const [orders, setOrders] = useState([])
     const [loading, setLoading] = useState(false)
@@ -235,7 +231,7 @@ export default function CustomerOrdersPage() {
                                                 value={filters.search}
                                                 onChange={(e) => handleFilterChange('search', e.target.value)}
                                                 borderRadius="lg"
-                                                bg={useColorModeValue('white', 'gray.700')}
+                                                bg={subtleCard}
                                                 borderColor={borderColor}
                                                 _focus={{
                                                     borderColor: accent,
@@ -253,7 +249,7 @@ export default function CustomerOrdersPage() {
                                             value={filters.status}
                                             onChange={(e) => handleFilterChange('status', e.target.value)}
                                             borderRadius="lg"
-                                            bg={useColorModeValue('white', 'gray.700')}
+                                            bg={subtleCard}
                                             borderColor={borderColor}
                                         >
                                             <option value="">All statuses</option>
@@ -274,7 +270,7 @@ export default function CustomerOrdersPage() {
                                             value={filters.sort}
                                             onChange={(e) => handleFilterChange('sort', e.target.value)}
                                             borderRadius="lg"
-                                            bg={useColorModeValue('white', 'gray.700')}
+                                            bg={subtleCard}
                                             borderColor={borderColor}
                                         >
                                             <option value="created_at">Date</option>
@@ -293,7 +289,7 @@ export default function CustomerOrdersPage() {
                                             value={filters.order}
                                             onChange={(e) => handleFilterChange('order', e.target.value)}
                                             borderRadius="lg"
-                                            bg={useColorModeValue('white', 'gray.700')}
+                                            bg={subtleCard}
                                             borderColor={borderColor}
                                         >
                                             <option value="desc">Descending</option>
@@ -359,7 +355,7 @@ export default function CustomerOrdersPage() {
                                                             </Td>
                                                             <Td fontSize="sm" color={mutedText}>{order.store_name || '-'}</Td>
                                                             <Td isNumeric fontWeight="700" color="green.600" fontSize="sm">
-                                                                ${Number(order.total_amount || 0).toFixed(2)}
+                                                                ₹{Number(order.total_amount || 0).toFixed(2)}
                                                             </Td>
                                                             <Td textAlign="center">
                                                                 <Badge colorScheme={getStatusColor(order.status)} borderRadius="full" px={3} py={0.5} textTransform="capitalize">
@@ -460,7 +456,7 @@ export default function CustomerOrdersPage() {
                                                                         {it.product_name || 'Product'} x {it.qty}
                                                                     </Text>
                                                                     <Text>
-                                                                        ${Number(it.total_amount || 0).toFixed(2)}
+                                                                        ₹{Number(it.total_amount || 0).toFixed(2)}
                                                                     </Text>
                                                                 </HStack>
                                                             ))}
@@ -469,7 +465,7 @@ export default function CustomerOrdersPage() {
                                                         <Divider my={3} />
 
                                                         <Text fontWeight="700">
-                                                            Total: ${Number(selectedOrderDetails.total_amount || 0).toFixed(2)}
+                                                            Total: ₹{Number(selectedOrderDetails.total_amount || 0).toFixed(2)}
                                                         </Text>
                                                     </Box>
                                                 ) : (
@@ -494,4 +490,3 @@ export default function CustomerOrdersPage() {
         </Box>
     )
 }
-

@@ -18,7 +18,6 @@ import {
     Tooltip,
     TableContainer,
     SimpleGrid,
-    useColorModeValue,
     Flex,
     Divider,
     Badge,
@@ -49,18 +48,15 @@ export default function SuppliersPage() {
 
     const handleAddSupplierOpen = () => { setEditingSupplierId(null); setFormData({ name: '', email: '', phone: '', password: '' }); onOpen() }
 
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
-    const subtleCard = useColorModeValue('white', 'gray.800')
-    const mutedText = useColorModeValue('gray.600', 'gray.300')
-    const borderColor = useColorModeValue('gray.100', 'gray.700')
-    const headerBg = useColorModeValue(
-        'linear-gradient(90deg, rgba(59,130,246,0.06), rgba(99,102,241,0.03))',
-        'transparent'
-    )
-    const accent = useColorModeValue('blue.600', 'blue.300')
-    const tableStripe = useColorModeValue('white', 'gray.800')
-    const hoverBg = useColorModeValue('gray.50', 'gray.700')
-    const tableHeadBg = useColorModeValue('white', 'gray.800')
+    const pageBg = "var(--surface-light)"
+    const subtleCard = "var(--surface-card)"
+    const mutedText = "var(--text-secondary)"
+    const borderColor = "var(--border-light)"
+    const headerBg = 'linear-gradient(90deg, rgba(59,130,246,0.06), rgba(99,102,241,0.03))'
+    const accent = "var(--primary-color)"
+    const tableStripe = "var(--surface-card)"
+    const hoverBg = "var(--surface-light)"
+    const tableHeadBg = "var(--surface-light)"
 
     const [suppliers, setSuppliers] = useState([])
     const [loading, setLoading] = useState(false)
@@ -223,7 +219,7 @@ export default function SuppliersPage() {
                                         placeholder="Search suppliers..."
                                         value={filters.search}
                                         onChange={(e) => handleFilterChange('search', e.target.value)}
-                                        bg={useColorModeValue('white', 'gray.700')}
+                                        bg={subtleCard}
                                         borderColor={borderColor}
                                         _focus={{
                                             borderColor: accent,

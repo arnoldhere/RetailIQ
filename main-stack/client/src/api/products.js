@@ -1,4 +1,4 @@
-import client from './auth'
+import client, { buildApiUrl } from './base'
 
 export async function listProducts(limit = 100, offset = 0, filters = {}) {
   return client.get('/api/admin/products', {
@@ -39,8 +39,7 @@ export async function getPublicProducts(limit = 100, offset = 0, filters = {}) {
   if (filters.sort) params.append('sort', filters.sort)
   if (filters.order) params.append('order', filters.order)
 
-  const BASE = import.meta.env.VITE_BACKEND_URL || ''
-  return fetch(`${BASE}/api/products?${params}`, {
+  return fetch(buildApiUrl(`/api/products?${params.toString()}`), {
     credentials: 'include',
   }).then((res) => {
     if (!res.ok) throw new Error('Failed to fetch products')
@@ -49,8 +48,7 @@ export async function getPublicProducts(limit = 100, offset = 0, filters = {}) {
 }
 
 export async function getProductById(id) {
-  const BASE = import.meta.env.VITE_BACKEND_URL || ''
-  return fetch(`${BASE}/api/products/${id}`, {
+  return fetch(buildApiUrl(`/api/products/${id}`), {
     credentials: 'include',
   }).then((res) => {
     if (!res.ok) throw new Error('Product not found')

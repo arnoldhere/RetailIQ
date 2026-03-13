@@ -424,7 +424,8 @@ exports.cancelOrder = async (req, res) => {
     }
 
     const now = new Date();
-    let finalPaymentStatus = null; // ✅ FIX
+    let finalPaymentStatus = 'pending';
+    const validPaymentStatuses = new Set(['pending', 'paid', 'failed', 'refunded']);
 
     await db.transaction(async (trx) => {
       const order = await trx('customer_orders')
@@ -499,7 +500,7 @@ exports.cancelOrder = async (req, res) => {
             .increment('stock_available', item.qty);
         }
 
-        finalPaymentStatus = refundCreated ? 'refunded' : 'refund_pending'; // ✅ FIX
+        finalPaymentStatus = refundCreated ? 'refunded' : 'paid';
 
         await trx('customer_orders').where({ id: orderId }).update({
           status: 'cancelled',
@@ -510,17 +511,13 @@ exports.cancelOrder = async (req, res) => {
           updated_at: new Date(),
         });
       } else {
-        for (const item of orderItems) {
-          await trx('products')
-            .where({ id: item.product_id })
-            .increment('stock_available', item.qty);
-        }
-
-        finalPaymentStatus = 'cancelled'; // ✅ FIX
+        finalPaymentStatus = validPaymentStatuses.has(order.payment_status)
+          ? order.payment_status
+          : 'pending';
 
         await trx('customer_orders').where({ id: orderId }).update({
           status: 'cancelled',
-          payment_status: 'cancelled',
+          payment_status: finalPaymentStatus,
           refund_status: null,
           cancelled_at: new Date(),
           cancel_reason: reason || null,
@@ -545,4 +542,3 @@ exports.cancelOrder = async (req, res) => {
     });
   }
 };
-

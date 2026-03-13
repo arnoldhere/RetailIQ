@@ -17,7 +17,6 @@ import {
 	Divider,
 	Avatar,
 	Badge,
-	useColorModeValue,
 	Textarea,
 } from '@chakra-ui/react';
 import { ArrowBackIcon, EditIcon, CheckIcon, SmallCloseIcon } from '@chakra-ui/icons';
@@ -51,11 +50,11 @@ export default function Profile() {
 		return dateString.split('T')[0];
 	};
 
-	// Colors for dark/light mode
-	const bgCard = useColorModeValue('gray.50', 'rgba(11,18,32,0.8)');
-	const borderColor = useColorModeValue('gray.200', 'whiteAlpha.200');
-	const textPrimary = useColorModeValue('gray.900', 'gray.50');
-	const textSecondary = useColorModeValue('gray.600', 'gray.400');
+	// Theme color tokens
+	const bgCard = "var(--surface-card)";
+	const borderColor = "var(--border-light)";
+	const textPrimary = "var(--text-primary)";
+	const textSecondary = "var(--text-secondary)";
 
 	// Keep a snapshot of initial form data so we can reset on cancel
 	const initialFormDataRef = useRef(null);
@@ -97,11 +96,17 @@ export default function Profile() {
 	}, [user]);
 
 	// Redirect if not logged in
+	useEffect(() => {
+		if (!loading && !user) {
+			navigate('/auth/login', { replace: true });
+		}
+	}, [loading, navigate, user]);
+
 	if (loading) {
 		return (
 			<Box
 				minH="100vh"
-				bg="#020617"
+				bg="var(--surface-dark)"
 				display="flex"
 				flexDirection="column"
 				alignItems="center"
@@ -112,10 +117,7 @@ export default function Profile() {
 		);
 	}
 
-	if (!user) {
-		navigate('/auth/login');
-		return null;
-	}
+	if (!user) return null;
 
 	const handleInputChange = (e) => {
 		const { name, value } = e.target;
@@ -226,8 +228,7 @@ export default function Profile() {
 				// Update supplier profile
 				res = await userApi.updateSupplierProfile(formData);
 			} else {
-				const userId = localStorage.getItem('retailiq_user_id');
-				res = await userApi.editProfile(formData, userId);
+				res = await userApi.editProfile(formData, user.id);
 			}
 			if (!res) {
 				toast({
@@ -307,7 +308,7 @@ export default function Profile() {
 	return (
 		<Box
 			minH="100vh"
-			bg="#020617"
+			bg="var(--surface-dark)"
 			display="flex"
 			flexDirection="column"
 			w='100vw'
@@ -327,7 +328,7 @@ export default function Profile() {
 						>
 							Back
 						</Button>
-						<Heading size="lg" color="white">
+						<Heading size="lg" color="tomato">
 							My Profile
 						</Heading>
 					</HStack>
@@ -389,45 +390,45 @@ export default function Profile() {
 							{/* Form Section */}
 							<VStack spacing={5} align="stretch">
 								<Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={5}>
-{/* For suppliers show a single name field, otherwise show first/last name */}
-				{user.role === 'supplier' ? (
-					<FormControl isInvalid={!!errors.name}>
-						<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>Supplier / Company Name</FormLabel>
-						<Input
-							name="name"
-							value={formData.name}
-							onChange={handleInputChange}
-							isReadOnly={!isEditing}
-							placeholder="Supplier / company name"
-							bg={isEditing ? 'whiteAlpha.50' : 'transparent'}
-							border="1px solid"
-							borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'}
-							_hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }}
-							_focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }}
-							color={textPrimary}
-							_placeholder={{ color: textSecondary }}
-							transition="all 0.2s"
-						/>
-						{errors.name && (
-							<Text color="red.400" fontSize="xs" mt={1}>{errors.name}</Text>
-						)}
-					</FormControl>
-				) : (
-					<>
-						<FormControl isInvalid={!!errors.firstname}>
-							<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>First Name</FormLabel>
-							<Input name="firstname" value={formData.firstname} onChange={handleInputChange} isReadOnly={!isEditing} placeholder="First name" bg={isEditing ? 'whiteAlpha.50' : 'transparent'} border="1px solid" borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'} _hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }} _focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }} color={textPrimary} _placeholder={{ color: textSecondary }} transition="all 0.2s" />
-						{errors.firstname && (<Text color="red.400" fontSize="xs" mt={1}>{errors.firstname}</Text>)}
-						</FormControl>
+									{/* For suppliers show a single name field, otherwise show first/last name */}
+									{user.role === 'supplier' ? (
+										<FormControl isInvalid={!!errors.name}>
+											<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>Supplier / Company Name</FormLabel>
+											<Input
+												name="name"
+												value={formData.name}
+												onChange={handleInputChange}
+												isReadOnly={!isEditing}
+												placeholder="Supplier / company name"
+												bg={isEditing ? 'whiteAlpha.50' : 'transparent'}
+												border="1px solid"
+												borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'}
+												_hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }}
+												_focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }}
+												color={textPrimary}
+												_placeholder={{ color: textSecondary }}
+												transition="all 0.2s"
+											/>
+											{errors.name && (
+												<Text color="red.400" fontSize="xs" mt={1}>{errors.name}</Text>
+											)}
+										</FormControl>
+									) : (
+										<>
+											<FormControl isInvalid={!!errors.firstname}>
+												<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>First Name</FormLabel>
+												<Input name="firstname" value={formData.firstname} onChange={handleInputChange} isReadOnly={!isEditing} placeholder="First name" bg={isEditing ? 'whiteAlpha.50' : 'transparent'} border="1px solid" borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'} _hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }} _focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }} color={textPrimary} _placeholder={{ color: textSecondary }} transition="all 0.2s" />
+												{errors.firstname && (<Text color="red.400" fontSize="xs" mt={1}>{errors.firstname}</Text>)}
+											</FormControl>
 
-						{/* Last Name */}
-						<FormControl isInvalid={!!errors.lastname}>
-							<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>Last Name</FormLabel>
-							<Input name="lastname" value={formData.lastname} onChange={handleInputChange} isReadOnly={!isEditing} placeholder="Last name" bg={isEditing ? 'whiteAlpha.50' : 'transparent'} border="1px solid" borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'} _hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }} _focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }} color={textPrimary} _placeholder={{ color: textSecondary }} transition="all 0.2s" />
-						{errors.lastname && (<Text color="red.400" fontSize="xs" mt={1}>{errors.lastname}</Text>)}
-						</FormControl>
-					</>
-				)}
+											{/* Last Name */}
+											<FormControl isInvalid={!!errors.lastname}>
+												<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>Last Name</FormLabel>
+												<Input name="lastname" value={formData.lastname} onChange={handleInputChange} isReadOnly={!isEditing} placeholder="Last name" bg={isEditing ? 'whiteAlpha.50' : 'transparent'} border="1px solid" borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'} _hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }} _focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }} color={textPrimary} _placeholder={{ color: textSecondary }} transition="all 0.2s" />
+												{errors.lastname && (<Text color="red.400" fontSize="xs" mt={1}>{errors.lastname}</Text>)}
+											</FormControl>
+										</>
+									)}
 
 									{/* Email */}
 									<FormControl isInvalid={!!errors.email} gridColumn={{ base: '1', md: '1 / -1' }}>
@@ -632,7 +633,7 @@ export default function Profile() {
 									w="100%"
 									onClick={() => {
 										setIsEditing(false);
-						initialFormDataRef.current = { ...formData };
+										initialFormDataRef.current = { ...formData };
 										setFormData(initialFormDataRef.current || {
 											firstname: user.firstname || '',
 											lastname: user.lastname || '',

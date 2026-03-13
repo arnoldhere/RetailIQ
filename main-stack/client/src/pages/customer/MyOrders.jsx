@@ -14,7 +14,6 @@ import {
     Th,
     Td,
     Spinner,
-    useColorModeValue,
     Badge,
     Card,
     CardBody,
@@ -46,12 +45,12 @@ export default function MyOrders() {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const cancelRef = React.useRef();
 
-    // Colors for light/dark mode
-    const bgCard = useColorModeValue('white', 'gray.800');
-    const borderColor = useColorModeValue('gray.200', 'gray.700');
-    const textMuted = useColorModeValue('gray.600', 'gray.400');
-    const headerBg = useColorModeValue('gray.50', 'gray.700');
-    const hoverBg = useColorModeValue('gray.100', 'gray.700');
+    // Theme tokens
+    const bgCard = "var(--surface-card)";
+    const borderColor = "var(--border-light)";
+    const textMuted = "var(--text-secondary)";
+    const headerBg = "var(--surface-light)";
+    const hoverBg = "var(--surface-elevated)";
 
     /**
      * Fetch all user orders on component mount
@@ -211,7 +210,7 @@ export default function MyOrders() {
     // ✅ Loading state
     if (loading) {
         return (
-            <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')} w="100vw">
+            <Box minH="100vh" display="flex" flexDirection="column" bg="var(--surface-light)" w="100vw">
                 <Navbar />
                 <Box flex={1} display="flex" justifyContent="center" alignItems="center">
                     <VStack spacing={4}>
@@ -227,7 +226,7 @@ export default function MyOrders() {
     // ✅ Error state
     if (error) {
         return (
-            <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')} w="100vw">
+            <Box minH="100vh" display="flex" flexDirection="column" bg="var(--surface-light)" w="100vw">
                 <Navbar />
                 <Box flex={1} display="flex" justifyContent="center" alignItems="center">
                     <Container maxW="container.md">
@@ -256,7 +255,7 @@ export default function MyOrders() {
     // ✅ Empty state
     if (orders.length === 0) {
         return (
-            <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')} w="100vw">
+            <Box minH="100vh" display="flex" flexDirection="column" bg="var(--surface-light)" w="100vw">
                 <Navbar />
 
                 <Box flex={1} py={{ base: 6, md: 12 }}>
@@ -288,7 +287,7 @@ export default function MyOrders() {
     }
 
     return (
-        <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')} w="100vw">
+        <Box minH="100vh" display="flex" flexDirection="column" bg="var(--surface-light)" w="100vw">
             <Navbar />
 
             <Box flex={1} py={{ base: 6, md: 12 }}>

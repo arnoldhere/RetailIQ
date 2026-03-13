@@ -9,6 +9,8 @@ if (!fs.existsSync(MEDIA_PRODUCTS_DIR)) {
   fs.mkdirSync(MEDIA_PRODUCTS_DIR, { recursive: true });
 }
 
+let supplyOrdersStockColumnPromise = null;
+
 function normalizeCount(row) {
   if (!row) return 0;
   return Number(row.count || row['COUNT(*)'] || Object.values(row)[0] || 0);
@@ -40,6 +42,65 @@ function normalizeImages(images) {
   }
 
   return [];
+}
+
+async function ensureSupplyOrderStockColumn() {
+  if (!supplyOrdersStockColumnPromise) {
+    supplyOrdersStockColumnPromise = (async () => {
+      const hasColumn = await db.schema.hasColumn('supply_orders', 'stock_synced_at');
+      if (!hasColumn) {
+        await db.schema.alterTable('supply_orders', (table) => {
+          table.timestamp('stock_synced_at').nullable();
+        });
+      }
+    })().catch((err) => {
+      supplyOrdersStockColumnPromise = null;
+      throw err;
+    });
+  }
+
+  return supplyOrdersStockColumnPromise;
+}
+
+async function getSupplyPaymentSummaryData(conn, orderId, totalAmount) {
+  const paymentSummary = await conn('supply_payments')
+    .where('supply_order_id', orderId)
+    .sum('amount as total_paid')
+    .first();
+
+  const totalPaid = Number(paymentSummary?.total_paid || 0);
+  const remainingAmount = Number(totalAmount || 0) - totalPaid;
+  const isFullyPaid = remainingAmount <= 0;
+
+  return {
+    totalPaid,
+    remainingAmount: Math.max(0, remainingAmount),
+    isFullyPaid,
+  };
+}
+
+async function syncSupplyOrderStockIfEligible(conn, orderId) {
+  await ensureSupplyOrderStockColumn();
+
+  const order = await conn('supply_orders').where('id', orderId).first();
+  if (!order || order.status !== 'received' || order.stock_synced_at) {
+    return false;
+  }
+
+  const paymentState = await getSupplyPaymentSummaryData(conn, orderId, order.total_amount);
+  if (!paymentState.isFullyPaid) {
+    return false;
+  }
+
+  const items = await conn('supply_order_items').where('supply_order_id', orderId);
+  for (const item of items) {
+    await conn('products')
+      .where('id', item.product_id)
+      .increment('stock_available', item.qty);
+  }
+
+  await conn('supply_orders').where('id', orderId).update({ stock_synced_at: new Date() });
+  return true;
 }
 
 /**
@@ -1125,6 +1186,8 @@ exports.createSupplyPayment = async (req, res) => {
     const { amount, payment_date, method, payment_ref } = req.body;
     if (!amount || Number(amount) <= 0) return res.status(400).json({ message: 'Amount must be greater than 0' });
 
+    await ensureSupplyOrderStockColumn();
+
     const order = await db('supply_orders').where('id', id).first();
     if (!order) return res.status(404).json({ message: 'Supply order not found' });
 
@@ -1139,21 +1202,15 @@ exports.createSupplyPayment = async (req, res) => {
     });
     const payment = await db('supply_payments').where('id', pid).first();
 
-    // Calculate total paid so far (including this payment)
-    const paymentSummary = await db('supply_payments')
-      .where('supply_order_id', id)
-      .sum('amount as total_paid')
-      .first();
-
-    const totalPaid = Number(paymentSummary?.total_paid || 0);
     const totalAmount = Number(order.total_amount || 0);
-    const remainingAmount = totalAmount - totalPaid;
-    const isFullyPaid = remainingAmount <= 0;
+    const paymentState = await getSupplyPaymentSummaryData(db, id, totalAmount);
+    const { totalPaid, remainingAmount, isFullyPaid } = paymentState;
 
     // Auto-complete order if fully paid
     if (isFullyPaid && order.status !== 'received') {
       await db('supply_orders').where('id', id).update({ status: 'received' });
     }
+    await syncSupplyOrderStockIfEligible(db, id);
 
     // Notify supplier about payment
     try {
@@ -1175,18 +1232,18 @@ exports.createSupplyPayment = async (req, res) => {
         if (supplierEmail) {
           const emailService = require('../services/mailService');
           let html = `<p>Hi ${supplierName},</p>`;
-          html += `<p>A payment of $${Number(amount).toFixed(2)} has been recorded for order <strong>${order.order_no}</strong>.</p>`;
+          html += `<p>A payment of ₹${Number(amount).toFixed(2)} has been recorded for order <strong>${order.order_no}</strong>.</p>`;
           html += `<p><strong>Payment Summary:</strong></p>`;
           html += `<ul>`;
-          html += `<li>Total Amount: $${totalAmount.toFixed(2)}</li>`;
-          html += `<li>Amount Paid: $${totalPaid.toFixed(2)}</li>`;
-          html += `<li>Remaining: $${Math.max(0, remainingAmount).toFixed(2)}</li>`;
+          html += `<li>Total Amount: ₹${totalAmount.toFixed(2)}</li>`;
+          html += `<li>Amount Paid: ₹${totalPaid.toFixed(2)}</li>`;
+          html += `<li>Remaining: ₹${Math.max(0, remainingAmount).toFixed(2)}</li>`;
           html += `</ul>`;
 
           if (isFullyPaid) {
             html += `<p style="color: green; font-weight: bold;">✓ Payment Complete! Order status has been updated to 'Received'.</p>`;
           } else {
-            html += `<p style="color: orange;">Note: Partial payment received. Awaiting remaining payment of $${remainingAmount.toFixed(2)}.</p>`;
+            html += `<p style="color: orange;">Note: Partial payment received. Awaiting remaining payment of ₹${remainingAmount.toFixed(2)}.</p>`;
           }
 
           html += `<p>Thank you!</p>`;
@@ -1209,7 +1266,7 @@ exports.createSupplyPayment = async (req, res) => {
       paymentSummary: {
         totalAmount,
         totalPaid,
-        remainingAmount: Math.max(0, remainingAmount),
+        remainingAmount,
         isFullyPaid
       }
     });
@@ -1223,6 +1280,7 @@ exports.createSupplyPayment = async (req, res) => {
 exports.getSupplyPaymentSummary = async (req, res) => {
   try {
     const { id } = req.params;
+    await ensureSupplyOrderStockColumn();
     const order = await db('supply_orders').where('id', id).first();
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
@@ -1234,9 +1292,8 @@ exports.getSupplyPaymentSummary = async (req, res) => {
 
     // Calculate totals
     const totalAmount = Number(order.total_amount || 0);
-    const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    const remainingAmount = totalAmount - totalPaid;
-    const isFullyPaid = remainingAmount <= 0;
+    const paymentState = await getSupplyPaymentSummaryData(db, id, totalAmount);
+    const { totalPaid, remainingAmount, isFullyPaid } = paymentState;
 
     return res.json({
       orderId: id,
@@ -1244,10 +1301,11 @@ exports.getSupplyPaymentSummary = async (req, res) => {
       orderStatus: order.status,
       totalAmount,
       totalPaid,
-      remainingAmount: Math.max(0, remainingAmount),
+      remainingAmount,
       isFullyPaid,
       paymentCount: payments.length,
-      payments
+      payments,
+      stockSynced: Boolean(order.stock_synced_at),
     });
   } catch (err) {
     console.error('getSupplyPaymentSummary error', err);
@@ -1303,20 +1361,20 @@ exports.notifySupplierIncompletePayment = async (req, res) => {
             <table style="width: 100%; border-collapse: collapse;">
               <tr style="border-bottom: 1px solid #ddd;">
                 <td style="padding: 8px;"><strong>Total Order Amount:</strong></td>
-                <td style="padding: 8px; text-align: right;">$${totalAmount.toFixed(2)}</td>
+                <td style="padding: 8px; text-align: right;">₹${totalAmount.toFixed(2)}</td>
               </tr>
               <tr style="border-bottom: 1px solid #ddd;">
                 <td style="padding: 8px;"><strong>Amount Paid:</strong></td>
-                <td style="padding: 8px; text-align: right; color: green;">$${totalPaid.toFixed(2)}</td>
+                <td style="padding: 8px; text-align: right; color: green;">₹${totalPaid.toFixed(2)}</td>
               </tr>
               <tr style="background-color: #fff3cd;">
                 <td style="padding: 8px;"><strong>Outstanding Balance:</strong></td>
-                <td style="padding: 8px; text-align: right; color: #ff6b6b;"><strong>$${remainingAmount.toFixed(2)}</strong></td>
+                <td style="padding: 8px; text-align: right; color: #ff6b6b;"><strong>₹${remainingAmount.toFixed(2)}</strong></td>
               </tr>
             </table>
           </div>
 
-          <p style="color: #ff6b6b; font-weight: bold;">⚠ Action Required: Please arrange payment of the outstanding balance of <strong>$${remainingAmount.toFixed(2)}</strong> at your earliest convenience.</p>
+          <p style="color: #ff6b6b; font-weight: bold;">⚠ Action Required: Please arrange payment of the outstanding balance of <strong>₹${remainingAmount.toFixed(2)}</strong> at your earliest convenience.</p>
 
           <p>Once we receive the remaining payment, we will update your order status accordingly.</p>
           
@@ -1355,6 +1413,8 @@ exports.updateSupplyOrderStatus = async (req, res) => {
     const allowed = ['pending', 'sent', 'received', 'cancelled'];
     if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid status' });
 
+    await ensureSupplyOrderStockColumn();
+
     const order = await db('supply_orders').where('id', id).first();
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
@@ -1363,10 +1423,12 @@ exports.updateSupplyOrderStatus = async (req, res) => {
     if (total_amount !== undefined) payload.total_amount = total_amount;
 
     await db('supply_orders').where('id', id).update(payload);
+    const updated = await db('supply_orders').where('id', id).first();
+    const paymentState = await getSupplyPaymentSummaryData(db, id, updated.total_amount);
+    await syncSupplyOrderStockIfEligible(db, id);
 
     // notify supplier when status changes
     try {
-      const updated = await db('supply_orders').where('id', id).first();
       const supplier = await db('suppliers').where('id', updated.supplier_id).first();
       if (supplier && supplier.email) {
         const sendEmail = require('../services/mailService');
@@ -1376,7 +1438,11 @@ exports.updateSupplyOrderStatus = async (req, res) => {
       }
     } catch (e) { console.error('post-update notify failed', e) }
 
-    return res.json({ message: 'Order updated' });
+    return res.json({
+      message: 'Order updated',
+      paymentSummary: paymentState,
+      stockSynced: Boolean(updated.stock_synced_at),
+    });
   } catch (err) {
     console.error('update supply order status error', err);
     return res.status(500).json({ message: 'Failed to update order' });

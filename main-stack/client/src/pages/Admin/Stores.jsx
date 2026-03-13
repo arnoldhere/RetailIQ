@@ -18,7 +18,6 @@ import {
     Spinner,
     TableContainer,
     SimpleGrid,
-    useColorModeValue,
     Flex,
     Divider,
     Badge,
@@ -57,14 +56,14 @@ export default function StoresPage() {
     const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
     const cancelDeleteRef = useRef()
 
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
-    const subtleCard = useColorModeValue('white', 'gray.800')
-    const mutedText = useColorModeValue('gray.600', 'gray.300')
-    const borderColor = useColorModeValue('gray.100', 'gray.700')
-    const accent = useColorModeValue('blue.600', 'blue.300')
-    const tableStripe = useColorModeValue('white', 'gray.800')
-    const hoverBg = useColorModeValue('gray.50', 'gray.700')
-    const tableHeadBg = useColorModeValue('white', 'gray.800')
+    const pageBg = "var(--surface-light)"
+    const subtleCard = "var(--surface-card)"
+    const mutedText = "var(--text-secondary)"
+    const borderColor = "var(--border-light)"
+    const accent = "var(--primary-color)"
+    const tableStripe = "var(--surface-card)"
+    const hoverBg = "var(--surface-light)"
+    const tableHeadBg = "var(--surface-light)"
 
     const [stores, setStores] = useState([])
     const [loading, setLoading] = useState(false)
@@ -337,7 +336,7 @@ export default function StoresPage() {
                                         placeholder="Search stores..."
                                         value={filters.search}
                                         onChange={(e) => handleFilterChange('search', e.target.value)}
-                                        bg={useColorModeValue('white', 'gray.700')}
+                                        bg={subtleCard}
                                         borderColor={borderColor}
                                     />
                                 </InputGroup>
@@ -347,7 +346,7 @@ export default function StoresPage() {
                                     value={filters.is_active}
                                     onChange={(e) => handleFilterChange('is_active', e.target.value)}
                                     maxW="150px"
-                                    bg={useColorModeValue('white', 'gray.700')}
+                                    bg={subtleCard}
                                     borderColor={borderColor}
                                 >
                                     <option selected>--select status--</option>
@@ -359,7 +358,7 @@ export default function StoresPage() {
                                     value={filters.sort}
                                     onChange={(e) => handleFilterChange('sort', e.target.value)}
                                     maxW="150px"
-                                    bg={useColorModeValue('white', 'gray.700')}
+                                    bg={subtleCard}
                                     borderColor={borderColor}
                                 >
                                     <option value="created_at">Date</option>
@@ -371,7 +370,7 @@ export default function StoresPage() {
                                     value={filters.order}
                                     onChange={(e) => handleFilterChange('order', e.target.value)}
                                     maxW="120px"
-                                    bg={useColorModeValue('white', 'gray.700')}
+                                    bg={subtleCard}
                                     borderColor={borderColor}
                                 >
                                     <option value="desc">Desc</option>

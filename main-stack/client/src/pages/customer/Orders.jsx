@@ -9,7 +9,6 @@ import {
     useToast,
     Spinner,
     SimpleGrid,
-    useColorModeValue,
     Flex,
     Badge,
     Divider,
@@ -23,11 +22,11 @@ export default function OrdersPage() {
     const navigate = useNavigate()
     const toast = useToast()
 
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
-    const subtleCard = useColorModeValue('white', 'gray.800')
-    const mutedText = useColorModeValue('gray.600', 'gray.300')
-    const borderColor = useColorModeValue('gray.100', 'gray.700')
-    const accent = useColorModeValue('blue.600', 'blue.300')
+    const pageBg = "var(--surface-light)"
+    const subtleCard = "var(--surface-card)"
+    const mutedText = "var(--text-secondary)"
+    const borderColor = "var(--border-light)"
+    const accent = "var(--primary-color)"
 
     const [orders, setOrders] = useState([])
     const [loading, setLoading] = useState(false)
@@ -194,7 +193,7 @@ export default function OrdersPage() {
 
                                     <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
                                         <Text fontWeight="700" fontSize="lg" color="green.600">
-                                            ${Number(order.total_amount || 0).toFixed(2)}
+                                            ₹{Number(order.total_amount || 0).toFixed(2)}
                                         </Text>
                                         <HStack spacing={3}>
                                             <Button
@@ -229,4 +228,3 @@ export default function OrdersPage() {
         </Box>
     )
 }
-

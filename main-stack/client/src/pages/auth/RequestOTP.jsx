@@ -17,7 +17,6 @@ import {
     InputLeftElement,
     Icon,
     Divider,
-    useColorModeValue,
 } from '@chakra-ui/react'
 import { LockIcon, EmailIcon } from '@chakra-ui/icons'
 import { useNavigate, Link } from 'react-router-dom'
@@ -31,7 +30,8 @@ export default function RequestOTP() {
     const toast = useToast()
     const navigate = useNavigate()
 
-    const cardBg = useColorModeValue('white', 'gray.800')
+    const cardBg = "var(--surface-card)"
+    const inputBg = "var(--surface-card)"
 
     async function handleSubmit(e) {
         e.preventDefault()
@@ -69,7 +69,7 @@ export default function RequestOTP() {
 
         <Box
             minH="100vh"
-            // bg={pageBg}
+            bg="var(--surface-light)"
             px={10}
             display="flex"
             alignItems="center"
@@ -94,14 +94,14 @@ export default function RequestOTP() {
                             <Box
                                 p={3}
                                 borderRadius="full"
-                                bg="blue.500"
+                                bg="var(--primary-color)"
                                 display="inline-flex"
                                 alignItems="center"
                                 justifyContent="center"
                             >
                                 <LockIcon color="white" />
                             </Box>
-                            <Text fontWeight="semibold" color="blue.600">
+                            <Text fontWeight="semibold" color="var(--primary-color)">
                                 Secure account recovery
                             </Text>
                         </HStack>
@@ -164,7 +164,7 @@ export default function RequestOTP() {
                                                 onChange={(e) => setIdentifier(e.target.value)}
                                                 autoComplete="username"
                                                 size="md"
-                                                bg={useColorModeValue('gray.50', 'gray.700')}
+                                                bg={inputBg}
                                                 _focus={{
                                                     borderColor: 'blue.500',
                                                     boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)',

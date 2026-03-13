@@ -8,7 +8,6 @@ import {
     Button,
     SimpleGrid,
     useToast,
-    useColorModeValue,
     Badge,
     Icon,
     Tooltip,
@@ -24,9 +23,9 @@ import { useCart } from '../../context/CartContext'
 import { FaShoppingCart } from 'react-icons/fa'
 
 function WishlistCard({ product, onRemove, onMoveToCart, onViewDetail }) {
-    const bgCard = useColorModeValue('white', 'gray.800')
-    const borderColor = useColorModeValue('gray.200', 'gray.700')
-    const textMuted = useColorModeValue('gray.600', 'gray.400')
+    const bgCard = "var(--surface-card)"
+    const borderColor = "var(--border-light)"
+    const textMuted = "var(--text-secondary)"
     // const accent = useColorModeValue('blue.500', 'blue.300')
 
     const primaryImage =
@@ -145,7 +144,7 @@ function WishlistCard({ product, onRemove, onMoveToCart, onViewDetail }) {
                 <VStack align="start" spacing={1} w="100%">
                     <HStack spacing={2} align="baseline">
                         <Heading size="md" color="green.500">
-                            ${product.sell_price}
+                            ₹{product.sell_price}
                         </Heading>
                     </HStack>
                     <Badge
@@ -198,14 +197,11 @@ export default function WishlistPage() {
     const { addToCart } = useCart()
 
     // theme values (hooks at top)
-    const pageBgGradient = useColorModeValue(
-        'linear(to-b, gray.50, white)',
-        'linear(to-b, gray.900, gray.800)'
-    )
-    const bgCard = useColorModeValue('white', 'gray.800')
-    const textMuted = useColorModeValue('gray.600', 'gray.400')
-    // const headerAccent = useColorModeValue('blue.500', 'blue.300')
-    const emptyBorderColor = useColorModeValue('gray.100', 'whiteAlpha.200')
+    const pageBgGradient = "var(--surface-light)"
+    const bgCard = "var(--surface-card)"
+    const textMuted = "var(--text-secondary)"
+    // const headerAccent = "var(--primary-color)"
+    const emptyBorderColor = "var(--border-light)"
 
     const handleMoveToCart = (product) => {
         addToCart(product, 1)
@@ -230,7 +226,7 @@ export default function WishlistPage() {
             minH="100vh"
             display="flex"
             flexDirection="column"
-            bgGradient={pageBgGradient}
+            bg={pageBgGradient}
             w='100vw'
         >
             <Navbar />

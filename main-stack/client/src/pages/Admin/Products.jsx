@@ -44,7 +44,6 @@ import {
     NumberIncrementStepper,
     NumberDecrementStepper,
     AlertDialogContent,
-    useColorModeValue,
     Tooltip,
     Flex,
     Divider,
@@ -86,22 +85,19 @@ export default function ProductsPage() {
     // -------------------------
     // Top-level theme tokens (ALL hooks here)
     // -------------------------
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
-    const canvasBg = useColorModeValue('white', 'gray.800')
-    const subtleCard = useColorModeValue('white', 'gray.800')
-    const mutedText = useColorModeValue('gray.600', 'gray.300')
-    const borderColor = useColorModeValue('gray.100', 'gray.700')
-    const headerBg = useColorModeValue(
-        'linear-gradient(90deg, rgba(59,130,246,0.06), rgba(99,102,241,0.03))',
-        'transparent'
-    )
-    const accent = useColorModeValue('blue.600', 'blue.300')
-    // const subtleAccentBg = useColorModeValue('blue.50', 'blue.900')
-    const tableStripe = useColorModeValue('white', 'gray.800')
-    const hoverBg = useColorModeValue('gray.50', 'gray.700')
-    const tableHeadBg = useColorModeValue('white', 'gray.800')
-    const modalBodyBg = useColorModeValue('gray.50', 'gray.800')
-    const avatarBg = useColorModeValue('gray.100', 'gray.700')
+    const pageBg = "var(--surface-light)"
+    const canvasBg = "var(--surface-card)"
+    const subtleCard = "var(--surface-card)"
+    const mutedText = "var(--text-secondary)"
+    const borderColor = "var(--border-light)"
+    const headerBg = "transparent"
+    const accent = "var(--primary-color)"
+    // const subtleAccentBg = "var(--surface-light)"
+    const tableStripe = "var(--surface-card)"
+    const hoverBg = "var(--surface-light)"
+    const tableHeadBg = "var(--surface-light)"
+    const modalBodyBg = "var(--surface-light)"
+    const avatarBg = "var(--surface-elevated)"
 
     // -------------------------
     // State & refs (unchanged)
@@ -439,7 +435,7 @@ export default function ProductsPage() {
                                                 value={filters.search}
                                                 onChange={(e) => handleFilterChange('search', e.target.value)}
                                                 borderRadius="lg"
-                                                bg={useColorModeValue('white', 'gray.700')}
+                                                bg={subtleCard}
                                                 borderColor={borderColor}
                                                 _focus={{
                                                     borderColor: accent,
@@ -457,7 +453,7 @@ export default function ProductsPage() {
                                             value={filters.category_id}
                                             onChange={(e) => handleFilterChange('category_id', e.target.value)}
                                             borderRadius="lg"
-                                            bg={useColorModeValue('white', 'gray.700')}
+                                            bg={subtleCard}
                                             borderColor={borderColor}
                                         >
                                             <option value="">All categories</option>
@@ -477,7 +473,7 @@ export default function ProductsPage() {
                                             value={filters.sort}
                                             onChange={(e) => handleFilterChange('sort', e.target.value)}
                                             borderRadius="lg"
-                                            bg={useColorModeValue('white', 'gray.700')}
+                                            bg={subtleCard}
                                             borderColor={borderColor}
                                         >
                                             <option value="name">Name</option>
@@ -495,7 +491,7 @@ export default function ProductsPage() {
                                             value={filters.order}
                                             onChange={(e) => handleFilterChange('order', e.target.value)}
                                             borderRadius="lg"
-                                            bg={useColorModeValue('white', 'gray.700')}
+                                            bg={subtleCard}
                                             borderColor={borderColor}
                                         >
                                             <option value="asc">Ascending</option>
@@ -599,9 +595,9 @@ export default function ProductsPage() {
                                                             )}
                                                         </Td>
 
-                                                        <Td isNumeric color="gray.600" fontSize="sm">{product.cost_price != null ? `$${product.cost_price}` : <Text as="span" color="gray.400">-</Text>}</Td>
+                                                        <Td isNumeric color="gray.600" fontSize="sm">{product.cost_price != null ? `₹${product.cost_price}` : <Text as="span" color="gray.400">-</Text>}</Td>
 
-                                                        <Td isNumeric fontWeight="700" color="green.600" fontSize="sm">${product.sell_price}</Td>
+                                                        <Td isNumeric fontWeight="700" color="green.600" fontSize="sm">₹{product.sell_price}</Td>
 
                                                         <Td isNumeric fontSize="sm" color={product.stock_available === 0 ? 'red.500' : product.stock_available < 10 ? 'orange.700' : 'white.700'}>
                                                             {product.stock_available}
@@ -851,8 +847,8 @@ export default function ProductsPage() {
                         {selectedProduct ? (
                             <VStack align="stretch" spacing={4}>
                                 <Box>
-                                    <Text fontWeight="600">Price: ${selectedProduct.sell_price}</Text>
-                                    <Text fontSize="sm" color="gray.500">Cost: ${selectedProduct.cost_price}</Text>
+                                    <Text fontWeight="600">Price: ₹{selectedProduct.sell_price}</Text>
+                                    <Text fontSize="sm" color="gray.500">Cost: ₹{selectedProduct.cost_price}</Text>
                                     <Text fontSize="sm">Stock: {selectedProduct.stock_available}</Text>
                                     <Divider my={2} />
                                     <Text>{selectedProduct.description || 'No description provided.'}</Text>

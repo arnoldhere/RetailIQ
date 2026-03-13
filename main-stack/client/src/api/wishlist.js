@@ -1,8 +1,4 @@
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8888'
-
-const client = axios.create({ baseURL: API_URL, withCredentials: true })
+import client from './base'
 
 export async function getWishlist() {
   const response = await client.get('/api/wishlist')
@@ -30,4 +26,3 @@ export async function clearWishlist() {
 }
 
 export default client
-

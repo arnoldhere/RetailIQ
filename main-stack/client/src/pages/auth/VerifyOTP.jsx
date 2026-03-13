@@ -14,7 +14,6 @@ import {
     Divider,
     Tag,
     TagLabel,
-    useColorModeValue,
     Container,
 } from '@chakra-ui/react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
@@ -30,8 +29,9 @@ export default function VerifyOTPPage() {
     const location = useLocation()
     const { identifier = '', channel = 'email' } = location.state || {}
 
-    const cardBg = useColorModeValue('white', 'gray.800')
-    const pageBg = useColorModeValue('gray.50', 'gray.900')
+    const cardBg = "var(--surface-card)"
+    const pageBg = "var(--surface-light)"
+    const inputBg = "var(--surface-card)"
 
     // Timer for OTP expiry
     useEffect(() => {
@@ -77,7 +77,7 @@ export default function VerifyOTPPage() {
     return (
         <Box
             minH="100vh"
-            // bg={pageBg}
+            bg="var(--surface-light)"
             px={10}
             display="flex"
             alignItems="center"
@@ -100,7 +100,7 @@ export default function VerifyOTPPage() {
                         </Text>
 
                         {identifier && (
-                            <Tag size="sm" variant="subtle" colorScheme="blue" mt={1}>
+                            <Tag size="sm" variant="subtle" colorScheme="primary" mt={1}>
                                 <TagLabel>{identifier}</TagLabel>
                             </Tag>
                         )}
@@ -115,7 +115,7 @@ export default function VerifyOTPPage() {
                         w="full"
                     >
                         <VStack spacing={6} align="stretch">
-                            <Text fontSize="sm" color="gray.500" textAlign="center">
+                            <Text fontSize="sm" color="var(--text-secondary)" textAlign="center">
                                 Enter the code we just sent you. For your security, this code will
                                 expire in 10 minutes.
                             </Text>
@@ -142,20 +142,9 @@ export default function VerifyOTPPage() {
                                             fontSize="2xl"
                                             letterSpacing="0.4em"
                                             py={6}
-                                            bg={useColorModeValue("gray.50", "gray.700")}
-                                            _focus={{
-                                                borderColor: "blue.500",
-                                                boxShadow:
-                                                    "0 0 0 1px var(--chakra-colors-blue-500)",
-                                            }}
-                                            required
+                                            bg={inputBg}
                                         />
-
-                                        <Text mt={2} fontSize="xs" color="gray.500" textAlign="center">
-                                            Only digits are allowed.
-                                        </Text>
                                     </FormControl>
-
                                     {/* ✅ Timer + Resend */}
                                     <HStack justify="space-between" align="center">
                                         <Text

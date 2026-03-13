@@ -1,8 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ChakraProvider, Box } from '@chakra-ui/react'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import Categories from "./pages/admin/Categories"
-import Products from "./pages/admin/Products"
+import theme from './theme'
+import Categories from "./pages/Admin/Categories"
+import Products from "./pages/Admin/Products"
 import StoresPage from './pages/Admin/Stores'
 import StoreManagersPage from './pages/Admin/StoreManagers'
 import FeedbacksPage from "./pages/Admin/Feedbacks"
@@ -43,12 +44,35 @@ import { CartProvider } from './context/CartContext'
 import { WishlistProvider } from './context/WishlistContext'
 import MyOrders from './pages/customer/MyOrders'
 
+function getProfileRoute(role) {
+  if (role === 'admin') return '/admin/profile'
+  if (role === 'supplier') return '/supplier/profile'
+  return '/customer/profile'
+}
 
 function AppRoutes() {
   const { user, loading } = useAuth()
 
   if (loading) {
-    return <Box>Loading...</Box>
+    return (
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        minH="100vh"
+        bg="var(--background)"
+      >
+        <Box
+          className="fade-in"
+          textAlign="center"
+          color="var(--primary-color)"
+          fontSize="lg"
+          fontWeight="500"
+        >
+          Loading...
+        </Box>
+      </Box>
+    )
   }
 
   return (
@@ -74,7 +98,19 @@ function AppRoutes() {
         }
       />
 
+      <Route
+        path="/profile"
+        element={
+          user ? <Navigate to={getProfileRoute(user.role)} replace /> : <Navigate to="/auth/login" replace />
+        }
+      />
+      <Route
+        path="/admin/ask"
+        element={user?.role === 'admin' ? <Navigate to="/admin/asks" replace /> : <Navigate to="/auth/login" replace />}
+      />
+
       <Route path="/admin/dashboard" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/admin/profile" element={user?.role === 'admin' ? <Profile /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/dashboard" element={user?.role === 'supplier' ? <SupplierDashboard /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/orders" element={user?.role === 'supplier' ? <Orders /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/orders/:id" element={user?.role === 'supplier' ? <OrderDetail /> : <Navigate to="/auth/login" replace />} />
@@ -83,6 +119,7 @@ function AppRoutes() {
       {/* <Route path="/supplier/products/:id" element={user?.role === 'supplier' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} /> */}
       <Route path="/supplier/profile" element={user?.role === 'supplier' ? <Profile /> : <Navigate to="/auth/login" replace />} />
       <Route path="/customer/home" element={user?.role === 'customer' ? <CustomerHome /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/customer/profile" element={user?.role === 'customer' ? <Profile /> : <Navigate to="/auth/login" replace />} />
       <Route path='/customer/products' element={user?.role === "customer" ? <CustomerProductPage /> : <Navigate to="/auth/login" replace />} />
       <Route path='/customer/products/:id' element={user?.role === 'customer' ? <ProductDetail /> : <Navigate to="/auth/login" replace />} />
       <Route path="/customer/cart" element={user?.role === 'customer' ? <CartPage /> : <Navigate to="/auth/login" replace />} />
@@ -118,7 +155,7 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <ChakraProvider>
+      <ChakraProvider theme={theme}>
         <CartProvider>
           <WishlistProvider>
             <AppRoutes />

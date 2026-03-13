@@ -23,12 +23,12 @@ export default function Home() {
 	const { user, logout } = useAuth();
 
 	return (
-		<Box minH="100vh" bg="gray.50" w='90vw'>
+		<Box minH="100vh" bg="var(--surface-light)" w='90vw'>
 			{/* Header */}
 			<Box
-				bg="white"
+				bg="var(--surface-card)"
 				borderBottom="1px"
-				borderColor="gray.200"
+				borderColor="var(--border-light)"
 				// px={6}
 				// py={4}
 				boxShadow="sm"
@@ -37,7 +37,7 @@ export default function Home() {
 					<Flex justify="space-between" align="center">
 						<Heading
 							size="lg"
-							bgGradient="linear(to-r, blue.600, purple.600)"
+							bgGradient="linear(to-r, var(--primary-color), var(--secondary-color))"
 							bgClip="text"
 							fontWeight="bold"
 						>
@@ -63,7 +63,7 @@ export default function Home() {
 					<Box
 						p={8}
 						borderRadius="2xl"
-						bgGradient="linear(to-br, blue.500, purple.600)"
+						bgGradient="linear(to-br, var(--primary-color), var(--secondary-color))"
 						boxShadow="xl"
 						color="white"
 						position="relative"
@@ -128,7 +128,7 @@ export default function Home() {
 					>
 						<GridItem>
 							<Box
-								bg="white"
+								bg="var(--surface-card)"
 								p={6}
 								borderRadius="xl"
 								boxShadow="md"
@@ -150,7 +150,7 @@ export default function Home() {
 										color="gray.800"
 										mt={2}
 									>
-										$24,580
+										₹24,580
 									</StatNumber>
 									<StatHelpText color="green.500" fontWeight="600" mt={2}>
 										<Flex align="center" gap={1}>
@@ -164,7 +164,7 @@ export default function Home() {
 
 						<GridItem>
 							<Box
-								bg="white"
+								bg="var(--surface-card)"
 								p={6}
 								borderRadius="xl"
 								boxShadow="md"
@@ -200,7 +200,7 @@ export default function Home() {
 
 						<GridItem>
 							<Box
-								bg="white"
+								bg="var(--surface-card)"
 								p={6}
 								borderRadius="xl"
 								boxShadow="md"
@@ -222,7 +222,7 @@ export default function Home() {
 										color="gray.800"
 										mt={2}
 									>
-										$19.70
+										₹19.70
 									</StatNumber>
 									<StatHelpText color="red.500" fontWeight="600" mt={2}>
 										<Flex align="center" gap={1}>
@@ -236,7 +236,7 @@ export default function Home() {
 
 						<GridItem>
 							<Box
-								bg="white"
+								bg="var(--surface-card)"
 								p={6}
 								borderRadius="xl"
 								boxShadow="md"
@@ -275,7 +275,7 @@ export default function Home() {
 					<Grid templateColumns={{ base: "1fr", lg: "repeat(2, 1fr)" }} gap={6}>
 						<GridItem>
 							<Box
-								bg="white"
+								bg="var(--surface-card)"
 								p={8}
 								borderRadius="xl"
 								boxShadow="md"
@@ -319,7 +319,7 @@ export default function Home() {
 
 						<GridItem>
 							<Box
-								bg="white"
+								bg="var(--surface-card)"
 								p={8}
 								borderRadius="xl"
 								boxShadow="md"

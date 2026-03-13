@@ -85,7 +85,7 @@ exports.getAboutus = async (req, res) => {
         return res.json({ stats });
 
     } catch (error) {
-        console.error('About us pagee error', err);
+        console.error('About us page error', error);
         return res.status(500).json({ message: 'Internal server error' });
     }
 }

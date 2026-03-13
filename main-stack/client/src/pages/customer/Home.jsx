@@ -1,91 +1,101 @@
 import React, { useEffect, useState } from "react";
-import * as userApi from "../../api/user";
-import { FaUsers, FaBoxOpen, FaStore } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
 import {
+	Badge,
 	Box,
 	Button,
-	SimpleGrid,
 	Container,
+	Flex,
 	Grid,
-	GridItem,
 	Heading,
+	HStack,
+	Icon,
+	SimpleGrid,
 	Text,
 	VStack,
-	HStack,
-	Flex,
-	Icon,
-	Link,
 	useToast,
-	useColorModeValue,
 } from "@chakra-ui/react";
-// import trust icon, tech icons from chkra ui
+import { useNavigate } from "react-router-dom";
 import {
-	FaRobot,
+	FaBolt,
+	FaBoxOpen,
 	FaChartLine,
-	FaShoppingCart,
-	FaBullseye,
-	FaCentercode,
+	FaRobot,
+	FaShieldAlt,
+	FaShoppingBag,
+	FaStore,
+	FaUsers,
 } from "react-icons/fa";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import * as userApi from "../../api/user";
+
+const featureCards = [
+	{
+		icon: FaRobot,
+		title: "Smarter discovery",
+		description: "Browse curated inventory with clearer product context and cleaner purchase flows.",
+	},
+	{
+		icon: FaChartLine,
+		title: "Better pricing signals",
+		description: "See products that help you buy confidently without friction across screens.",
+	},
+	{
+		icon: FaShieldAlt,
+		title: "Reliable shopping",
+		description: "Orders, wishlist, cart, and profile tools stay connected through one account experience.",
+	},
+	{
+		icon: FaBolt,
+		title: "Faster actions",
+		description: "Move from discovery to checkout with fewer taps and more focused page design.",
+	},
+];
+
+const journeyCards = [
+	"Explore products with cleaner search, category, and stock visibility.",
+	"Add items to cart or wishlist directly from a more focused catalog experience.",
+	"Track every purchase and order update from the same customer workspace.",
+];
 
 export default function CustomerHome() {
 	const navigate = useNavigate();
 	const toast = useToast();
-	const [stats, setStats] = useState([]);
-
-	// const cardBg = useColorModeValue("white", "gray.800");
-	// const textColor = useColorModeValue("gray.700", "gray.300");
-	// const mutedText = useColorModeValue("gray.600", "gray.400");
-
-	const features = [
-		{
-			icon: FaBullseye,
-			title: "Clean & Trust-Based",
-			description: "Shopping should be simple, smart, and stress-free.",
-		},
-		{
-			icon: FaRobot,
-			title: "AI Insights",
-			description: "We blend smart technology with everyday shopping.",
-		},
-		{
-			icon: FaCentercode,
-			title: "Customer-Centric",
-			description: "Because you deserve better shopping—every single time.",
-		},
-		{
-			icon: FaShoppingCart,
-			title: "Market Basket",
-			description: "Discover product correlations and bundle opportunities",
-		},
-	];
+	const [stats, setStats] = useState([
+		{ label: "Happy Customers", number: 0, icon: FaUsers },
+		{ label: "Categories of Products Available", number: 0, icon: FaBoxOpen },
+		{ label: "Stores Connected", number: 0, icon: FaStore },
+	]);
 
 	useEffect(() => {
+		let mounted = true;
+
 		async function load() {
 			try {
 				const res = await userApi.getAboutusStat();
 				const raw = res?.data?.stats || {};
 
-				const formattedStats = [
+				if (!mounted) return;
+
+				setStats([
 					{
 						label: "Happy Customers",
-						number: raw.totalCustomers?.count ?? 0,
+						number: Number(raw.totalCustomers?.count) || 0,
+						icon: FaUsers,
 					},
 					{
-						label: "Products Available",
-						number: raw.totalProducts?.count ?? 0,
+						label: "Categories of Products Available",
+						number: Number(raw.totalProducts?.count) || 0,
+						icon: FaBoxOpen,
 					},
 					{
 						label: "Stores Connected",
-						number: raw.totalStores?.count ?? 0,
+						number: Number(raw.totalStores?.count) || 0,
+						icon: FaStore,
 					},
-				];
-
-				setStats(formattedStats);
-			} catch (e) {
-				console.error("failed to load stats", e);
+				]);
+			} catch (error) {
+				console.error("failed to load stats", error);
 				toast({
 					title: "Failed to load overview",
 					status: "error",
@@ -95,278 +105,239 @@ export default function CustomerHome() {
 		}
 
 		load();
+		return () => {
+			mounted = false;
+		};
 	}, [toast]);
 
-
 	return (
-		<Box
-			minH="100vh"
-			bg="#020617" // dark background to match navbar
-			display="flex"
-			flexDirection="column"
-		>
+		<Box minH="100vh" bg="var(--background)" display="flex" flexDirection="column">
 			<Navbar />
 
 			<Box flex={1}>
-				{/* Hero Section */}
 				<Box
-					bgGradient="linear(to-r, cyan.500, purple.600)"
-					color="white"
-					py={{ base: 12, md: 24 }}
-					textAlign="center"
-					boxShadow="xl"
+					position="relative"
+					overflow="hidden"
+					bg="linear-gradient(180deg, #eaf3ff 0%, #f8fbff 60%, #ffffff 100%)"
+					borderBottom="1px solid"
+					borderColor="var(--border-light)"
 				>
-					<Container maxW="container.lg">
-						<Heading size="2xl" fontWeight="bold" mb={4} lineHeight={1.2}>
-							Smarter Shopping Starts Here 🚀
-						</Heading>
-						<Text fontSize="lg" opacity={0.9} mb={8} maxW="600px" mx="auto">
-							RetailIQ brings you the best products, optimized prices, and a
-							smooth buying experience powered by real-time intelligence.
-						</Text>
-						<HStack justify="center" spacing={4}>
-							<Link onClick={() => navigate("/customer/products")}>
-								<Button
-									size="lg"
-									fontWeight="600"
-									bg="white"
-									color="gray.900"
-									_hover={{ bg: "gray.100" }}
+					<Box
+						position="absolute"
+						top="-6rem"
+						right="-6rem"
+						w="22rem"
+						h="22rem"
+						borderRadius="full"
+						bg="rgba(0, 102, 204, 0.10)"
+						filter="blur(10px)"
+					/>
+					<Container maxW="container.xl" py={{ base: 12, md: 20 }}>
+						<Grid templateColumns={{ base: "1fr", lg: "1.2fr 0.8fr" }} gap={10} alignItems="center">
+							<VStack align="start" spacing={6}>
+								<Badge
+									bg="var(--primary-lighter)"
+									color="var(--primary-dark)"
+									px={4}
+									py={1.5}
+									borderRadius="full"
+									fontSize="xs"
+									textTransform="uppercase"
+									letterSpacing="0.14em"
 								>
-									Explore Products
-								</Button>
-							</Link>
-						</HStack>
-					</Container>
-				</Box>
-
-				{/* Features Section */}
-				<Container maxW="container.xl" py={16} px={6}>
-					<VStack spacing={12} align="stretch">
-						<Box textAlign="center">
-							<Heading size="lg" mb={2} color="gray.100">
-								Why Choose RetailIQ?
-							</Heading>
-							<Text color="gray.400">
-								Powerful tools built specifically for retail success
-							</Text>
-						</Box>
-
-						<Grid
-							templateColumns={{
-								base: "1fr",
-								md: "repeat(2, 1fr)",
-								lg: "repeat(4, 1fr)",
-							}}
-							gap={8}
-						>
-							{features.map((feature, idx) => (
-								<Box
-									key={idx}
-									bg="whiteAlpha.50"
-									p={6}
-									borderRadius="xl"
-									boxShadow="md"
-									textAlign="center"
-									border="1px solid"
-									borderColor="whiteAlpha.200"
-									_hover={{
-										transform: "translateY(-4px)",
-										boxShadow: "xl",
-										bg: "whiteAlpha.100",
-									}}
-									transition="all 0.2s ease-out"
+									Enhanced Customer Experience
+								</Badge>
+								<Heading
+									fontSize={{ base: "3xl", md: "5xl" }}
+									lineHeight="1.05"
+									letterSpacing="-0.04em"
+									maxW="4xl"
 								>
-									<Icon as={feature.icon} fontSize="4xl" mb={3} color="cyan.400" />
-									<Heading size="sm" mb={2} color="gray.100">
-										{feature.title}
-									</Heading>
-									<Text color="gray.400" fontSize="sm">
-										{feature.description}
-									</Text>
-								</Box>
-							))}
-						</Grid>
-					</VStack>
-				</Container>
+									Shop smarter with a cleaner RetailIQ home experience.
+								</Heading>
+								<Text fontSize="lg" color="var(--text-secondary)" maxW="2xl">
+									Discover products, move faster through the catalog, and manage your orders from a customer workspace that matches the updated design language across the app.
+								</Text>
+								<HStack spacing={4} flexWrap="wrap">
+									<Button size="lg" onClick={() => navigate("/customer/products")}>
+										Explore Products
+									</Button>
+									<Button size="lg" variant="outline" onClick={() => navigate("/customer/my-orders")}>
+										View My Orders
+									</Button>
+								</HStack>
+							</VStack>
 
-				{/* Quick Stats */}
-				{/* Quick Stats */}
-				<Container maxW="container.xl" py={16}>
-					<VStack spacing={8}>
-						<Box textAlign="center">
-							<Heading size="lg" color="gray.100" mb={2}>
-								Our Impact in Numbers
-							</Heading>
-							<Text color="gray.400">
-								Trusted by customers and retailers alike
-							</Text>
-						</Box>
-
-						<SimpleGrid
-							columns={{ base: 1, sm: 2, md: 3 }}
-							spacing={8}
-							w="full"
-						>
-							{stats.map((stat, idx) => {
-								const icons = [FaUsers, FaBoxOpen, FaStore];
-								const StatIcon = icons[idx];
-
-								return (
-									<Box
-										key={idx}
-										position="relative"
-										bg="whiteAlpha.50"
-										backdropFilter="blur(10px)"
-										p={8}
-										borderRadius="2xl"
-										textAlign="center"
-										border="1px solid"
-										borderColor="whiteAlpha.200"
-										boxShadow="0 10px 30px rgba(0,0,0,0.4)"
-										transition="all 0.35s ease"
-										_hover={{
-											transform: "translateY(-8px) scale(1.03)",
-											boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
-											borderColor: "cyan.400",
-										}}
+							<Box
+								bg="white"
+								border="1px solid"
+								borderColor="var(--border-light)"
+								borderRadius="3xl"
+								p={{ base: 6, md: 7 }}
+								boxShadow="0 24px 60px rgba(15, 23, 42, 0.10)"
+							>
+								<VStack align="stretch" spacing={5}>
+									<Text
+										fontSize="xs"
+										fontWeight="700"
+										textTransform="uppercase"
+										letterSpacing="0.16em"
+										color="var(--primary-color)"
 									>
-										{/* Glow effect */}
-										<Box
-											position="absolute"
-											inset={0}
+										What&apos;s better now
+									</Text>
+									{journeyCards.map((item, index) => (
+										<HStack
+											key={item}
+											align="flex-start"
+											spacing={4}
+											bg={index === 1 ? "var(--primary-lighter)" : "var(--surface-secondary)"}
 											borderRadius="2xl"
-											bgGradient="linear(to-r, cyan.400, purple.500)"
-											opacity={0.08}
-											zIndex={0}
-										/>
-
-										<VStack spacing={4} position="relative" zIndex={1}>
+											p={4}
+										>
 											<Flex
-												w="64px"
-												h="64px"
+												w="2.25rem"
+												h="2.25rem"
 												borderRadius="full"
 												align="center"
 												justify="center"
-												bgGradient="linear(to-r, cyan.400, purple.500)"
-												color="white"
-												fontSize="2xl"
-												boxShadow="lg"
+												bg="white"
+												color="var(--primary-color)"
+												fontWeight="700"
+												flexShrink={0}
 											>
-												<Icon as={StatIcon} />
+												{index + 1}
 											</Flex>
-
-											<Heading
-												size="2xl"
-												bgGradient="linear(to-r, cyan.300, purple.400)"
-												bgClip="text"
-												fontWeight="extrabold"
-											>
-												{stat.number}
-											</Heading>
-
-											<Text
-												fontWeight="600"
-												color="gray.200"
-												letterSpacing="wide"
-												textTransform="uppercase"
-												fontSize="sm"
-											>
-												{stat.label}
-											</Text>
-										</VStack>
-									</Box>
-								);
-							})}
-						</SimpleGrid>
-					</VStack>
-				</Container>
-
-
-				{/* CTA Section */}
-				<Box
-					bgGradient="linear(to-r, blue.600, purple.600)"
-					py={12}
-					borderTop="1px solid"
-					borderColor="whiteAlpha.300"
-				>
-					<Container maxW="container.lg" textAlign="center" px={6}>
-						<VStack spacing={3}>
-							<Heading size="lg" mb={2} color="white">
-								Are you not just the customer?
-							</Heading>
-							<Heading
-								size="lg"
-								bgGradient="linear(to-r, red.400, teal.500)"
-								bgClip="text"
-								fontWeight="extrabold"
-								cursor="pointer"
-							>
-								Need to manage or grow your retail business?
-							</Heading>
-							<Heading size="lg" color="white" fontWeight="600">
-								Ready to Transform Your Retail Business?
-							</Heading>
-						</VStack>
-						<Text color="whiteAlpha.800" mb={6} fontSize="md">
-							Start using RetailIQ today and see the difference AI-powered
-							analytics can make.
-						</Text>
-						<HStack justify="center" spacing={4}>
-							<Button
-								size="lg"
-								fontWeight="600"
-								bg="white"
-								color="gray.900"
-								_hover={{ bg: "gray.100" }}
-							>
-								Get Started
-							</Button>
-							<Button
-								variant="outline"
-								size="lg"
-								fontWeight="600"
-								borderColor="whiteAlpha.800"
-								color="white"
-								_hover={{ bg: "whiteAlpha.200" }}
-							>
-								View Pricing
-							</Button>
-						</HStack>
+											<Text color="var(--text-secondary)">{item}</Text>
+										</HStack>
+									))}
+								</VStack>
+							</Box>
+						</Grid>
 					</Container>
 				</Box>
-				{/* Benefits Section */}
-				<Container maxW="container.xl" py={16} px={6}>
-					<VStack spacing={8} align="stretch">
-						<Box textAlign="center">
-							<Heading size="lg" mb={2} color="gray.100">
-								Key Benefits
-							</Heading>
-							<Text color="gray.400">
-								How RetailIQ helps your business grow
-							</Text>
+
+				<Container maxW="container.xl" py={{ base: 10, md: 16 }}>
+					<VStack spacing={12} align="stretch">
+						<SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+							{stats.map((stat) => (
+								<Box
+									key={stat.label}
+									bg="white"
+									border="1px solid"
+									borderColor="var(--border-light)"
+									borderRadius="2xl"
+									p={6}
+									boxShadow="var(--shadow-sm)"
+								>
+									<HStack justify="space-between" align="start">
+										<VStack align="start" spacing={2}>
+											<Text fontSize="sm" color="var(--text-secondary)">
+												{stat.label}
+											</Text>
+											<Heading size="xl" color="var(--primary-color)">
+												{stat.number}
+											</Heading>
+										</VStack>
+										<Flex
+											w="3rem"
+											h="3rem"
+											borderRadius="xl"
+											align="center"
+											justify="center"
+											bg="var(--primary-lighter)"
+											color="var(--primary-color)"
+										>
+											<Icon as={stat.icon} boxSize={5} />
+										</Flex>
+									</HStack>
+								</Box>
+							))}
+						</SimpleGrid>
+
+						<Box>
+							<VStack align="start" spacing={2} mb={6}>
+								<Heading size="lg">Why customers will notice the difference</Heading>
+								<Text color="var(--text-secondary)">
+									The refreshed user side now matches the stronger product and dashboard styling already present in RetailIQ.
+								</Text>
+							</VStack>
+							<SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} spacing={6}>
+								{featureCards.map((feature) => (
+									<Box
+										key={feature.title}
+										bg="white"
+										border="1px solid"
+										borderColor="var(--border-light)"
+										borderRadius="2xl"
+										p={6}
+										boxShadow="var(--shadow-sm)"
+										transition="all var(--transition-normal)"
+										_hover={{ transform: "translateY(-4px)", boxShadow: "var(--shadow-md)" }}
+									>
+										<Flex
+											w="3.25rem"
+											h="3.25rem"
+											borderRadius="xl"
+											align="center"
+											justify="center"
+											bg="var(--primary-lighter)"
+											color="var(--primary-color)"
+											mb={4}
+										>
+											<Icon as={feature.icon} boxSize={5} />
+										</Flex>
+										<Heading size="sm" mb={2}>
+											{feature.title}
+										</Heading>
+										<Text color="var(--text-secondary)" fontSize="sm">
+											{feature.description}
+										</Text>
+									</Box>
+								))}
+							</SimpleGrid>
 						</Box>
 
-						<Grid
-							templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }}
-							gap={8}
+						<Box
+							bg="linear-gradient(135deg, #0f3d91 0%, #0066cc 60%, #0aa2dd 100%)"
+							borderRadius="3xl"
+							p={{ base: 7, md: 10 }}
+							color="white"
+							boxShadow="0 24px 60px rgba(0, 102, 204, 0.20)"
 						>
-							{[
-								"Reduce lost sales with accurate demand forecasting",
-								"Optimize inventory investment with AI recommendations",
-								"Design effective promotions with market basket analysis",
-								"Predict stock-outs and overstock situations",
-								"Make data-driven pricing decisions",
-								"Track performance with real-time dashboards",
-							].map((benefit, idx) => (
-								<HStack key={idx} spacing={3} align="flex-start">
-									<Box color="green.400" fontSize="lg" mt={1}>
-										✓
-									</Box>
-									<Text color="gray.200">{benefit}</Text>
+							<Grid templateColumns={{ base: "1fr", lg: "1fr auto" }} gap={8} alignItems="center">
+								<VStack align="start" spacing={3}>
+									<Heading size="lg" color="white">
+										Ready to browse the upgraded storefront?
+									</Heading>
+									<Text color="whiteAlpha.900" maxW="2xl">
+										Open the product catalog, manage your wishlist, or review your latest orders without leaving the updated customer flow.
+									</Text>
+								</VStack>
+								<HStack spacing={4} flexWrap="wrap">
+									<Button
+										size="lg"
+										bg="white"
+										color="var(--primary-dark)"
+										_hover={{ bg: "whiteAlpha.900" }}
+										leftIcon={<FaShoppingBag />}
+										onClick={() => navigate("/customer/products")}
+									>
+										Start Shopping
+									</Button>
+									<Button
+										size="lg"
+										variant="outline"
+										borderColor="whiteAlpha.700"
+										color="white"
+										_hover={{ bg: "whiteAlpha.200", borderColor: "whiteAlpha.900" }}
+										onClick={() => navigate("/contact-us")}
+									>
+										Contact Support
+									</Button>
 								</HStack>
-							))}
-						</Grid>
+							</Grid>
+						</Box>
 					</VStack>
 				</Container>
 			</Box>

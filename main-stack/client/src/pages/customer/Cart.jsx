@@ -13,7 +13,6 @@ import {
   NumberInputField,
   NumberInputStepper,
   SimpleGrid,
-  useColorModeValue,
   Table,
   Thead,
   Tbody,
@@ -37,9 +36,9 @@ export default function CartPage() {
   const toast = useToast()
   const { cart, removeFromCart, updateQuantity, clearCart, getCartTotal } = useCart()
   const [isCheckoutOpen, setIsCheckoutOpen] = React.useState(false)
-  const bgCard = useColorModeValue('white', 'gray.800')
-  const borderColor = useColorModeValue('gray.200', 'gray.700')
-  const textMuted = useColorModeValue('gray.600', 'gray.400')
+  const bgCard = "var(--surface-card)"
+  const borderColor = "var(--border-light)"
+  const textMuted = "var(--text-secondary)"
 
   const handleRemove = (productId) => {
     removeFromCart(productId)
@@ -91,7 +90,7 @@ export default function CartPage() {
       }, 500)
     }
   return (
-    <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')} w='100vw'>
+    <Box minH="100vh" display="flex" flexDirection="column" bg="var(--surface-light)" w='100vw'>
       <Navbar />
 
       <Box flex={1} py={{ base: 6, md: 12 }}>
@@ -151,7 +150,7 @@ export default function CartPage() {
                                 </VStack>
                               </HStack>
                             </Td>
-                            <Td isNumeric fontWeight="600">${item.sell_price}</Td>
+                            <Td isNumeric fontWeight="600">₹{item.sell_price}</Td>
                             <Td isNumeric>
                               <NumberInput
                                 value={item.quantity}
@@ -168,7 +167,7 @@ export default function CartPage() {
                               </NumberInput>
                             </Td>
                             <Td isNumeric fontWeight="700" color="green.600">
-                              ${(item.sell_price * item.quantity)}
+                              ₹{(item.sell_price * item.quantity)}
                             </Td>
                             <Td>
                               <IconButton
@@ -205,7 +204,7 @@ export default function CartPage() {
                 <VStack spacing={4} align="stretch">
                   <HStack justify="space-between">
                     <Text color={textMuted}>Subtotal ({cart.length} items)</Text>
-                    <Text fontWeight="600">${getCartTotal().toFixed(2)}</Text>
+                    <Text fontWeight="600">₹{getCartTotal().toFixed(2)}</Text>
                   </HStack>
 
                   <HStack justify="space-between">
@@ -215,7 +214,7 @@ export default function CartPage() {
 
                   <HStack justify="space-between">
                     <Text color={textMuted}>Tax</Text>
-                    <Text fontWeight="600">${(getCartTotal() * 0.1).toFixed(2)}</Text>
+                    <Text fontWeight="600">₹{(getCartTotal() * 0.1).toFixed(2)}</Text>
                   </HStack>
 
                   <Divider />
@@ -223,7 +222,7 @@ export default function CartPage() {
                   <HStack justify="space-between">
                     <Heading size="md">Total</Heading>
                     <Heading size="md" color="green.600">
-                      ${(getCartTotal() * 1.1).toFixed(2)}
+                      ₹{(getCartTotal() * 1.1).toFixed(2)}
                     </Heading>
                   </HStack>
 
