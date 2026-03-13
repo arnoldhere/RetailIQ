@@ -197,11 +197,11 @@ export default function ProductsPage() {
     /****
      * Fetch and Load the recommandation
      * ****/
-    const fetchRecommandation = async () => {
-        const userid = localStorage.getItem("retailiq_user_id")
-        console.log(`Loading the recommandation for user id : ${userid}`)
-        const res = await 
-    }
+    // const fetchRecommandation = async () => {
+    //     const userid = localStorage.getItem("retailiq_user_id")
+    //     console.log(`Loading the recommandation for user id : ${userid}`)
+    //     const res = await 
+    // }
 
     const fetchStores = async () => {
         try {

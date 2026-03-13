@@ -164,7 +164,7 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
       prefill: {
         name: orderResponse.userName,
         email: orderResponse.userEmail,
-        contact: orderResponse.userPhone || '',
+        contact: orderResponse.userPhone || 1234567890,
       },
 
       handler: async function (response) {
@@ -244,7 +244,14 @@ export default function CheckoutModal({ isOpen, onClose, onSuccess }) {
   ---------------------------------------------------*/
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="lg" isCentered>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      isCentered
+      trapFocus={false}
+      blockScrollOnMount={false}
+    >
       <ModalOverlay backdropFilter="blur(5px)" />
 
       <ModalContent>
