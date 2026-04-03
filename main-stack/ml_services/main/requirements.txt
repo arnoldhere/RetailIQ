@@ -1,3 +1,5 @@
+fastapi
+uvicorn[standard]
 pandas 
 numpy
 matplotlib
@@ -5,3 +7,4 @@ seaborn
 scikit-learn
 sqlalchemy
 lightfm
+pydantic

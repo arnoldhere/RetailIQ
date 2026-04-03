@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import * as productApi from '../../api/products'
 import {
     Box,
@@ -44,6 +44,7 @@ import { useAuth } from '../../context/AuthContext'
 import { FaHeart, FaShoppingCart, FaArrowDown } from 'react-icons/fa'
 import * as bidsApi from '../../api/bids'
 import { buildApiUrl, resolveMediaUrl } from '../../api/base'
+import { getRecommendedProducts } from '../../api/ml_services'
 
 /**
  * ProductCard Component
@@ -148,14 +149,17 @@ function ProductCard({ product, onViewDetail, onAddCart, onToggleWishlist, isInW
 export default function ProductsPage() {
     const toast = useToast()
     const navigate = useNavigate()
-    const { user } = useAuth()
+    const { user, loading: authLoading } = useAuth()
     const { addToCart } = useCart()
     const { toggleWishlist, isInWishlist } = useWishlist()
 
     const [products, setProducts] = useState([])
+    const [recommendedProducts, setRecommendedProducts] = useState([])
     const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(false)
     const [loadingMore, setLoadingMore] = useState(false)
+    const [recommendationsLoading, setRecommendationsLoading] = useState(false)
+    const [recommendationsMeta, setRecommendationsMeta] = useState(null)
     const [total, setTotal] = useState(0)
 
     const [filters, setFilters] = useState({ search: '', category_id: '', sort: 'name', order: 'asc' })
@@ -194,14 +198,40 @@ export default function ProductsPage() {
     }
 
 
-    /****
-     * Fetch and Load the recommandation
-     * ****/
-    // const fetchRecommandation = async () => {
-    //     const userid = localStorage.getItem("retailiq_user_id")
-    //     console.log(`Loading the recommandation for user id : ${userid}`)
-    //     const res = await 
-    // }
+    /**
+     * Fetch customer recommendations from the backend.
+     * The backend validates the user from the auth token before it forwards
+     * the request to the FastAPI service, so the UI keeps a small payload.
+     */
+    const fetchRecommendations = useCallback(async () => {
+        if (!user?.id || user.role !== 'customer') return
+
+        setRecommendationsLoading(true)
+        try {
+            const data = await getRecommendedProducts(user.id, 4)
+            setRecommendedProducts(Array.isArray(data?.recommendations) ? data.recommendations : [])
+            setRecommendationsMeta(data?.metadata || null)
+        } catch (err) {
+            console.error('Failed to fetch recommendations:', err)
+            setRecommendedProducts([])
+            setRecommendationsMeta(null)
+        } finally {
+            setRecommendationsLoading(false)
+        }
+    }, [user?.id, user?.role])
+
+    // Load recommendations when the customer opens the products page.
+    useEffect(() => {
+        if (authLoading) return
+
+        if (!user?.id || user.role !== 'customer') {
+            setRecommendedProducts([])
+            setRecommendationsMeta(null)
+            return
+        }
+
+        fetchRecommendations()
+    }, [authLoading, fetchRecommendations, user?.id, user?.role])
 
     const fetchStores = async () => {
         try {
@@ -354,12 +384,53 @@ export default function ProductsPage() {
                         </>
                     )}
 
-                    {/* Recommendation Placeholder */}
+                    {/* Recommendation section */}
                     <Box bg={containerBg} p={6} borderRadius="xl" border="1px solid" borderColor="gray.100">
-                        <Heading size="md" mb={3}>Recommended Products</Heading>
-                        <Box w="full" borderRadius="xl" border="1px dashed" borderColor="gray.200" bg="gray.50" py={10} textAlign="center">
-                            <Text color={muted} fontWeight="600">Start purchasing for personalized recommendations.</Text>
-                        </Box>
+                        <Flex justify="space-between" align={{ base: 'start', md: 'center' }} direction={{ base: 'column', md: 'row' }} gap={3} mb={5}>
+                            <Box>
+                                <Heading size="md">Recommended Products</Heading>
+                                <Text color={muted} fontSize="sm">
+                                    {recommendationsMeta?.strategy === 'popular_products_fallback'
+                                        ? 'Showing popular fallback picks while the ML service is unavailable.'
+                                        : 'Personalized suggestions based on your profile and activity.'}
+                                </Text>
+                            </Box>
+                            {user?.role === 'customer' && (
+                                <Button variant="outline" size="sm" onClick={fetchRecommendations} isLoading={recommendationsLoading}>
+                                    Refresh Recommendations
+                                </Button>
+                            )}
+                        </Flex>
+
+                        {user?.role !== 'customer' ? (
+                            <Box w="full" borderRadius="xl" border="1px dashed" borderColor="gray.200" bg="gray.50" py={10} textAlign="center">
+                                <Text color={muted} fontWeight="600">Recommendations are available for customer accounts.</Text>
+                            </Box>
+                        ) : recommendationsLoading ? (
+                            <Flex justify="center" py={12}><Spinner size="lg" color={accent} /></Flex>
+                        ) : recommendedProducts.length === 0 ? (
+                            <Box w="full" borderRadius="xl" border="1px dashed" borderColor="gray.200" bg="gray.50" py={10} textAlign="center">
+                                <Text color={muted} fontWeight="600">Start purchasing for personalized recommendations.</Text>
+                            </Box>
+                        ) : (
+                            <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} spacing={6}>
+                                {recommendedProducts.map((entry) => (
+                                    <Box key={entry.product_id}>
+                                        <ProductCard
+                                            product={entry.product}
+                                            onViewDetail={handleViewDetail}
+                                            onAddCart={handleAddCart}
+                                            onToggleWishlist={handleToggleWishlist}
+                                            isInWishlist={isInWishlist(entry.product.id)}
+                                            onAskSupply={openSupplyModal}
+                                        />
+                                        <Text mt={2} fontSize="sm" color={muted}>
+                                            {entry.reason}
+                                        </Text>
+                                    </Box>
+                                ))}
+                            </SimpleGrid>
+                        )}
                     </Box>
                 </Box>
             </Box>
