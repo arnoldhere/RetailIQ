@@ -58,6 +58,11 @@ import Footer from '../../components/Footer'
 import AdminSidebar from '../../components/AdminSidebar'
 import * as productsApi from '../../api/products'
 import * as categoriesApi from '../../api/categories'
+import {
+    AdminTablePagination,
+    AdminTableShell,
+    SortableTh,
+} from '../../components/AdminTable'
 
 const MAX_IMAGES = 5
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -113,7 +118,7 @@ export default function ProductsPage() {
         sort: 'created_at',
         order: 'desc',
     })
-    const [limit] = useState(12)
+    const [limit, setLimit] = useState(12)
     const [offset, setOffset] = useState(0)
     const [form, setForm] = useState({
         name: '',
@@ -199,6 +204,15 @@ export default function ProductsPage() {
     const handleResetFilters = () => {
         setOffset(0)
         setFilters({ search: '', category_id: '', sort: 'created_at', order: 'desc' })
+    }
+
+    const handleTableSort = (column) => {
+        setOffset(0)
+        setFilters((prev) => ({
+            ...prev,
+            sort: column,
+            order: prev.sort === column && prev.order === 'asc' ? 'desc' : 'asc',
+        }))
     }
 
     const totalPages = Math.ceil(total / limit)
@@ -544,16 +558,42 @@ export default function ProductsPage() {
                                     </Button>
                                 </Box>
                             ) : (
-                                <Box borderRadius="xl" overflow="hidden" border="1px solid" borderColor={borderColor} bg={tableStripe} ref={tableRef}>
-                                    <TableContainer maxH="62vh" overflowY="auto">
+                                <AdminTableShell bg={tableStripe} borderColor={borderColor}>
                                         <Table variant="simple" size="sm">
                                             <Thead position="sticky" top={0} zIndex={1} bg={tableHeadBg}>
                                                 <Tr>
-                                                    <Th fontWeight="700" color="white.700">Name</Th>
+                                                    <SortableTh
+                                                        label="Name"
+                                                        sortKey="name"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                    />
                                                     <Th fontWeight="700" color="white.700">Category</Th>
-                                                    <Th fontWeight="700" color="white.700" isNumeric>Cost</Th>
-                                                    <Th fontWeight="700" color="white.700" isNumeric>Price</Th>
-                                                    <Th fontWeight="700" color="white.700" isNumeric>Stock</Th>
+                                                    <SortableTh
+                                                        label="Cost"
+                                                        sortKey="cost_price"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                        isNumeric
+                                                    />
+                                                    <SortableTh
+                                                        label="Price"
+                                                        sortKey="sell_price"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                        isNumeric
+                                                    />
+                                                    <SortableTh
+                                                        label="Stock"
+                                                        sortKey="stock_available"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                        isNumeric
+                                                    />
                                                     <Th fontWeight="700" color="white.700">Images</Th>
                                                     <Th fontWeight="700" color="orange.700" textAlign="center" w="140px">Actions</Th>
                                                 </Tr>
@@ -646,35 +686,24 @@ export default function ProductsPage() {
                                                 ))}
                                             </Tbody>
                                         </Table>
-                                    </TableContainer>
-                                </Box>
+                                </AdminTableShell>
                             )}
 
                             {/* Pagination */}
-                            {!loading && products.length > 0 && totalPages > 1 && (
-                                <Flex justify="center" gap={4} align="center" mt={6}>
-                                    <Button
-                                        variant="ghost"
-                                        onClick={() => setOffset(Math.max(0, offset - limit))}
-                                        isDisabled={offset === 0}
-                                        borderRadius="md"
-                                    >
-                                        Previous
-                                    </Button>
-
-                                    <Text fontWeight="600" color={mutedText}>
-                                        Page {currentPage} of {totalPages} ({total} total)
-                                    </Text>
-
-                                    <Button
-                                        variant="ghost"
-                                        onClick={() => setOffset(offset + limit)}
-                                        isDisabled={currentPage === totalPages}
-                                        borderRadius="md"
-                                    >
-                                        Next
-                                    </Button>
-                                </Flex>
+                            {!loading && products.length > 0 && (
+                                <AdminTablePagination
+                                    currentPage={currentPage}
+                                    totalPages={Math.max(totalPages, 1)}
+                                    totalItems={total}
+                                    pageSize={limit}
+                                    onPageSizeChange={(size) => {
+                                        setLimit(size)
+                                        setOffset(0)
+                                    }}
+                                    onPrevious={() => setOffset(Math.max(0, offset - limit))}
+                                    onNext={() => setOffset(offset + limit)}
+                                    itemLabel="products"
+                                />
                             )}
                         </Box>
                     </SimpleGrid>

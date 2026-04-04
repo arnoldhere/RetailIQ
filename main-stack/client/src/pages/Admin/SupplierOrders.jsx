@@ -38,6 +38,11 @@ import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import AdminSidebar from '../../components/AdminSidebar'
 import * as adminApi from '../../api/admin'
+import {
+    AdminTablePagination,
+    AdminTableShell,
+    SortableTh,
+} from '../../components/AdminTable'
 
 export default function SupplierOrdersPage() {
     const toast = useToast()
@@ -61,7 +66,7 @@ export default function SupplierOrdersPage() {
         sortBy: 'created_at', // field to sort by
         sortDir: 'DESC', // ASC or DESC
     })
-    const [limit] = useState(12)
+    const [limit, setLimit] = useState(12)
     const [offset, setOffset] = useState(0)
 
     useEffect(() => {
@@ -88,6 +93,25 @@ export default function SupplierOrdersPage() {
     const handleFilterChange = (key, value) => {
         setOffset(0)
         setFilters((prev) => ({ ...prev, [key]: value }))
+    }
+
+    const handleResetFilters = () => {
+        setOffset(0)
+        setFilters({
+            search: '',
+            status: '',
+            sortBy: 'created_at',
+            sortDir: 'DESC',
+        })
+    }
+
+    const handleTableSort = (column) => {
+        setOffset(0)
+        setFilters((prev) => ({
+            ...prev,
+            sortBy: column,
+            sortDir: prev.sortBy === column && prev.sortDir === 'ASC' ? 'DESC' : 'ASC',
+        }))
     }
 
     /**
@@ -382,6 +406,11 @@ export default function SupplierOrdersPage() {
                                             </Button>
                                         </Flex>
                                     </FormControl>
+                                    <Flex justify={{ base: 'stretch', md: 'flex-end' }}>
+                                        <Button variant="outline" borderRadius="full" onClick={handleResetFilters}>
+                                            Reset
+                                        </Button>
+                                    </Flex>
                                 </SimpleGrid>
                             </Box>
 
@@ -409,19 +438,49 @@ export default function SupplierOrdersPage() {
                                 </Box>
                             ) : (
                                 <>
-                                    <Box borderRadius="xl" overflow="hidden" border="1px solid" borderColor={borderColor} bg={tableStripe}>
-                                        <TableContainer maxH="62vh" overflowY="auto">
+                                    <AdminTableShell bg={tableStripe} borderColor={borderColor}>
                                             <Table variant="simple" size="sm">
                                                 <Thead position="sticky" top={0} zIndex={1} bg={tableHeadBg}>
                                                     <Tr>
-                                                        <Th fontWeight="700" color="white.700">Order No</Th>
-                                                        <Th fontWeight="700" color="white.700">Supplier</Th>
+                                                        <Th fontWeight="700" color={mutedText}>Order No</Th>
+                                                        <SortableTh
+                                                            label="Supplier"
+                                                            sortKey="supplier_name"
+                                                            sortBy={filters.sortBy}
+                                                            sortOrder={filters.sortDir === 'ASC' ? 'asc' : 'desc'}
+                                                            onSort={handleTableSort}
+                                                        />
                                                         <Th fontWeight="700" color="white.700">Store</Th>
                                                         <Th fontWeight="700" color="white.700">Ordered By</Th>
-                                                        <Th fontWeight="700" color="white.700" isNumeric>Amount</Th>
-                                                        <Th fontWeight="700" color="white.700" textAlign="center">Status</Th>
-                                                        <Th fontWeight="700" color="white.700">Delivery Date</Th>
-                                                        <Th fontWeight="700" color="white.700">Date</Th>
+                                                        <SortableTh
+                                                            label="Amount"
+                                                            sortKey="total_amount"
+                                                            sortBy={filters.sortBy}
+                                                            sortOrder={filters.sortDir === 'ASC' ? 'asc' : 'desc'}
+                                                            onSort={handleTableSort}
+                                                            isNumeric
+                                                        />
+                                                        <SortableTh
+                                                            label="Status"
+                                                            sortKey="status"
+                                                            sortBy={filters.sortBy}
+                                                            sortOrder={filters.sortDir === 'ASC' ? 'asc' : 'desc'}
+                                                            onSort={handleTableSort}
+                                                        />
+                                                        <SortableTh
+                                                            label="Delivery Date"
+                                                            sortKey="deliver_at"
+                                                            sortBy={filters.sortBy}
+                                                            sortOrder={filters.sortDir === 'ASC' ? 'asc' : 'desc'}
+                                                            onSort={handleTableSort}
+                                                        />
+                                                        <SortableTh
+                                                            label="Date"
+                                                            sortKey="created_at"
+                                                            sortBy={filters.sortBy}
+                                                            sortOrder={filters.sortDir === 'ASC' ? 'asc' : 'desc'}
+                                                            onSort={handleTableSort}
+                                                        />
                                                         <Th fontWeight="700" color="white.700">Actions</Th>
                                                     </Tr>
                                                 </Thead>
@@ -467,35 +526,22 @@ export default function SupplierOrdersPage() {
                                                     ))}
                                                 </Tbody>
                                             </Table>
-                                        </TableContainer>
-                                    </Box>
+                                    </AdminTableShell>
 
                                     {/* Pagination */}
-                                    {totalPages > 1 && (
-                                        <Flex justify="center" gap={4} align="center" mt={6}>
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => setOffset(Math.max(0, offset - limit))}
-                                                isDisabled={offset === 0}
-                                                borderRadius="md"
-                                            >
-                                                Previous
-                                            </Button>
-
-                                            <Text fontWeight="600" color={mutedText}>
-                                                Page {currentPage} of {totalPages} ({total} total)
-                                            </Text>
-
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => setOffset(offset + limit)}
-                                                isDisabled={currentPage === totalPages}
-                                                borderRadius="md"
-                                            >
-                                                Next
-                                            </Button>
-                                        </Flex>
-                                    )}
+                                    <AdminTablePagination
+                                        currentPage={currentPage}
+                                        totalPages={Math.max(totalPages, 1)}
+                                        totalItems={total}
+                                        pageSize={limit}
+                                        onPageSizeChange={(size) => {
+                                            setLimit(size)
+                                            setOffset(0)
+                                        }}
+                                        onPrevious={() => setOffset(Math.max(0, offset - limit))}
+                                        onNext={() => setOffset(offset + limit)}
+                                        itemLabel="orders"
+                                    />
                                 </>
                             )}
                         </Box>

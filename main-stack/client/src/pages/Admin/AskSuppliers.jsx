@@ -40,6 +40,11 @@ import Footer from "../../components/Footer";
 import AdminSidebar from "../../components/AdminSidebar";
 import * as adminApi from "../../api/admin";
 import * as bidApi from "../../api/bids";
+import {
+	AdminTablePagination,
+	AdminTableShell,
+	SortableTh,
+} from "../../components/AdminTable";
 
 const BID_STATUS_COLOR = {
 	submitted: "blue",
@@ -71,8 +76,19 @@ export default function AskSuppliers() {
 	const [currentAskStatus, setCurrentAskStatus] = useState("open");
 
 	const [askStatusFilter, setAskStatusFilter] = useState("all");
+	const [askSearch, setAskSearch] = useState("");
+	const [askSortBy, setAskSortBy] = useState("product_name");
+	const [askSortOrder, setAskSortOrder] = useState("asc");
+	const [askPage, setAskPage] = useState(1);
+	const [askPageSize, setAskPageSize] = useState(5);
 	const [selectedStore, setSelectedStore] = useState("");
 	const [deliverAt, setDeliverAt] = useState("");
+	const [bidsSearch, setBidsSearch] = useState("");
+	const [bidsStatusFilter, setBidsStatusFilter] = useState("all");
+	const [bidsSortBy, setBidsSortBy] = useState("price");
+	const [bidsSortOrder, setBidsSortOrder] = useState("asc");
+	const [bidsPage, setBidsPage] = useState(1);
+	const [bidsPageSize, setBidsPageSize] = useState(5);
 
 	const [form, setForm] = useState({
 		product_id: "",
@@ -132,6 +148,11 @@ export default function AskSuppliers() {
 		setCurrentAskStatus(ask.status || "open");
 		setSelectedStore("");
 		setDeliverAt("");
+		setBidsSearch("");
+		setBidsStatusFilter("all");
+		setBidsSortBy("price");
+		setBidsSortOrder("asc");
+		setBidsPage(1);
 		setBidsModalOpen(true);
 		setLoadingBids(true);
 
@@ -261,6 +282,123 @@ export default function AskSuppliers() {
 			{ label: "Active Bids", value: activeBids, icon: FiList, color: "purple.500" },
 		];
 	}, [asks]);
+
+	const processedAsks = useMemo(() => {
+		const query = askSearch.trim().toLowerCase();
+		let list = [...asks];
+
+		if (query) {
+			list = list.filter((ask) =>
+				[
+					ask.product_name,
+					String(ask.quantity || ""),
+					String(ask.bids_count || ""),
+					ask.status,
+				]
+					.filter(Boolean)
+					.join(" ")
+					.toLowerCase()
+					.includes(query)
+			);
+		}
+
+		list.sort((a, b) => {
+			const direction = askSortOrder === "asc" ? 1 : -1;
+
+			if (askSortBy === "quantity") return (Number(a.quantity || 0) - Number(b.quantity || 0)) * direction;
+			if (askSortBy === "bids_count") return (Number(a.bids_count || 0) - Number(b.bids_count || 0)) * direction;
+			if (askSortBy === "status") return String(a.status || "").localeCompare(String(b.status || "")) * direction;
+
+			return String(a.product_name || "").localeCompare(String(b.product_name || "")) * direction;
+		});
+
+		const total = list.length;
+		const totalPages = Math.max(1, Math.ceil(total / askPageSize));
+		const currentPage = Math.min(askPage, totalPages);
+		const start = (currentPage - 1) * askPageSize;
+
+		return {
+			items: list.slice(start, start + askPageSize),
+			total,
+			totalPages,
+			currentPage,
+		};
+	}, [asks, askSearch, askSortBy, askSortOrder, askPage, askPageSize]);
+
+	const processedBids = useMemo(() => {
+		const query = bidsSearch.trim().toLowerCase();
+		let list = [...bids];
+
+		if (bidsStatusFilter !== "all") {
+			list = list.filter((bid) => bid.status === bidsStatusFilter);
+		}
+
+		if (query) {
+			list = list.filter((bid) =>
+				[
+					getSupplierLabel(bid),
+					bid.message,
+					String(bid.quantity || ""),
+					String(bid.price || ""),
+					bid.status,
+				]
+					.filter(Boolean)
+					.join(" ")
+					.toLowerCase()
+					.includes(query)
+			);
+		}
+
+		list.sort((a, b) => {
+			const direction = bidsSortOrder === "asc" ? 1 : -1;
+
+			if (bidsSortBy === "price") return (Number(a.price || 0) - Number(b.price || 0)) * direction;
+			if (bidsSortBy === "quantity") return (Number(a.quantity || 0) - Number(b.quantity || 0)) * direction;
+			if (bidsSortBy === "status") return String(a.status || "").localeCompare(String(b.status || "")) * direction;
+
+			return getSupplierLabel(a).localeCompare(getSupplierLabel(b)) * direction;
+		});
+
+		const total = list.length;
+		const totalPages = Math.max(1, Math.ceil(total / bidsPageSize));
+		const currentPage = Math.min(bidsPage, totalPages);
+		const start = (currentPage - 1) * bidsPageSize;
+
+		return {
+			items: list.slice(start, start + bidsPageSize),
+			total,
+			totalPages,
+			currentPage,
+		};
+	}, [bids, bidsSearch, bidsStatusFilter, bidsSortBy, bidsSortOrder, bidsPage, bidsPageSize]);
+
+	useEffect(() => {
+		setAskPage(1);
+	}, [askSearch, askSortBy, askSortOrder, askPageSize, asks.length]);
+
+	useEffect(() => {
+		setBidsPage(1);
+	}, [bidsSearch, bidsStatusFilter, bidsSortBy, bidsSortOrder, bidsPageSize, bids.length]);
+
+	const handleAskSort = (column) => {
+		if (askSortBy === column) {
+			setAskSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+			return;
+		}
+
+		setAskSortBy(column);
+		setAskSortOrder(column === "status" ? "asc" : "desc");
+	};
+
+	const handleBidSort = (column) => {
+		if (bidsSortBy === column) {
+			setBidsSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+			return;
+		}
+
+		setBidsSortBy(column);
+		setBidsSortOrder(column === "supplier" ? "asc" : "desc");
+	};
 
 	return (
 		<Box minH="100vh" bg="#F9FAFB" display="flex" flexDirection="column">
@@ -442,23 +580,62 @@ export default function AskSuppliers() {
 										</HStack>
 									</Flex>
 
-									<Box overflowX="auto">
+									<Flex wrap="wrap" gap={3} align="center" justify="space-between">
+										<Input
+											maxW="320px"
+											borderRadius="full"
+											placeholder="Search asks..."
+											value={askSearch}
+											onChange={(e) => setAskSearch(e.target.value)}
+										/>
+										<Badge colorScheme="blue" variant="subtle" borderRadius="full" px={3} py={1}>
+											{processedAsks.total} asks
+										</Badge>
+									</Flex>
+
+									<AdminTableShell bg="white" borderColor="gray.100" maxH="auto">
 										<Table variant="simple" size="sm">
 											<Thead>
 												<Tr>
-													<Th border="none" color="gray.400">Product</Th>
-													<Th border="none" color="gray.400">Req. Qty</Th>
-													<Th border="none" color="gray.400">Bids</Th>
-													<Th border="none" color="gray.400">Status</Th>
-													<Th border="none" textAlign="right">Action</Th>
+													<SortableTh
+														label="Product"
+														sortKey="product_name"
+														sortBy={askSortBy}
+														sortOrder={askSortOrder}
+														onSort={handleAskSort}
+													/>
+													<SortableTh
+														label="Req. Qty"
+														sortKey="quantity"
+														sortBy={askSortBy}
+														sortOrder={askSortOrder}
+														onSort={handleAskSort}
+														isNumeric
+													/>
+													<SortableTh
+														label="Bids"
+														sortKey="bids_count"
+														sortBy={askSortBy}
+														sortOrder={askSortOrder}
+														onSort={handleAskSort}
+														isNumeric
+													/>
+													<SortableTh
+														label="Status"
+														sortKey="status"
+														sortBy={askSortBy}
+														sortOrder={askSortOrder}
+														onSort={handleAskSort}
+													/>
+													<Th border="none" textAlign="right" color="gray.400">Action</Th>
 												</Tr>
 											</Thead>
 											<Tbody>
-												{asks.map((ask) => (
+												{processedAsks.items.map((ask) => (
 													<Tr key={ask.id} _hover={{ bg: "gray.50" }} transition="0.2s">
 														<Td fontWeight="600" py={4}>{ask.product_name}</Td>
-														<Td>{ask.quantity}</Td>
-														<Td>
+														<Td isNumeric>{ask.quantity}</Td>
+														<Td isNumeric>
 															<HStack>
 																<Text fontWeight="bold">{ask.bids_count || 0}</Text>
 																{Number(ask.accepted_bids_count) > 0 && (
@@ -493,11 +670,23 @@ export default function AskSuppliers() {
 												))}
 											</Tbody>
 										</Table>
-									</Box>
+									</AdminTableShell>
 
 									{loadingAsks && <Flex justify="center" py={10}><Spinner /></Flex>}
-									{!loadingAsks && asks.length === 0 && (
+									{!loadingAsks && processedAsks.total === 0 && (
 										<Text textAlign="center" py={10} color="gray.400">No active asks found.</Text>
+									)}
+									{!loadingAsks && processedAsks.total > 0 && (
+										<AdminTablePagination
+											currentPage={processedAsks.currentPage}
+											totalPages={processedAsks.totalPages}
+											totalItems={processedAsks.total}
+											pageSize={askPageSize}
+											onPageSizeChange={(size) => setAskPageSize(size)}
+											onPrevious={() => setAskPage((page) => Math.max(1, page - 1))}
+											onNext={() => setAskPage((page) => Math.min(processedAsks.totalPages, page + 1))}
+											itemLabel="asks"
+										/>
 									)}
 								</VStack>
 							</Box>
@@ -547,23 +736,81 @@ export default function AskSuppliers() {
 							{loadingBids ? (
 								<Flex justify="center" py={10}><Spinner /></Flex>
 							) : (
-								<Box border="1px solid" borderColor="gray.100" borderRadius="2xl" overflow="hidden">
+								<VStack align="stretch" spacing={4}>
+									<Flex wrap="wrap" gap={3} justify="space-between" align="center">
+										<Input
+											maxW="320px"
+											borderRadius="full"
+											placeholder="Search bids..."
+											value={bidsSearch}
+											onChange={(e) => setBidsSearch(e.target.value)}
+										/>
+										<HStack spacing={3}>
+											<Select
+												borderRadius="full"
+												value={bidsStatusFilter}
+												onChange={(e) => setBidsStatusFilter(e.target.value)}
+												w="170px"
+											>
+												<option value="all">All bid status</option>
+												<option value="submitted">Submitted</option>
+												<option value="accepted">Accepted</option>
+												<option value="rejected">Rejected</option>
+											</Select>
+											<Badge colorScheme="purple" variant="subtle" borderRadius="full" px={3} py={1}>
+												{processedBids.total} bids
+											</Badge>
+										</HStack>
+									</Flex>
+									<AdminTableShell bg="white" borderColor="gray.100">
 									<Table variant="simple" size="md">
 										<Thead bg="gray.50">
 											<Tr>
-												<Th>Supplier</Th>
-												<Th>Offer Price</Th>
-												<Th>Quantity</Th>
+												<SortableTh
+													label="Supplier"
+													sortKey="supplier"
+													sortBy={bidsSortBy}
+													sortOrder={bidsSortOrder}
+													onSort={handleBidSort}
+												/>
+												<SortableTh
+													label="Offer Price"
+													sortKey="price"
+													sortBy={bidsSortBy}
+													sortOrder={bidsSortOrder}
+													onSort={handleBidSort}
+													isNumeric
+												/>
+												<SortableTh
+													label="Quantity"
+													sortKey="quantity"
+													sortBy={bidsSortBy}
+													sortOrder={bidsSortOrder}
+													onSort={handleBidSort}
+													isNumeric
+												/>
+												<SortableTh
+													label="Status"
+													sortKey="status"
+													sortBy={bidsSortBy}
+													sortOrder={bidsSortOrder}
+													onSort={handleBidSort}
+												/>
 												<Th>Message</Th>
 												<Th textAlign="right">Action</Th>
 											</Tr>
 										</Thead>
 										<Tbody>
-											{bids.map((bid) => (
+											{processedBids.items.map((bid) => (
 												<Tr key={bid.id}>
 													<Td fontWeight="600">{getSupplierLabel(bid)}</Td>
-													<Td color="green.600" fontWeight="bold">₹{Number(bid.price).toFixed(2)}</Td>
-													<Td>{bid.quantity}</Td>
+													<Td isNumeric color="green.600" fontWeight="bold">₹{Number(bid.price).toFixed(2)}</Td>
+													<Td isNumeric>{bid.quantity}</Td>
+													<Td>
+														<Badge colorScheme={BID_STATUS_COLOR[bid.status] || "gray"} borderRadius="full">
+															{bid.status}
+														</Badge>
+													</Td>
 													<Td maxW="200px" isTruncated fontSize="sm" color="gray.500">{bid.message || "-"}</Td>
 													<Td textAlign="right">
 														<Button
@@ -582,7 +829,23 @@ export default function AskSuppliers() {
 											))}
 										</Tbody>
 									</Table>
-								</Box>
+									</AdminTableShell>
+									{processedBids.total > 0 && (
+										<AdminTablePagination
+											currentPage={processedBids.currentPage}
+											totalPages={processedBids.totalPages}
+											totalItems={processedBids.total}
+											pageSize={bidsPageSize}
+											onPageSizeChange={(size) => setBidsPageSize(size)}
+											onPrevious={() => setBidsPage((page) => Math.max(1, page - 1))}
+											onNext={() => setBidsPage((page) => Math.min(processedBids.totalPages, page + 1))}
+											itemLabel="bids"
+										/>
+									)}
+									{processedBids.total === 0 && (
+										<Text textAlign="center" py={6} color="gray.500">No bids match the current filters.</Text>
+									)}
+								</VStack>
 							)}
 						</VStack>
 					</ModalBody>

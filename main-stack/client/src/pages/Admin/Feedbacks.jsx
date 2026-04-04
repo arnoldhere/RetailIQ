@@ -15,8 +15,6 @@ import {
     useToast,
     Input,
     Spinner,
-    TableContainer,
-    Select,
     SimpleGrid,
     Tooltip,
     Flex,
@@ -35,16 +33,20 @@ import {
     AlertTitle,
     AlertDescription,
 } from '@chakra-ui/react'
-import { DeleteIcon, EditIcon, AddIcon, SearchIcon } from '@chakra-ui/icons'
+import { SearchIcon } from '@chakra-ui/icons'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import AdminSidebar from '../../components/AdminSidebar'
 import * as adminApi from '../../api/admin'
 import { FiMail } from 'react-icons/fi'
+import {
+    AdminTablePagination,
+    AdminTableShell,
+    SortableTh,
+} from '../../components/AdminTable'
 
 export default function FeedbacksPage() {
     const toast = useToast()
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
     // -------------------------
     // Top-level theme tokens (ALL hooks here)
     // -------------------------
@@ -64,8 +66,12 @@ export default function FeedbacksPage() {
     // -------------------------
     const [feedbacks, setFeedbacks] = useState([])
     const [loading, setLoading] = useState(false)
-    const [searchQuery, setSearchQuery] = useState('')
-    const [limit] = useState(10)
+    const [filters, setFilters] = useState({
+        search: '',
+        sort: 'created_at',
+        order: 'desc',
+    })
+    const [limit, setLimit] = useState(10)
     const [offset, setOffset] = useState(0)
     const [total, setTotal] = useState(0)
     const [sendingAssuranceId, setSendingAssuranceId] = useState(null)
@@ -81,12 +87,12 @@ export default function FeedbacksPage() {
     useEffect(() => {
         // whenever search changes reset to first page
         setOffset(0)
-    }, [searchQuery])
+    }, [filters.search])
 
     async function fetchFeedbacks() {
         setLoading(true)
         try {
-            const res = await adminApi.getFeedbacks(limit, offset, { search: searchQuery })
+            const res = await adminApi.getFeedbacks(limit, offset, filters)
             setFeedbacks(res.data.feedbacks || [])
             setTotal(res.data.total || 0)
             // console.log(res.data)
@@ -104,7 +110,30 @@ export default function FeedbacksPage() {
     useEffect(() => {
         fetchFeedbacks();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [offset, searchQuery])
+    }, [offset, limit, filters])
+
+    const handleFilterChange = (key, value) => {
+        setOffset(0)
+        setFilters((prev) => ({ ...prev, [key]: value }))
+    }
+
+    const handleResetFilters = () => {
+        setOffset(0)
+        setFilters({
+            search: '',
+            sort: 'created_at',
+            order: 'desc',
+        })
+    }
+
+    const handleTableSort = (column) => {
+        setOffset(0)
+        setFilters((prev) => ({
+            ...prev,
+            sort: column,
+            order: prev.sort === column && prev.order === 'asc' ? 'desc' : 'asc',
+        }))
+    }
 
 
     // ✅ Handle sending assurance email with loading state per feedback
@@ -227,30 +256,43 @@ export default function FeedbacksPage() {
 
                             <Divider mb={5} />
 
-                            {/* Search Bar */}
-                            <Box mb={6}>
-                                <InputGroup size="md" maxW="400px">
-                                    <InputLeftElement pointerEvents="none">
-                                        <SearchIcon color={mutedText} />
-                                    </InputLeftElement>
-                                    <Input
-                                        placeholder="Search by name or message..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        bg={subtleCard}
-                                        borderColor={borderColor}
-                                        _focus={{
-                                            borderColor: accent,
-                                            boxShadow: `0 0 0 1px ${accent}`,
-                                        }}
-                                        borderRadius="lg"
-                                    />
-                                </InputGroup>
-                                {searchQuery && (
-                                    <Text mt={2} fontSize="sm" color={mutedText}>
-                                        Showing {feedbacks.length} of {total} feedbacks
-                                    </Text>
-                                )}
+                            <Box
+                                mb={6}
+                                bg="rgba(255,255,255,0.72)"
+                                p={{ base: 4, md: 5 }}
+                                borderRadius="2xl"
+                                border="1px solid"
+                                borderColor={borderColor}
+                                boxShadow="sm"
+                            >
+                                <Flex wrap="wrap" gap={4} align="center" justify="space-between">
+                                    <InputGroup size="md" maxW="420px">
+                                        <InputLeftElement pointerEvents="none">
+                                            <SearchIcon color={mutedText} />
+                                        </InputLeftElement>
+                                        <Input
+                                            placeholder="Search by name, email, or message..."
+                                            value={filters.search}
+                                            onChange={(e) => handleFilterChange('search', e.target.value)}
+                                            bg={subtleCard}
+                                            borderColor={borderColor}
+                                            _focus={{
+                                                borderColor: accent,
+                                                boxShadow: `0 0 0 1px ${accent}`,
+                                            }}
+                                            borderRadius="full"
+                                        />
+                                    </InputGroup>
+
+                                    <HStack spacing={3}>
+                                        <Text fontSize="sm" color={mutedText}>
+                                            {total} total
+                                        </Text>
+                                        <Button variant="outline" borderRadius="full" onClick={handleResetFilters}>
+                                            Reset
+                                        </Button>
+                                    </HStack>
+                                </Flex>
                             </Box>
 
                             {/* Table / states */}
@@ -276,62 +318,44 @@ export default function FeedbacksPage() {
                                     </Heading>
                                 </Box>
                             ) : (
-                                <Box borderRadius="xl" overflow="hidden" border="1px solid" borderColor={borderColor} bg={tableStripe} ref={tableRef}>
-                                    <TableContainer
-                                        maxH="62vh"
-                                        overflowY="auto"
-                                        borderWidth="1px"
-                                        borderRadius="xl"
-                                        boxShadow="lg"
-                                        bg={tableBg}
-                                        sx={{
-                                            // subtle custom scrollbar
-                                            "&::-webkit-scrollbar": {
-                                                width: "8px",
-                                            },
-                                            "&::-webkit-scrollbar-thumb": {
-                                                borderRadius: "full",
-                                            },
-                                        }}
-                                    >
+                                <Box ref={tableRef}>
+                                    <AdminTableShell bg={tableBg} borderColor={borderColor}>
                                         <Table variant="outline" size="sm" >
                                             <Thead
                                                 position="sticky"
                                                 top={0}
                                                 zIndex={1}
                                                 bg={tableHeadBg}
-                                                bgGradient="linear(to-r, teal.500, purple.600)"
-                                                color="white"
-                                                boxShadow="sm"
+                                                backdropFilter="blur(10px)"
                                             >
                                                 <Tr>
+                                                    <SortableTh
+                                                        label="User"
+                                                        sortKey="firstname"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                    />
+                                                    <SortableTh
+                                                        label="Email"
+                                                        sortKey="email"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                    />
+                                                    <Th fontWeight="700" color={mutedText}>Message</Th>
+                                                    <SortableTh
+                                                        label="Received"
+                                                        sortKey="created_at"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                    />
                                                     <Th
                                                         fontWeight="700"
-                                                        fontSize="xs"
-                                                        textTransform="uppercase"
-                                                        letterSpacing="wider"
-                                                        borderColor="transparent"
-                                                    >
-                                                        User
-                                                    </Th>
-                                                    <Th
-                                                        fontWeight="700"
-                                                        fontSize="xs"
-                                                        textTransform="uppercase"
-                                                        letterSpacing="wider"
-                                                        borderColor="transparent"
-                                                    >
-                                                        Message
-                                                    </Th>
-                                                    <Th
-                                                        fontWeight="700"
-                                                        fontSize="xs"
-                                                        textTransform="uppercase"
-                                                        letterSpacing="wider"
                                                         textAlign="center"
-                                                        w="140px"
-                                                        color="orange.100"
-                                                        borderColor="transparent"
+                                                        w="160px"
+                                                        color={mutedText}
                                                     >
                                                         Actions
                                                     </Th>
@@ -365,10 +389,14 @@ export default function FeedbacksPage() {
                                                             {`${f.firstname} ${f.lastname}`}
                                                         </Td>
 
+                                                        <Td fontSize="sm" color={mutedText} maxW="220px" isTruncated>
+                                                            {f.user_email || '-'}
+                                                        </Td>
+
                                                         {/* Message cell */}
                                                         <Td
                                                             fontWeight="500"
-                                                            color={msgBg}
+                                                            color="gray.700"
                                                             fontSize="sm"
                                                             maxW="480px"
                                                         >
@@ -386,6 +414,10 @@ export default function FeedbacksPage() {
                                                                     {f.message}
                                                                 </Box>
                                                             </Tooltip>
+                                                        </Td>
+
+                                                        <Td fontSize="sm" color={mutedText} whiteSpace="nowrap">
+                                                            {f.created_at ? new Date(f.created_at).toLocaleDateString() : '-'}
                                                         </Td>
 
                                                         {/* Actions */}
@@ -423,36 +455,26 @@ export default function FeedbacksPage() {
                                                 ))}
                                             </Tbody>
                                         </Table>
-                                    </TableContainer>
+                                    </AdminTableShell>
 
                                 </Box>
                             )}
 
                             {/* Pagination */}
-                            {!loading && feedbacks.length > 0 && totalPages > 1 && (
-                                <Flex justify="center" gap={4} align="center" mt={6}>
-                                    <Button
-                                        variant="ghost"
-                                        onClick={() => setOffset(Math.max(0, offset - limit))}
-                                        isDisabled={currentPage === 1}
-                                        borderRadius="md"
-                                    >
-                                        Previous
-                                    </Button>
-
-                                    <Text fontWeight="600" color={mutedText}>
-                                        Page {currentPage} of {totalPages} ({total} total)
-                                    </Text>
-
-                                    <Button
-                                        variant="ghost"
-                                        onClick={() => setOffset(offset + limit)}
-                                        isDisabled={currentPage === totalPages}
-                                        borderRadius="md"
-                                    >
-                                        Next
-                                    </Button>
-                                </Flex>
+                            {!loading && feedbacks.length > 0 && (
+                                <AdminTablePagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    totalItems={total}
+                                    pageSize={limit}
+                                    onPageSizeChange={(size) => {
+                                        setLimit(size)
+                                        setOffset(0)
+                                    }}
+                                    onPrevious={() => setOffset(Math.max(0, offset - limit))}
+                                    onNext={() => setOffset(offset + limit)}
+                                    itemLabel="feedbacks"
+                                />
                             )}
                         </Box>
                     </SimpleGrid>
@@ -500,7 +522,7 @@ export default function FeedbacksPage() {
                                             Customer: {selectedFeedback.firstname} {selectedFeedback.lastname}
                                         </Text>
                                         <Text fontSize="sm" color="gray.300">
-                                            Email: {selectedFeedback.email}
+                                            Email: {selectedFeedback.user_email}
                                         </Text>
                                         <Divider my={3} borderColor="whiteAlpha.200" />
                                         <Text fontSize="sm" color={msgBg} fontWeight="500">

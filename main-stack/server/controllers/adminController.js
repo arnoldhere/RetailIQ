@@ -435,6 +435,16 @@ exports.getFeedbacks = async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 12, 500);
     const offset = parseInt(req.query.offset) || 0;
     const search = req.query.search;
+    const sort = req.query.sort || 'created_at';
+    const order = (req.query.order || 'desc').toUpperCase();
+    const validSortFields = {
+      created_at: 'feedbacks.created_at',
+      firstname: 'users.firstname',
+      lastname: 'users.lastname',
+      email: 'users.email',
+    };
+    const sortColumn = validSortFields[sort] || 'feedbacks.created_at';
+    const orderDir = order === 'ASC' ? 'asc' : 'desc';
 
     let query = db('feedbacks')
       .join('users', 'feedbacks.cust_id', 'users.id')
@@ -459,7 +469,7 @@ exports.getFeedbacks = async (req, res) => {
     const total = Number(countResult.count || 0);
 
     const feedbacks = await query
-      .orderBy('feedbacks.created_at', 'desc')
+      .orderBy(sortColumn, orderDir)
       .limit(limit)
       .offset(offset);
 
@@ -475,6 +485,17 @@ exports.listSuppliers = async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 12, 500);
     const offset = parseInt(req.query.offset) || 0;
     const search = req.query.search;
+    const isActive = req.query.is_active;
+    const sort = req.query.sort || 'created_at';
+    const order = (req.query.order || 'desc').toUpperCase();
+    const validSortFields = {
+      created_at: 'created_at',
+      name: 'name',
+      email: 'email',
+      rating: 'rating',
+    };
+    const sortColumn = validSortFields[sort] || 'created_at';
+    const orderDir = order === 'ASC' ? 'asc' : 'desc';
 
     let query = db('suppliers').select('*');
 
@@ -482,8 +503,14 @@ exports.listSuppliers = async (req, res) => {
       query = query.where(function () {
         this.where('name', 'like', `%${search}%`)
           .orWhere('email', 'like', `%${search}%`)
-          .orWhere('phone', 'like', `%${search}%`);
+          .orWhere('phone', 'like', `%${search}%`)
+          .orWhere('address', 'like', `%${search}%`);
       });
+    }
+
+    if (isActive !== undefined && isActive !== '') {
+      const activeBool = isActive === 'true' || isActive === '1' || isActive === true;
+      query = query.where('is_active', activeBool);
     }
 
     const countQuery = query.clone();
@@ -496,7 +523,7 @@ exports.listSuppliers = async (req, res) => {
     const total = Number(countResult.count || 0);
 
     const suppliers = await query
-      .orderBy('created_at', 'desc')
+      .orderBy(sortColumn, orderDir)
       .limit(limit)
       .offset(offset);
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import {
+    Badge,
     Box,
     Button,
     Table,
@@ -20,7 +21,6 @@ import {
     SimpleGrid,
     Flex,
     Divider,
-    Badge,
     InputGroup,
     InputLeftElement,
     Modal,
@@ -41,6 +41,11 @@ import Footer from '../../components/Footer'
 import AdminSidebar from '../../components/AdminSidebar'
 import * as adminApi from '../../api/admin'
 import { DeleteIcon, EditIcon } from '@chakra-ui/icons'
+import {
+    AdminTablePagination,
+    AdminTableShell,
+    SortableTh,
+} from '../../components/AdminTable'
 export default function SuppliersPage() {
     const toast = useToast()
     const { isOpen, onOpen, onClose } = useDisclosure()
@@ -63,8 +68,11 @@ export default function SuppliersPage() {
     const [total, setTotal] = useState(0)
     const [filters, setFilters] = useState({
         search: '',
+        is_active: '',
+        sort: 'created_at',
+        order: 'desc',
     })
-    const [limit] = useState(12)
+    const [limit, setLimit] = useState(12)
     const [offset, setOffset] = useState(0)
 
     // Form state for adding supplier
@@ -103,6 +111,25 @@ export default function SuppliersPage() {
     const handleFilterChange = (key, value) => {
         setOffset(0)
         setFilters((prev) => ({ ...prev, [key]: value }))
+    }
+
+    const handleResetFilters = () => {
+        setOffset(0)
+        setFilters({
+            search: '',
+            is_active: '',
+            sort: 'created_at',
+            order: 'desc',
+        })
+    }
+
+    const handleTableSort = (column) => {
+        setOffset(0)
+        setFilters((prev) => ({
+            ...prev,
+            sort: column,
+            order: prev.sort === column && prev.order === 'asc' ? 'desc' : 'asc',
+        }))
     }
 
     const handleFormChange = (e) => {
@@ -209,25 +236,53 @@ export default function SuppliersPage() {
 
                             <Divider mb={5} />
 
-                            {/* Search Bar */}
-                            <Box mb={6}>
-                                <InputGroup size="md" maxW="400px">
-                                    <InputLeftElement pointerEvents="none">
-                                        <SearchIcon color={mutedText} />
-                                    </InputLeftElement>
-                                    <Input
-                                        placeholder="Search suppliers..."
-                                        value={filters.search}
-                                        onChange={(e) => handleFilterChange('search', e.target.value)}
+                            <Box
+                                mb={6}
+                                bg="rgba(255,255,255,0.72)"
+                                p={{ base: 4, md: 5 }}
+                                borderRadius="2xl"
+                                border="1px solid"
+                                borderColor={borderColor}
+                                boxShadow="sm"
+                            >
+                                <Flex wrap="wrap" gap={4} align="end">
+                                    <Box flex="1" minW={{ base: '100%', md: '260px' }}>
+                                        <InputGroup size="md">
+                                            <InputLeftElement pointerEvents="none">
+                                                <SearchIcon color={mutedText} />
+                                            </InputLeftElement>
+                                            <Input
+                                                placeholder="Search suppliers..."
+                                                value={filters.search}
+                                                onChange={(e) => handleFilterChange('search', e.target.value)}
+                                                bg={subtleCard}
+                                                borderColor={borderColor}
+                                                _focus={{
+                                                    borderColor: accent,
+                                                    boxShadow: `0 0 0 1px ${accent}`,
+                                                }}
+                                                borderRadius="full"
+                                            />
+                                        </InputGroup>
+                                    </Box>
+
+                                    <Select
+                                        value={filters.is_active}
+                                        onChange={(e) => handleFilterChange('is_active', e.target.value)}
+                                        maxW="180px"
                                         bg={subtleCard}
                                         borderColor={borderColor}
-                                        _focus={{
-                                            borderColor: accent,
-                                            boxShadow: `0 0 0 1px ${accent}`,
-                                        }}
-                                        borderRadius="lg"
-                                    />
-                                </InputGroup>
+                                        borderRadius="full"
+                                    >
+                                        <option value="">All status</option>
+                                        <option value="true">Active</option>
+                                        <option value="false">Inactive</option>
+                                    </Select>
+
+                                    <Button variant="outline" borderRadius="full" onClick={handleResetFilters}>
+                                        Reset
+                                    </Button>
+                                </Flex>
                             </Box>
 
                             {/* Table */}
@@ -254,18 +309,43 @@ export default function SuppliersPage() {
                                 </Box>
                             ) : (
                                 <>
-                                    <Box borderRadius="xl" overflow="hidden" border="1px solid" borderColor={borderColor} bg={tableStripe}>
-                                        <TableContainer maxH="62vh" overflowY="auto">
+                                    <AdminTableShell bg={tableStripe} borderColor={borderColor}>
                                             <Table variant="simple" size="sm">
                                                 <Thead position="sticky" top={0} zIndex={1} bg={tableHeadBg}>
                                                     <Tr>
-                                                        <Th fontWeight="700" color="white.700">Name</Th>
-                                                        <Th fontWeight="700" color="white.700">Email</Th>
-                                                        <Th fontWeight="700" color="white.700">Phone</Th>
-                                                        <Th fontWeight="700" color="white.700">Address</Th>
-                                                        <Th fontWeight="700" color="white.700" textAlign="center">Status</Th>
-                                                        <Th fontWeight="700" color="white.700" isNumeric>Rating</Th>
-                                                        <Th fontWeight="700" color="white.700" textAlign="center">Actions</Th>
+                                                        <SortableTh
+                                                            label="Name"
+                                                            sortKey="name"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                        />
+                                                        <SortableTh
+                                                            label="Email"
+                                                            sortKey="email"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                        />
+                                                        <Th fontWeight="700" color={mutedText}>Phone</Th>
+                                                        <Th fontWeight="700" color={mutedText}>Address</Th>
+                                                        <Th fontWeight="700" color={mutedText} textAlign="center">Status</Th>
+                                                        <SortableTh
+                                                            label="Rating"
+                                                            sortKey="rating"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                            isNumeric
+                                                        />
+                                                        <SortableTh
+                                                            label="Added"
+                                                            sortKey="created_at"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                        />
+                                                        <Th fontWeight="700" color={mutedText} textAlign="center">Actions</Th>
                                                     </Tr>
                                                 </Thead>
                                                 <Tbody>
@@ -290,6 +370,9 @@ export default function SuppliersPage() {
                                                             <Td isNumeric fontSize="sm" color={mutedText}>
                                                                 {supplier.rating ? `${supplier.rating}/5` : '-'}
                                                             </Td>
+                                                            <Td fontSize="sm" color={mutedText}>
+                                                                {supplier.created_at ? new Date(supplier.created_at).toLocaleDateString() : '-'}
+                                                            </Td>
                                                             <Td textAlign="center">
                                                                 <HStack justify="center">
                                                                     <Tooltip label="Edit">
@@ -311,35 +394,22 @@ export default function SuppliersPage() {
                                                     ))}
                                                 </Tbody>
                                             </Table>
-                                        </TableContainer>
-                                    </Box>
+                                    </AdminTableShell>
 
                                     {/* Pagination */}
-                                    {totalPages > 1 && (
-                                        <Flex justify="center" gap={4} align="center" mt={6}>
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => setOffset(Math.max(0, offset - limit))}
-                                                isDisabled={offset === 0}
-                                                borderRadius="md"
-                                            >
-                                                Previous
-                                            </Button>
-
-                                            <Text fontWeight="600" color={mutedText}>
-                                                Page {currentPage} of {totalPages} ({total} total)
-                                            </Text>
-
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => setOffset(offset + limit)}
-                                                isDisabled={currentPage === totalPages}
-                                                borderRadius="md"
-                                            >
-                                                Next
-                                            </Button>
-                                        </Flex>
-                                    )}
+                                    <AdminTablePagination
+                                        currentPage={currentPage}
+                                        totalPages={Math.max(totalPages, 1)}
+                                        totalItems={total}
+                                        pageSize={limit}
+                                        onPageSizeChange={(size) => {
+                                            setLimit(size)
+                                            setOffset(0)
+                                        }}
+                                        onPrevious={() => setOffset(Math.max(0, offset - limit))}
+                                        onNext={() => setOffset(offset + limit)}
+                                        itemLabel="suppliers"
+                                    />
 
                                     {/* Delete confirmation */}
                                     <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} isCentered>
@@ -477,4 +547,3 @@ export default function SuppliersPage() {
         </Box>
     )
 }
-

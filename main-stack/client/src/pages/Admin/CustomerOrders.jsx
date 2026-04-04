@@ -39,6 +39,11 @@ import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import AdminSidebar from '../../components/AdminSidebar'
 import * as adminApi from '../../api/admin'
+import {
+    AdminTablePagination,
+    AdminTableShell,
+    SortableTh,
+} from '../../components/AdminTable'
 
 export default function CustomerOrdersPage() {
     const toast = useToast()
@@ -62,7 +67,7 @@ export default function CustomerOrdersPage() {
         sort: 'created_at',
         order: 'desc',
     })
-    const [limit] = useState(12)
+    const [limit, setLimit] = useState(12)
     const [offset, setOffset] = useState(0)
 
     // Order details modal
@@ -146,6 +151,25 @@ export default function CustomerOrdersPage() {
     const handleFilterChange = (key, value) => {
         setOffset(0)
         setFilters((prev) => ({ ...prev, [key]: value }))
+    }
+
+    const handleResetFilters = () => {
+        setOffset(0)
+        setFilters({
+            search: '',
+            status: '',
+            sort: 'created_at',
+            order: 'desc',
+        })
+    }
+
+    const handleTableSort = (column) => {
+        setOffset(0)
+        setFilters((prev) => ({
+            ...prev,
+            sort: column,
+            order: prev.sort === column && prev.order === 'asc' ? 'desc' : 'asc',
+        }))
     }
 
     const getStatusColor = (status) => {
@@ -296,6 +320,11 @@ export default function CustomerOrdersPage() {
                                             <option value="asc">Ascending</option>
                                         </Select>
                                     </FormControl>
+                                    <Flex justify={{ base: 'stretch', md: 'flex-end' }}>
+                                        <Button variant="outline" borderRadius="full" onClick={handleResetFilters}>
+                                            Reset
+                                        </Button>
+                                    </Flex>
                                 </SimpleGrid>
                             </Box>
 
@@ -323,18 +352,49 @@ export default function CustomerOrdersPage() {
                                 </Box>
                             ) : (
                                 <>
-                                    <Box borderRadius="xl" overflow="hidden" border="1px solid" borderColor={borderColor} bg={tableStripe}>
-                                        <TableContainer maxH="62vh" overflowY="auto">
+                                    <AdminTableShell bg={tableStripe} borderColor={borderColor}>
                                             <Table variant="simple" size="sm">
                                                 <Thead position="sticky" top={0} zIndex={1} bg={tableHeadBg}>
                                                     <Tr>
-                                                        <Th fontWeight="700" color="white.700">Order No</Th>
-                                                        <Th fontWeight="700" color="white.700">Customer</Th>
+                                                        <SortableTh
+                                                            label="Order No"
+                                                            sortKey="order_no"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                        />
+                                                        <Th fontWeight="700" color={mutedText}>Customer</Th>
                                                         <Th fontWeight="700" color="white.700">Store</Th>
-                                                        <Th fontWeight="700" color="white.700" isNumeric>Amount</Th>
-                                                        <Th fontWeight="700" color="white.700" textAlign="center">Status</Th>
-                                                        <Th fontWeight="700" color="white.700" textAlign="center">Payment</Th>
-                                                        <Th fontWeight="700" color="white.700">Date</Th>
+                                                        <SortableTh
+                                                            label="Amount"
+                                                            sortKey="total_amount"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                            isNumeric
+                                                        />
+                                                        <SortableTh
+                                                            label="Status"
+                                                            sortKey="status"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                        />
+                                                        <SortableTh
+                                                            label="Payment"
+                                                            sortKey="payment_status"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                        />
+                                                        <SortableTh
+                                                            label="Date"
+                                                            sortKey="created_at"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                        />
+                                                        <Th fontWeight="700" color={mutedText} textAlign="center">Actions</Th>
                                                     </Tr>
                                                 </Thead>
                                                 <Tbody>
@@ -392,35 +452,22 @@ export default function CustomerOrdersPage() {
                                                     ))}
                                                 </Tbody>
                                             </Table>
-                                        </TableContainer>
-                                    </Box>
+                                    </AdminTableShell>
 
                                     {/* Pagination */}
-                                    {totalPages > 1 && (
-                                        <Flex justify="center" gap={4} align="center" mt={6}>
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => setOffset(Math.max(0, offset - limit))}
-                                                isDisabled={offset === 0}
-                                                borderRadius="md"
-                                            >
-                                                Previous
-                                            </Button>
-
-                                            <Text fontWeight="600" color={mutedText}>
-                                                Page {currentPage} of {totalPages} ({total} total)
-                                            </Text>
-
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => setOffset(offset + limit)}
-                                                isDisabled={currentPage === totalPages}
-                                                borderRadius="md"
-                                            >
-                                                Next
-                                            </Button>
-                                        </Flex>
-                                    )}
+                                    <AdminTablePagination
+                                        currentPage={currentPage}
+                                        totalPages={Math.max(totalPages, 1)}
+                                        totalItems={total}
+                                        pageSize={limit}
+                                        onPageSizeChange={(size) => {
+                                            setLimit(size)
+                                            setOffset(0)
+                                        }}
+                                        onPrevious={() => setOffset(Math.max(0, offset - limit))}
+                                        onNext={() => setOffset(offset + limit)}
+                                        itemLabel="orders"
+                                    />
 
                                     {/* Order details modal */}
                                     <Modal isOpen={isDetailsOpen} onClose={onDetailsClose} size="lg" isCentered>

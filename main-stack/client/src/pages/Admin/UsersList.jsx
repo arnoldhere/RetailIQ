@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+    Badge,
     Box,
     Button,
     Heading,
@@ -24,15 +25,12 @@ import {
     Select,
     Spinner,
     Center,
-    IconButton,
 } from "@chakra-ui/react";
 
 import {
     FiBarChart2,
     FiFileText,
     FiSearch,
-    FiChevronLeft,
-    FiChevronRight,
     FiUsers,
 } from "react-icons/fi";
 
@@ -40,14 +38,21 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import AdminSidebar from "../../components/AdminSidebar";
 import * as adminApi from "../../api/admin";
+import {
+    AdminTablePagination,
+    AdminTableShell,
+    SortableTh,
+} from "../../components/AdminTable";
 
 export default function UsersList() {
     const toast = useToast();
     const [loading, setLoading] = useState(false);
     const [metrics, setMetrics] = useState({ totalUsers: 0 });
     const [users, setUsers] = useState([]);
-    const tableHeadBg = "var(--surface-light)"
     const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [sortBy, setSortBy] = useState("created_at");
+    const [sortOrder, setSortOrder] = useState("desc");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const hoverBg = "var(--surface-light)"
@@ -83,19 +88,49 @@ export default function UsersList() {
     const tableBorder = "var(--border-light)";
     const borderColor = "var(--border-light)";
     const subtleCard = "var(--surface-card)";
+    const tableHeadBg = "rgba(248, 250, 252, 0.96)";
 
     // ---- Derived data: filtering + pagination ----
     const filteredUsers = useMemo(() => {
         const q = search.trim().toLowerCase();
-        if (!q) return users;
+        let list = [...users];
 
-        return users.filter((u) => {
-            const name = `${u.firstname || ""} ${u.lastname || ""}`.toLowerCase();
-            const email = (u.email || "").toLowerCase();
-            const phone = (u.phone || "").toLowerCase();
-            return name.includes(q) || email.includes(q) || phone.includes(q);
+        if (q) {
+            list = list.filter((u) => {
+                const name = `${u.firstname || ""} ${u.lastname || ""}`.toLowerCase();
+                const email = (u.email || "").toLowerCase();
+                const phone = (u.phone || "").toLowerCase();
+                return name.includes(q) || email.includes(q) || phone.includes(q);
+            });
+        }
+
+        if (statusFilter !== "all") {
+            const shouldBeActive = statusFilter === "active";
+            list = list.filter((u) => Boolean(u.is_active) === shouldBeActive);
+        }
+
+        list.sort((a, b) => {
+            const direction = sortOrder === "asc" ? 1 : -1;
+
+            if (sortBy === "name") {
+                const left = `${a.firstname || ""} ${a.lastname || ""}`.trim();
+                const right = `${b.firstname || ""} ${b.lastname || ""}`.trim();
+                return left.localeCompare(right) * direction;
+            }
+
+            if (sortBy === "email") {
+                return (a.email || "").localeCompare(b.email || "") * direction;
+            }
+
+            if (sortBy === "phone") {
+                return (a.phone || "").localeCompare(b.phone || "") * direction;
+            }
+
+            return (new Date(a.created_at) - new Date(b.created_at)) * direction;
         });
-    }, [users, search]);
+
+        return list;
+    }, [users, search, statusFilter, sortBy, sortOrder]);
 
     const totalPages = Math.max(
         1,
@@ -104,7 +139,7 @@ export default function UsersList() {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [search, pageSize]);
+    }, [search, statusFilter, sortBy, sortOrder, pageSize]);
 
     const paginatedUsers = useMemo(() => {
         const startIdx = (currentPage - 1) * pageSize;
@@ -114,6 +149,16 @@ export default function UsersList() {
     const noDbRecords = !loading && users.length === 0;
     const noSearchResults =
         !loading && users.length > 0 && filteredUsers.length === 0;
+
+    function handleSort(column) {
+        if (sortBy === column) {
+            setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+            return;
+        }
+
+        setSortBy(column);
+        setSortOrder(column === "created_at" ? "desc" : "asc");
+    }
 
     async function toggleUserStatus(user) {
         const isActive = user.is_active === 1
@@ -237,6 +282,12 @@ export default function UsersList() {
                                 wrap="wrap"
                                 gap={4}
                                 w="100%"
+                                bg="rgba(255,255,255,0.72)"
+                                border="1px solid"
+                                borderColor={borderColor}
+                                borderRadius="2xl"
+                                p={{ base: 4, md: 5 }}
+                                boxShadow="sm"
                             >
                                 <Box flex="1" minW={{ base: "100%", md: "260px" }}>
                                     <InputGroup size="sm">
@@ -248,67 +299,74 @@ export default function UsersList() {
                                             value={search}
                                             onChange={(e) => setSearch(e.target.value)}
                                             bg={subtleCard}
+                                            borderRadius="full"
                                         />
                                     </InputGroup>
                                 </Box>
 
                                 <HStack spacing={3}>
-                                    <Text fontSize="sm" color={textMuted}>
-                                        Rows per page:
-                                    </Text>
                                     <Select
                                         size="sm"
-                                        width="80px"
-                                        value={pageSize}
-                                        onChange={(e) => setPageSize(Number(e.target.value))}
+                                        width="150px"
+                                        value={statusFilter}
+                                        onChange={(e) => setStatusFilter(e.target.value)}
                                         bg={subtleCard}
+                                        borderRadius="full"
                                     >
-                                        {[5, 10, 20, 50].map((size) => (
-                                            <option key={size} value={size}>
-                                                {size}
-                                            </option>
-                                        ))}
+                                        <option value="all">All users</option>
+                                        <option value="active">Active only</option>
+                                        <option value="inactive">Inactive only</option>
                                     </Select>
+                                    <Badge colorScheme="blue" variant="subtle" borderRadius="full" px={3} py={1}>
+                                        {filteredUsers.length} shown
+                                    </Badge>
                                 </HStack>
                             </Flex>
 
                             {/* Table wrapper */}
-                            <Box
-                                borderWidth="1px"
-                                borderRadius="md"
-                                borderColor={tableBorder}
-                                bg={subtleCard}
-                                boxShadow="sm"
-                                overflow="hidden"
-                                w="100%"
-                            >
-                                <TableContainer
-                                    w="100%"
-                                    overflowX="auto"
-                                    overflowY="auto"
-                                    maxH={{ base: "none", md: "70vh" }}
-                                >
+                            <Box w="100%">
+                                <AdminTableShell bg={subtleCard} borderColor={tableBorder} maxH={{ base: "none", md: "70vh" }}>
                                     <Table size="md" variant="outline">
                                         <Thead
                                             position="sticky"
                                             top={0}
                                             zIndex={1}
                                             bg={tableHeadBg}
-                                            bgGradient="linear(to-r, teal.500, purple.600)"
-                                            color="white.900"
-                                            boxShadow="sm"
+                                            backdropFilter="blur(10px)"
                                         >
                                             <Tr>
-                                                <Th>Sr.</Th>
-                                                <Th>Name</Th>
-                                                <Th>Email</Th>
-                                                <Th display={{ base: "none", md: "table-cell" }}>
-                                                    Phone
-                                                </Th>
-                                                <Th display={{ base: "none", md: "table-cell" }}>
-                                                    Joined
-                                                </Th>
-                                                <Th textAlign="end">Action</Th>
+                                                <Th color={textMuted}>Sr.</Th>
+                                                <SortableTh
+                                                    label="Name"
+                                                    sortKey="name"
+                                                    sortBy={sortBy}
+                                                    sortOrder={sortOrder}
+                                                    onSort={handleSort}
+                                                />
+                                                <SortableTh
+                                                    label="Email"
+                                                    sortKey="email"
+                                                    sortBy={sortBy}
+                                                    sortOrder={sortOrder}
+                                                    onSort={handleSort}
+                                                />
+                                                <SortableTh
+                                                    label="Phone"
+                                                    sortKey="phone"
+                                                    sortBy={sortBy}
+                                                    sortOrder={sortOrder}
+                                                    onSort={handleSort}
+                                                    display={{ base: "none", md: "table-cell" }}
+                                                />
+                                                <SortableTh
+                                                    label="Joined"
+                                                    sortKey="created_at"
+                                                    sortBy={sortBy}
+                                                    sortOrder={sortOrder}
+                                                    onSort={handleSort}
+                                                    display={{ base: "none", md: "table-cell" }}
+                                                />
+                                                <Th textAlign="end" color={textMuted}>Action</Th>
                                             </Tr>
                                         </Thead>
 
@@ -381,11 +439,13 @@ export default function UsersList() {
                                                                 item.id ||
                                                                 `${item.email}-${sr}`
                                                             }
+                                                            _hover={{ bg: hoverBg }}
+                                                            transition="background 0.18s ease"
                                                         >
                                                             <Td>{sr}</Td>
                                                             <Td>
                                                                 <HStack spacing={2}>
-                                                                    <Text>{`${item.firstname} ${item.lastname}`}</Text>
+                                                                    <Text fontWeight="600">{`${item.firstname} ${item.lastname}`}</Text>
                                                                     <Box
                                                                         w="8px"
                                                                         h="8px"
@@ -401,6 +461,7 @@ export default function UsersList() {
                                                                     base: "none",
                                                                     md: "table-cell",
                                                                 }}
+                                                                color={textMuted}
                                                             >
                                                                 {item.phone || "-"}
                                                             </Td>
@@ -409,8 +470,9 @@ export default function UsersList() {
                                                                     base: "none",
                                                                     md: "table-cell",
                                                                 }}
+                                                                color={textMuted}
                                                             >
-                                                                {new Date(joined).toLocaleDateString("en-GB")}
+                                                                {joined === "-" ? "-" : new Date(item.created_at).toLocaleDateString("en-GB")}
                                                             </Td>
                                                             <Td textAlign="end">
                                                                 <Button
@@ -432,72 +494,26 @@ export default function UsersList() {
                                                 })}
                                         </Tbody>
                                     </Table>
-                                </TableContainer>
+                                </AdminTableShell>
 
                                 {/* Pagination footer */}
                                 {!loading && !noDbRecords && filteredUsers.length > 0 && (
-                                    <Flex
-                                        justify={{ base: "space-between", md: "flex-end" }}
-                                        align="center"
-                                        px={4}
-                                        py={3}
-                                        borderTopWidth="1px"
-                                        borderColor={tableBorder}
-                                        flexWrap="wrap"
-                                        gap={3}
-                                    >
-                                        <Text
-                                            fontSize="sm"
-                                            color={textMuted}
-                                            mr={{ md: "auto" }}
-                                        >
-                                            Showing{" "}
-                                            <strong>
-                                                {filteredUsers.length === 0
-                                                    ? 0
-                                                    : (currentPage - 1) * pageSize + 1}
-                                            </strong>{" "}
-                                            –{" "}
-                                            <strong>
-                                                {Math.min(
-                                                    currentPage * pageSize,
-                                                    filteredUsers.length
-                                                )}
-                                            </strong>{" "}
-                                            of{" "}
-                                            <strong>{filteredUsers.length}</strong> users
-                                        </Text>
-
-                                        <HStack spacing={1}>
-                                            <IconButton
-                                                aria-label="Previous page"
-                                                icon={<FiChevronLeft />}
-                                                size="sm"
-                                                variant="outline"
-                                                isDisabled={currentPage === 1}
-                                                onClick={() =>
-                                                    setCurrentPage((p) =>
-                                                        Math.max(1, p - 1)
-                                                    )
-                                                }
-                                            />
-                                            <Text fontSize="sm">
-                                                Page {currentPage} of {totalPages}
-                                            </Text>
-                                            <IconButton
-                                                aria-label="Next page"
-                                                icon={<FiChevronRight />}
-                                                size="sm"
-                                                variant="outline"
-                                                isDisabled={currentPage === totalPages}
-                                                onClick={() =>
-                                                    setCurrentPage((p) =>
-                                                        Math.min(totalPages, p + 1)
-                                                    )
-                                                }
-                                            />
-                                        </HStack>
-                                    </Flex>
+                                    <AdminTablePagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        totalItems={filteredUsers.length}
+                                        pageSize={pageSize}
+                                        onPageSizeChange={(size) => setPageSize(size)}
+                                        onPrevious={() =>
+                                            setCurrentPage((p) => Math.max(1, p - 1))
+                                        }
+                                        onNext={() =>
+                                            setCurrentPage((p) =>
+                                                Math.min(totalPages, p + 1)
+                                            )
+                                        }
+                                        itemLabel="users"
+                                    />
                                 )}
                             </Box>
                         </VStack>

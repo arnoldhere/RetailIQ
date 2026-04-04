@@ -55,6 +55,10 @@ import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import AdminSidebar from '../../components/AdminSidebar'
 import * as categoriesApi from '../../api/categories'
+import {
+    AdminTablePagination,
+    AdminTableShell,
+} from '../../components/AdminTable'
 
 /**
  * Utility: format date consistently
@@ -383,7 +387,7 @@ export default function CategoriesPage() {
                                 <Button colorScheme="blue" onClick={openAddModal}>Create Category</Button>
                             </Box>
                         ) : (
-                            <TableContainer>
+                            <AdminTableShell bg={cardBg} borderColor={borderColor} maxH="auto">
                                 <Table variant="simple">
                                     <Thead bg={tableHeadBg} position="sticky" top={0} zIndex={2}>
                                         <Tr>
@@ -470,38 +474,26 @@ export default function CategoriesPage() {
                                         ))}
                                     </Tbody>
                                 </Table>
-                            </TableContainer>
+                            </AdminTableShell>
 
                         )}
                     </Box>
 
                     {/* Pagination footer */}
                     {processed.total > 0 && (
-                        <Flex justify="space-between" align="center" mt={4} px={2}>
-                            <Text color="gray.500" fontSize="sm">
-                                Showing {(processed.current - 1) * pageSize + 1} - {Math.min(processed.current * pageSize, processed.total)} of {processed.total}
-                            </Text>
-
-                            <HStack spacing={2}>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                    isDisabled={processed.current === 1}
-                                >
-                                    Prev
-                                </Button>
-                                <Text fontSize="sm">Page {processed.current} / {processed.pages}</Text>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setPage((p) => Math.min(processed.pages, p + 1))}
-                                    isDisabled={processed.current === processed.pages}
-                                >
-                                    Next
-                                </Button>
-                            </HStack>
-                        </Flex>
+                        <AdminTablePagination
+                            currentPage={processed.current}
+                            totalPages={processed.pages}
+                            totalItems={processed.total}
+                            pageSize={pageSize}
+                            onPageSizeChange={(size) => {
+                                setPageSize(size)
+                                setPage(1)
+                            }}
+                            onPrevious={() => setPage((p) => Math.max(1, p - 1))}
+                            onNext={() => setPage((p) => Math.min(processed.pages, p + 1))}
+                            itemLabel="categories"
+                        />
                     )}
                 </Box>
             </Flex>

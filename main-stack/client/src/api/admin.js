@@ -72,6 +72,8 @@ export async function reactivateUser(id) {
 export async function getFeedbacks(limit = 12, offset = 0, filters = {}) {
   const params = { limit, offset }
   if (filters.search) params.search = filters.search
+  if (filters.sort) params.sort = filters.sort
+  if (filters.order) params.order = filters.order
   return client.get('/api/admin/get-feedbacks', { params })
 }
 

@@ -49,6 +49,11 @@ import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import AdminSidebar from '../../components/AdminSidebar'
 import * as adminApi from '../../api/admin'
+import {
+    AdminTablePagination,
+    AdminTableShell,
+    SortableTh,
+} from '../../components/AdminTable'
 
 export default function StoresPage() {
     const toast = useToast()
@@ -87,7 +92,7 @@ export default function StoresPage() {
             setManagers([])
         }
     }
-    const [limit] = useState(12)
+    const [limit, setLimit] = useState(12)
     const [offset, setOffset] = useState(0)
 
     // Form state
@@ -129,6 +134,25 @@ export default function StoresPage() {
     const handleFilterChange = (key, value) => {
         setOffset(0)
         setFilters((prev) => ({ ...prev, [key]: value }))
+    }
+
+    const handleResetFilters = () => {
+        setOffset(0)
+        setFilters({
+            search: '',
+            is_active: '',
+            sort: 'created_at',
+            order: 'desc',
+        })
+    }
+
+    const handleTableSort = (column) => {
+        setOffset(0)
+        setFilters((prev) => ({
+            ...prev,
+            sort: column,
+            order: prev.sort === column && prev.order === 'asc' ? 'desc' : 'asc',
+        }))
     }
 
     const handleFormChange = (e) => {
@@ -327,7 +351,18 @@ export default function StoresPage() {
                             <Divider mb={5} />
 
                             {/* Filters */}
-                            <HStack spacing={4} mb={6} wrap="wrap">
+                            <Flex
+                                gap={4}
+                                mb={6}
+                                wrap="wrap"
+                                align="end"
+                                bg="rgba(255,255,255,0.72)"
+                                p={{ base: 4, md: 5 }}
+                                borderRadius="2xl"
+                                border="1px solid"
+                                borderColor={borderColor}
+                                boxShadow="sm"
+                            >
                                 <InputGroup size="md" maxW="300px">
                                     <InputLeftElement pointerEvents="none">
                                         <SearchIcon color={mutedText} />
@@ -347,9 +382,9 @@ export default function StoresPage() {
                                     onChange={(e) => handleFilterChange('is_active', e.target.value)}
                                     maxW="150px"
                                     bg={subtleCard}
-                                    borderColor={borderColor}
-                                >
-                                    <option selected>--select status--</option>
+                                        borderColor={borderColor}
+                                    >
+                                    <option value="">All status</option>
                                     <option value="true">Active</option>
                                     <option value="false">Inactive</option>
                                 </Select>
@@ -376,7 +411,10 @@ export default function StoresPage() {
                                     <option value="desc">Desc</option>
                                     <option value="asc">Asc</option>
                                 </Select>
-                            </HStack>
+                                <Button variant="outline" borderRadius="full" onClick={handleResetFilters}>
+                                    Reset
+                                </Button>
+                            </Flex>
 
                             {/* Table */}
                             {loading ? (
@@ -401,16 +439,34 @@ export default function StoresPage() {
                                 </Box>
                             ) : (
                                 <>
-                                    <Box borderRadius="xl" overflow="hidden" border="1px solid" borderColor={borderColor} bg={tableStripe}>
-                                        <TableContainer maxH="62vh" overflowY="auto">
+                                    <AdminTableShell bg={tableStripe} borderColor={borderColor}>
                                             <Table variant="simple" size="sm">
                                                 <Thead position="sticky" top={0} zIndex={1} bg={tableHeadBg}>
                                                     <Tr>
-                                                        <Th fontWeight="700">Name</Th>
-                                                        <Th fontWeight="700">Address</Th>
+                                                        <SortableTh
+                                                            label="Name"
+                                                            sortKey="name"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                        />
+                                                        <SortableTh
+                                                            label="Address"
+                                                            sortKey="address"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                        />
                                                         <Th fontWeight="700">Phone</Th>
                                                         <Th fontWeight="700" textAlign="center">Status</Th>
-                                                        <Th fontWeight="700" isNumeric>Rating</Th>
+                                                        <SortableTh
+                                                            label="Rating"
+                                                            sortKey="rating"
+                                                            sortBy={filters.sort}
+                                                            sortOrder={filters.order}
+                                                            onSort={handleTableSort}
+                                                            isNumeric
+                                                        />
                                                         <Th fontWeight="700" textAlign="center">Actions</Th>
                                                     </Tr>
                                                 </Thead>
@@ -460,31 +516,22 @@ export default function StoresPage() {
                                                     ))}
                                                 </Tbody>
                                             </Table>
-                                        </TableContainer>
-                                    </Box>
+                                    </AdminTableShell>
 
                                     {/* Pagination */}
-                                    {totalPages > 1 && (
-                                        <Flex justify="center" gap={4} align="center" mt={6}>
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => setOffset(Math.max(0, offset - limit))}
-                                                isDisabled={offset === 0}
-                                            >
-                                                Previous
-                                            </Button>
-                                            <Text fontWeight="600" color={mutedText}>
-                                                Page {currentPage} of {totalPages} ({total} total)
-                                            </Text>
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => setOffset(offset + limit)}
-                                                isDisabled={currentPage === totalPages}
-                                            >
-                                                Next
-                                            </Button>
-                                        </Flex>
-                                    )}
+                                    <AdminTablePagination
+                                        currentPage={currentPage}
+                                        totalPages={Math.max(totalPages, 1)}
+                                        totalItems={total}
+                                        pageSize={limit}
+                                        onPageSizeChange={(size) => {
+                                            setLimit(size)
+                                            setOffset(0)
+                                        }}
+                                        onPrevious={() => setOffset(Math.max(0, offset - limit))}
+                                        onNext={() => setOffset(offset + limit)}
+                                        itemLabel="stores"
+                                    />
                                 </>
                             )}
                         </Box>
@@ -654,4 +701,3 @@ export default function StoresPage() {
         </Box>
     )
 }
-
