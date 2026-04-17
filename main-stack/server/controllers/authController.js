@@ -35,6 +35,10 @@ module.exports = {
         dob
       } = req.body;
 
+      if (dob && new Date(dob) > new Date()) {
+        return res.status(400).json({ errors: [{ field: 'dob', msg: 'Date of birth cannot be in the future' }] });
+      }
+
       // check for existing email
       const byEmail = await db('users').where({ email }).first();
       if (byEmail) {

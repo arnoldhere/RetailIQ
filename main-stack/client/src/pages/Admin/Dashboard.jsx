@@ -18,6 +18,17 @@ import {
 	Stack,
 	StackDivider,
 	Spinner,
+	FormControl,
+	FormLabel,
+	Select,
+	Modal,
+	ModalOverlay,
+	ModalContent,
+	ModalHeader,
+	ModalBody,
+	ModalFooter,
+	ModalCloseButton,
+	useDisclosure,
 } from "@chakra-ui/react";
 import {
 	FiAlertTriangle,
@@ -32,16 +43,71 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import AdminSidebar from "../../components/AdminSidebar";
 import * as adminApi from "../../api/admin";
+import { useNavigate } from "react-router-dom";
 
 export default function AdminDashboard() {
 	const toast = useToast();
+	const navigate = useNavigate();
+	const { isOpen, onOpen, onClose } = useDisclosure();
 	const [loading, setLoading] = useState(false);
+	const [exporting, setExporting] = useState(false);
 	const [metrics, setMetrics] = useState({
 		totalOrders: 0,
 		totalSuppliers: 0,
 		totalCustomers: 0,
 	});
 	const [activitiesState, setActivitiesState] = useState([]);
+	const [exportConfig, setExportConfig] = useState({
+		report: "users_list",
+		format: "csv",
+		interval: "month",
+	});
+
+	const reportOptions = [
+		{
+			value: "users_list",
+			label: "Users List",
+			description: "Full user directory export with account status and signup dates.",
+			recommendedFormat: "csv",
+		},
+		{
+			value: "signup_growth",
+			label: "Signup Growth",
+			description: "User signup growth grouped by year, month, week, or day.",
+			recommendedFormat: "csv",
+		},
+		{
+			value: "orders_details",
+			label: "Orders Details",
+			description: "Detailed customer order export with customer and payment status data.",
+			recommendedFormat: "csv",
+		},
+		{
+			value: "transactional_traffic",
+			label: "Transactional Traffic",
+			description: "Traffic summary for recent transactions with daily activity totals.",
+			recommendedFormat: "pdf",
+		},
+		{
+			value: "orders_report",
+			label: "Orders Report",
+			description: "Combined customer and supply order summary for operations review.",
+			recommendedFormat: "pdf",
+		},
+		{
+			value: "supplier_report",
+			label: "Supplier Report",
+			description: "Supplier activity, order value, and payment coverage summary.",
+			recommendedFormat: "pdf",
+		},
+	];
+
+	const intervalOptions = [
+		{ value: "year", label: "Year" },
+		{ value: "month", label: "Month" },
+		{ value: "week", label: "Week" },
+		{ value: "day", label: "Day" },
+	];
 
 	useEffect(() => {
 		let mounted = true;
@@ -117,6 +183,72 @@ export default function AdminDashboard() {
 		{ label: "Backup Data", icon: FiDownloadCloud },
 	];
 
+	const selectedReport = reportOptions.find((option) => option.value === exportConfig.report) || reportOptions[0];
+
+	function readFilenameFromHeaders(headers, fallbackName) {
+		const contentDisposition = headers?.["content-disposition"] || headers?.["Content-Disposition"];
+		if (!contentDisposition) return fallbackName;
+
+		const match = contentDisposition.match(/filename="?([^"]+)"?/i);
+		return match?.[1] || fallbackName;
+	}
+
+	function updateExportConfig(key, value) {
+		if (key === "report") {
+			const nextReport = reportOptions.find((option) => option.value === value);
+			setExportConfig((prev) => ({
+				...prev,
+				report: value,
+				format: nextReport?.recommendedFormat || prev.format,
+			}));
+			return;
+		}
+
+		setExportConfig((prev) => ({ ...prev, [key]: value }));
+	}
+
+	async function handleExport() {
+		try {
+			setExporting(true);
+			const res = await adminApi.exportReport(
+				exportConfig.report,
+				exportConfig.format,
+				exportConfig.interval
+			);
+
+			const fallbackName = `${exportConfig.report}.${exportConfig.format}`;
+			const fileName = readFilenameFromHeaders(res?.headers, fallbackName);
+			const mimeType = res?.headers?.["content-type"] || "application/octet-stream";
+			const blob = new Blob([res.data], { type: mimeType });
+			const url = window.URL.createObjectURL(blob);
+			const anchor = document.createElement("a");
+			anchor.href = url;
+			anchor.download = fileName;
+			document.body.appendChild(anchor);
+			anchor.click();
+			anchor.remove();
+			window.URL.revokeObjectURL(url);
+
+			toast({
+				title: "Export ready",
+				description: `${selectedReport.label} downloaded successfully.`,
+				status: "success",
+				duration: 3000,
+			});
+			onClose();
+		} catch (err) {
+			console.error("failed to export report", err);
+			toast({
+				title: "Export failed",
+				description: err?.response?.data?.message || "Unable to generate the selected report.",
+				status: "error",
+				duration: 4000,
+			});
+		} finally {
+			setExporting(false);
+		}
+	}
+
 	return (
 		<Box minH="100vh" bg={bgPage} display="flex" flexDirection="column">
 			<Navbar />
@@ -147,10 +279,10 @@ export default function AdminDashboard() {
 								</Box>
 
 								<HStack>
-									<Button variant="ghost" leftIcon={<FiFileText />}>
+									<Button variant="ghost" leftIcon={<FiFileText />} onClick={onOpen}>
 										Export
 									</Button>
-									<Button colorScheme="blue" leftIcon={<FiBarChart2 />}>
+									<Button colorScheme="blue" leftIcon={<FiBarChart2 />} onClick={() => navigate("/admin/analytics")}>
 										Analytics
 									</Button>
 								</HStack>
@@ -327,6 +459,83 @@ export default function AdminDashboard() {
 					</Box>
 				</Flex>
 			</Container>
+
+			<Modal isOpen={isOpen} onClose={onClose} isCentered>
+				<ModalOverlay />
+				<ModalContent borderRadius="2xl">
+					<ModalHeader>Export Report</ModalHeader>
+					<ModalCloseButton />
+					<ModalBody>
+						<VStack spacing={5} align="stretch">
+							<FormControl>
+								<FormLabel fontWeight="600">Report Type</FormLabel>
+								<Select
+									value={exportConfig.report}
+									onChange={(event) => updateExportConfig("report", event.target.value)}
+								>
+									{reportOptions.map((option) => (
+										<option key={option.value} value={option.value}>
+											{option.label}
+										</option>
+									))}
+								</Select>
+							</FormControl>
+
+							<Box bg="gray.50" borderRadius="xl" px={4} py={3} border="1px solid" borderColor="gray.100">
+								<Text fontWeight="600" color="gray.700">{selectedReport.label}</Text>
+								<Text mt={1} fontSize="sm" color={textMuted}>
+									{selectedReport.description}
+								</Text>
+							</Box>
+
+							<FormControl>
+								<FormLabel fontWeight="600">File Format</FormLabel>
+								<Select
+									value={exportConfig.format}
+									onChange={(event) => updateExportConfig("format", event.target.value)}
+								>
+									<option value="csv">CSV</option>
+									<option value="pdf">PDF</option>
+								</Select>
+							</FormControl>
+
+							{exportConfig.report === "signup_growth" && (
+								<FormControl>
+									<FormLabel fontWeight="600">Signup Interval</FormLabel>
+									<Select
+										value={exportConfig.interval}
+										onChange={(event) => updateExportConfig("interval", event.target.value)}
+									>
+										{intervalOptions.map((option) => (
+											<option key={option.value} value={option.value}>
+												{option.label}
+											</option>
+										))}
+									</Select>
+								</FormControl>
+							)}
+
+							<Text fontSize="sm" color={textMuted}>
+								Recommended format for this report: {selectedReport.recommendedFormat.toUpperCase()}
+							</Text>
+						</VStack>
+					</ModalBody>
+					<ModalFooter>
+						<Button variant="ghost" mr={3} onClick={onClose}>
+							Cancel
+						</Button>
+						<Button
+							colorScheme="blue"
+							leftIcon={<FiDownloadCloud />}
+							onClick={handleExport}
+							isLoading={exporting}
+							loadingText="Preparing"
+						>
+							Download
+						</Button>
+					</ModalFooter>
+				</ModalContent>
+			</Modal>
 
 			<Footer />
 		</Box>

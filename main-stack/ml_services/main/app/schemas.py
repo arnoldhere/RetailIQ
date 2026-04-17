@@ -65,3 +65,22 @@ class RecommendationResponse(BaseModel):
 
     recommendations: list[RankedProduct]
     metadata: RecommendationMetadata
+
+
+class DemandForecastRequest(BaseModel):
+    """Request payload for demand forecasting."""
+
+    product_id: int = Field(..., gt=0)
+    days_ahead: int = Field(default=7, ge=1, le=30)
+    historical_days: int = Field(default=30, ge=7, le=365)
+    historical_data: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class DemandForecastResponse(BaseModel):
+    """Response payload for demand forecasting."""
+
+    product_id: int
+    forecast_next_7_days: list[float]
+    algorithm_used: str
+    confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    historical_data_points: int

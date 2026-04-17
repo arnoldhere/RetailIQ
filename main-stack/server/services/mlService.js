@@ -15,6 +15,16 @@ async function getProductRecommendations(payload) {
   return response.data;
 }
 
+async function getDemandForecast(productId, daysAhead = 7, historicalDays = 30, historicalData = []) {
+  const response = await mlClient.post('/demand-forecasting', {
+    product_id: productId,
+    days_ahead: daysAhead,
+    historical_days: historicalDays,
+    historical_data: historicalData,
+  });
+  return response.data;
+}
+
 async function getHealth() {
   const response = await mlClient.get('/health');
   return response.data;
@@ -22,5 +32,6 @@ async function getHealth() {
 
 module.exports = {
   getProductRecommendations,
+  getDemandForecast,
   getHealth,
 };

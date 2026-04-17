@@ -3,6 +3,33 @@ const fs = require('fs');
 const path = require('path');
 let supplierColumnsPromise = null;
 
+function isFutureDateValue(value) {
+    if (!value) return false;
+    const incoming = new Date(value);
+    if (Number.isNaN(incoming.getTime())) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    incoming.setHours(0, 0, 0, 0);
+    return incoming > today;
+}
+
+async function getLinkedSupplierUserId(req, supplier) {
+    if (req?.user?.userId) return req.user.userId;
+    if (supplier?.cust_id) return supplier.cust_id;
+
+    const candidates = [];
+    if (supplier?.email) candidates.push(db('users').where({ email: supplier.email, role: 'supplier' }).first());
+    if (supplier?.phone) candidates.push(db('users').where({ phone: supplier.phone, role: 'supplier' }).first());
+
+    for (const query of candidates) {
+        const linkedUser = await query;
+        if (linkedUser?.id) return linkedUser.id;
+    }
+
+    return null;
+}
+
 exports.getProductCategories = async (req, res) => {
     try {
         const limit = Math.min(parseInt(req.query.limit) || 100, 500);
@@ -93,10 +120,14 @@ exports.getAboutus = async (req, res) => {
 exports.editProfile = async (req, res) => {
     try {
         console.log(req.body);
-        const { firstname, lastname, email, phone, address, name } = req.body;
+        const { firstname, lastname, email, phone, address, name, dob } = req.body;
         const id = req.params.id;
         if (!id) {
             return res.status(400).json({ message: 'Missing user id' });
+        }
+
+        if (isFutureDateValue(dob)) {
+            return res.status(400).json({ message: 'Date of birth cannot be in the future' });
         }
 
         const user = await db('users').where('id', id).first();
@@ -109,6 +140,7 @@ exports.editProfile = async (req, res) => {
         if (email !== undefined) payload.email = email;
         if (phone !== undefined) payload.phone = phone;
         if (address !== undefined) payload.address = address;
+        if (dob !== undefined) payload.date_of_birth = dob || null;
 
         if (Object.keys(payload).length > 0) {
             await db('users').where('id', id).update(payload);
@@ -431,7 +463,11 @@ exports.updateSupplierProfile = async (req, res) => {
         const supplier = await resolveSupplierFromReq(req);
         if (!supplier) return res.status(404).json({ message: 'Supplier profile not found' });
 
-        const { name, email, phone, address, password } = req.body;
+        const { name, email, phone, address, password, dob } = req.body;
+        if (isFutureDateValue(dob)) {
+            return res.status(400).json({ message: 'Date of birth cannot be in the future' });
+        }
+
         const payload = {};
         if (name !== undefined) payload.name = name.trim();
         if (email !== undefined) payload.email = email.trim();
@@ -457,6 +493,13 @@ exports.updateSupplierProfile = async (req, res) => {
 
         if (Object.keys(payload).length > 0) {
             await db('suppliers').where({ id: supplier.id }).update(payload);
+        }
+
+        if (dob !== undefined) {
+            const linkedUserId = await getLinkedSupplierUserId(req, supplier);
+            if (linkedUserId) {
+                await db('users').where({ id: linkedUserId }).update({ date_of_birth: dob || null });
+            }
         }
 
         const updated = await db('suppliers').where({ id: supplier.id }).first();

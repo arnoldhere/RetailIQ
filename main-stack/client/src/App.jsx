@@ -23,6 +23,8 @@ import Contactus from "./pages/ContactUs"
 
 // Dashboard Pages
 import AdminDashboard from './pages/Admin/Dashboard'
+import AdminAnalytics from './pages/Admin/Analytics'
+import DemandForecasting from './pages/Admin/DemandForecasting'
 import SupplierDashboard from './pages/supplier/Dashboard'
 import Orders from './pages/supplier/Orders'
 import OrderDetail from './pages/supplier/OrderDetail'
@@ -110,6 +112,8 @@ function AppRoutes() {
       />
 
       <Route path="/admin/dashboard" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/admin/analytics" element={user?.role === 'admin' ? <AdminAnalytics /> : <Navigate to="/auth/login" replace />} />
+      <Route path="/admin/demand-forecasting" element={user?.role === 'admin' ? <DemandForecasting /> : <Navigate to="/auth/login" replace />} />
       <Route path="/admin/profile" element={user?.role === 'admin' ? <Profile /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/dashboard" element={user?.role === 'supplier' ? <SupplierDashboard /> : <Navigate to="/auth/login" replace />} />
       <Route path="/supplier/orders" element={user?.role === 'supplier' ? <Orders /> : <Navigate to="/auth/login" replace />} />

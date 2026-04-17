@@ -808,7 +808,7 @@ export default function ProductsPage() {
                                     <FormControl>
                                         <FormLabel fontWeight="600">Upload Images ({form.images.length}/{MAX_IMAGES})</FormLabel>
                                         <Input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageChange} isDisabled={submitting || form.images.length >= MAX_IMAGES} borderRadius="lg" py={1} />
-                                        <Text fontSize="xs" color="gray.500" mt={1}>Max {MAX_IMAGES} images, 5MB each</Text>
+                                        <Text fontSize="xs" color="gray.500" mt={1}>Max {MAX_IMAGES} images, 5MB each. Selected files preview instantly below.</Text>
                                     </FormControl>
 
                                     {imagePreviewError && (
@@ -832,6 +832,22 @@ export default function ProductsPage() {
                                                 </Box>
                                             ))}
                                         </SimpleGrid>
+                                    )}
+
+                                    {form.images.length === 0 && (
+                                        <Box
+                                            border="1px dashed"
+                                            borderColor="gray.200"
+                                            borderRadius="lg"
+                                            bg="gray.50"
+                                            py={8}
+                                            px={4}
+                                            textAlign="center"
+                                        >
+                                            <Text fontSize="sm" color="gray.500">
+                                                Image previews will appear here while uploading.
+                                            </Text>
+                                        </Box>
                                     )}
                                 </VStack>
                             </Box>

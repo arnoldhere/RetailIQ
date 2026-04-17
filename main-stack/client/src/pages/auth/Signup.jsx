@@ -40,6 +40,7 @@ function Signup() {
 	const [busy, setBusy] = useState(false);
 	const [showPass, setShowPass] = useState(false);
 	const rootRef = useRef(null);
+	const todayDate = new Date().toISOString().split("T")[0];
 
 	useEffect(() => {
 		const el = rootRef.current;
@@ -73,6 +74,8 @@ function Signup() {
 		}
 		if (!values.dob) {
 			nextErrors.dob = "Date of birth is required";
+		} else if (values.dob > todayDate) {
+			nextErrors.dob = "Date of birth cannot be in the future";
 		}
 		return nextErrors;
 	}
@@ -396,6 +399,7 @@ function Signup() {
 											type="date"
 											value={form.dob}
 											onChange={(e) => setForm({ ...form, dob: e.target.value })}
+											max={todayDate}
 											{...fieldStyles}
 										/>
 										{errors.dob && <Text color="red.500" fontSize="xs" mt={1}>{errors.dob}</Text>}

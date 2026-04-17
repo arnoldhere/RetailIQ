@@ -65,13 +65,13 @@ export default function Footer() {
             justify={{ base: 'center', md: 'flex-start' }}
             flexWrap="wrap"
           >
-            <VStack align="flex-start" spacing={3}>
+            {/* <VStack align="flex-start" spacing={3}>
               <Text fontSize="sm" fontWeight="600" color="var(--text-primary)">Product</Text>
               <ChakraLink {...footerLinkStyle}>Dashboard</ChakraLink>
               <ChakraLink {...footerLinkStyle}>Analytics</ChakraLink>
               <ChakraLink {...footerLinkStyle}>Forecasting</ChakraLink>
               <ChakraLink {...footerLinkStyle}>Integration</ChakraLink>
-            </VStack>
+            </VStack> */}
 
             <VStack align="flex-start" spacing={3}>
               <Text fontSize="sm" fontWeight="600" color="var(--text-primary)">Company</Text>

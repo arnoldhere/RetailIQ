@@ -4,12 +4,23 @@ export async function getOverview() {
   return client.get('/api/admin/overview')
 }
 
+export async function getAnalytics(params = {}) {
+  return client.get('/api/admin/analytics', { params })
+}
+
 export async function getProducts() {
   return client.get("/api/admin/products")
 }
 
 export async function getUsers() {
   return client.get("/api/admin/get-users")
+}
+
+export async function exportReport(report, format = 'csv', interval = 'month') {
+  return client.get('/api/admin/export', {
+    params: { report, format, interval },
+    responseType: 'blob',
+  })
 }
 
 // export async function getFeedbacks(){
@@ -147,4 +158,25 @@ export async function notifySupplierIncompletePayment(orderId) {
 
 export async function updateSupplyOrderStatus(orderId, status) {
   return client.post(`/api/admin/supplier-orders/${orderId}/status`, { status })
+}
+
+// Enhanced Financial Analytics APIs
+export async function getFinancialMetrics(params = {}) {
+  return client.get('/api/admin/financial/metrics', { params })
+}
+
+export async function getYoyComparison(params = {}) {
+  return client.get('/api/admin/financial/yoy-comparison', { params })
+}
+
+export async function getFinancialAnomalies(params = {}) {
+  return client.get('/api/admin/financial/anomalies', { params })
+}
+
+export async function getProfitWaterfall(params = {}) {
+  return client.get('/api/admin/financial/profit-waterfall', { params })
+}
+
+export async function getExpenseBreakdown(params = {}) {
+  return client.get('/api/admin/financial/expenses-breakdown', { params })
 }

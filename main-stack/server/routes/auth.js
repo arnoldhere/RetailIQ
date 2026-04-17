@@ -15,6 +15,19 @@ router.post(
       .isLength({ min: 8 })
       .withMessage('Password must be at least 8 characters'),
     body('phone').optional().isMobilePhone('any').withMessage('Invalid phone'),
+    body('dob')
+      .notEmpty()
+      .withMessage('Date of birth is required')
+      .bail()
+      .isISO8601()
+      .withMessage('Invalid date of birth')
+      .bail()
+      .custom((value) => {
+        if (new Date(value) > new Date()) {
+          throw new Error('Date of birth cannot be in the future');
+        }
+        return true;
+      }),
   ],
   AuthController.signup,
 );

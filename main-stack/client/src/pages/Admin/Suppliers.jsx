@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import {
     Badge,
+    Select,
     Box,
     Button,
     Table,
@@ -310,90 +311,90 @@ export default function SuppliersPage() {
                             ) : (
                                 <>
                                     <AdminTableShell bg={tableStripe} borderColor={borderColor}>
-                                            <Table variant="simple" size="sm">
-                                                <Thead position="sticky" top={0} zIndex={1} bg={tableHeadBg}>
-                                                    <Tr>
-                                                        <SortableTh
-                                                            label="Name"
-                                                            sortKey="name"
-                                                            sortBy={filters.sort}
-                                                            sortOrder={filters.order}
-                                                            onSort={handleTableSort}
-                                                        />
-                                                        <SortableTh
-                                                            label="Email"
-                                                            sortKey="email"
-                                                            sortBy={filters.sort}
-                                                            sortOrder={filters.order}
-                                                            onSort={handleTableSort}
-                                                        />
-                                                        <Th fontWeight="700" color={mutedText}>Phone</Th>
-                                                        <Th fontWeight="700" color={mutedText}>Address</Th>
-                                                        <Th fontWeight="700" color={mutedText} textAlign="center">Status</Th>
-                                                        <SortableTh
-                                                            label="Rating"
-                                                            sortKey="rating"
-                                                            sortBy={filters.sort}
-                                                            sortOrder={filters.order}
-                                                            onSort={handleTableSort}
-                                                            isNumeric
-                                                        />
-                                                        <SortableTh
-                                                            label="Added"
-                                                            sortKey="created_at"
-                                                            sortBy={filters.sort}
-                                                            sortOrder={filters.order}
-                                                            onSort={handleTableSort}
-                                                        />
-                                                        <Th fontWeight="700" color={mutedText} textAlign="center">Actions</Th>
+                                        <Table variant="simple" size="sm">
+                                            <Thead position="sticky" top={0} zIndex={1} bg={tableHeadBg}>
+                                                <Tr>
+                                                    <SortableTh
+                                                        label="Name"
+                                                        sortKey="name"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                    />
+                                                    <SortableTh
+                                                        label="Email"
+                                                        sortKey="email"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                    />
+                                                    <Th fontWeight="700" color={mutedText}>Phone</Th>
+                                                    <Th fontWeight="700" color={mutedText}>Address</Th>
+                                                    <Th fontWeight="700" color={mutedText} textAlign="center">Status</Th>
+                                                    <SortableTh
+                                                        label="Rating"
+                                                        sortKey="rating"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                        isNumeric
+                                                    />
+                                                    <SortableTh
+                                                        label="Added"
+                                                        sortKey="created_at"
+                                                        sortBy={filters.sort}
+                                                        sortOrder={filters.order}
+                                                        onSort={handleTableSort}
+                                                    />
+                                                    <Th fontWeight="700" color={mutedText} textAlign="center">Actions</Th>
+                                                </Tr>
+                                            </Thead>
+                                            <Tbody>
+                                                {suppliers.map((supplier, idx) => (
+                                                    <Tr
+                                                        key={supplier.id}
+                                                        borderBottom="1px"
+                                                        borderColor={borderColor}
+                                                        bg={idx % 2 === 0 ? 'transparent' : tableStripe}
+                                                        _hover={{ bg: hoverBg, transform: 'translateY(-1px)', boxShadow: 'sm' }}
+                                                        transition="all 0.15s ease-out"
+                                                    >
+                                                        <Td fontWeight="600" color="white.800">{supplier.name}</Td>
+                                                        <Td fontSize="sm" color={mutedText}>{supplier.email || '-'}</Td>
+                                                        <Td fontSize="sm" color={mutedText}>{supplier.phone || '-'}</Td>
+                                                        <Td fontSize="sm" color={mutedText} maxW="300px" isTruncated>{supplier.address || '-'}</Td>
+                                                        <Td textAlign="center">
+                                                            <Badge colorScheme={supplier.is_active ? 'green' : 'red'} borderRadius="full" px={3} py={0.5}>
+                                                                {supplier.is_active ? 'Active' : 'Inactive'}
+                                                            </Badge>
+                                                        </Td>
+                                                        <Td isNumeric fontSize="sm" color={mutedText}>
+                                                            {supplier.rating ? `${supplier.rating}/5` : '-'}
+                                                        </Td>
+                                                        <Td fontSize="sm" color={mutedText}>
+                                                            {supplier.created_at ? new Date(supplier.created_at).toLocaleDateString() : '-'}
+                                                        </Td>
+                                                        <Td textAlign="center">
+                                                            <HStack justify="center">
+                                                                <Tooltip label="Edit">
+                                                                    <IconButton aria-label="Edit supplier"
+                                                                        icon={<EditIcon />} size="sm"
+                                                                        variant="ghost"
+                                                                        colorScheme="info"
+                                                                        onClick={() => { setEditingSupplierId(supplier.id); setFormData({ name: supplier.name || '', email: supplier.email || '', phone: supplier.phone || '', password: '' }); onOpen() }} />
+                                                                </Tooltip>
+                                                                <Tooltip label="Delete">
+                                                                    <IconButton
+                                                                        variant="ghost"
+                                                                        colorScheme="red"
+                                                                        aria-label="Delete supplier" icon={<DeleteIcon />} size="sm" onClick={() => { setDeleteSupplierId(supplier.id); onDeleteOpen() }} />
+                                                                </Tooltip>
+                                                            </HStack>
+                                                        </Td>
                                                     </Tr>
-                                                </Thead>
-                                                <Tbody>
-                                                    {suppliers.map((supplier, idx) => (
-                                                        <Tr
-                                                            key={supplier.id}
-                                                            borderBottom="1px"
-                                                            borderColor={borderColor}
-                                                            bg={idx % 2 === 0 ? 'transparent' : tableStripe}
-                                                            _hover={{ bg: hoverBg, transform: 'translateY(-1px)', boxShadow: 'sm' }}
-                                                            transition="all 0.15s ease-out"
-                                                        >
-                                                            <Td fontWeight="600" color="white.800">{supplier.name}</Td>
-                                                            <Td fontSize="sm" color={mutedText}>{supplier.email || '-'}</Td>
-                                                            <Td fontSize="sm" color={mutedText}>{supplier.phone || '-'}</Td>
-                                                            <Td fontSize="sm" color={mutedText} maxW="300px" isTruncated>{supplier.address || '-'}</Td>
-                                                            <Td textAlign="center">
-                                                                <Badge colorScheme={supplier.is_active ? 'green' : 'red'} borderRadius="full" px={3} py={0.5}>
-                                                                    {supplier.is_active ? 'Active' : 'Inactive'}
-                                                                </Badge>
-                                                            </Td>
-                                                            <Td isNumeric fontSize="sm" color={mutedText}>
-                                                                {supplier.rating ? `${supplier.rating}/5` : '-'}
-                                                            </Td>
-                                                            <Td fontSize="sm" color={mutedText}>
-                                                                {supplier.created_at ? new Date(supplier.created_at).toLocaleDateString() : '-'}
-                                                            </Td>
-                                                            <Td textAlign="center">
-                                                                <HStack justify="center">
-                                                                    <Tooltip label="Edit">
-                                                                        <IconButton aria-label="Edit supplier"
-                                                                            icon={<EditIcon />} size="sm"
-                                                                            variant="ghost"
-                                                                            colorScheme="info"
-                                                                            onClick={() => { setEditingSupplierId(supplier.id); setFormData({ name: supplier.name || '', email: supplier.email || '', phone: supplier.phone || '', password: '' }); onOpen() }} />
-                                                                    </Tooltip>
-                                                                    <Tooltip label="Delete">
-                                                                        <IconButton
-                                                                            variant="ghost"
-                                                                            colorScheme="red"
-                                                                            aria-label="Delete supplier" icon={<DeleteIcon />} size="sm" onClick={() => { setDeleteSupplierId(supplier.id); onDeleteOpen() }} />
-                                                                    </Tooltip>
-                                                                </HStack>
-                                                            </Td>
-                                                        </Tr>
-                                                    ))}
-                                                </Tbody>
-                                            </Table>
+                                                ))}
+                                            </Tbody>
+                                        </Table>
                                     </AdminTableShell>
 
                                     {/* Pagination */}

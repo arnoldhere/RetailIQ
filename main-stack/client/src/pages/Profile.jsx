@@ -45,10 +45,12 @@ export default function Profile() {
 	const [isSaving, setIsSaving] = useState(false);
 	const [errors, setErrors] = useState({});
 	const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+	const [dobInputType, setDobInputType] = useState('date');
 	const formatDateOnly = (dateString) => {
 		if (!dateString) return '';
 		return dateString.split('T')[0];
 	};
+	const todayDate = new Date().toISOString().split('T')[0];
 
 	// Theme color tokens
 	const bgCard = "var(--surface-card)";
@@ -102,6 +104,15 @@ export default function Profile() {
 		}
 	}, [loading, navigate, user]);
 
+	useEffect(() => {
+		if (isEditing && !formData.dob) {
+			setDobInputType('text');
+			return;
+		}
+
+		setDobInputType('date');
+	}, [formData.dob, isEditing]);
+
 	if (loading) {
 		return (
 			<Box
@@ -138,6 +149,7 @@ export default function Profile() {
 		if (!formData.email.trim()) newErrors.email = 'Email is required';
 		if (formData.email && !formData.email.includes('@')) newErrors.email = 'Invalid email';
 		if (formData.phone && formData.phone.length < 7) newErrors.phone = 'Invalid phone number';
+		if (formData.dob && formData.dob.slice(0, 10) > todayDate) newErrors.dob = 'Date of birth cannot be in the future';
 
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
@@ -487,24 +499,38 @@ export default function Profile() {
 									</FormControl>
 
 									{/* Date of Birth */}
-									<FormControl gridColumn={{ base: '1', md: '1 / -1' }}>
+									<FormControl isInvalid={!!errors.dob} gridColumn={{ base: '1', md: '1 / -1' }}>
 										<FormLabel fontSize="sm" fontWeight="600" color={textPrimary} mb={2}>
 											Date of Birth
 										</FormLabel>
 										<Input
 											name="dob"
-											type="date"
+											type={dobInputType}
 											value={formData.dob ? formData.dob.slice(0, 10) : ''}
 											onChange={handleInputChange}
+											onFocus={() => {
+												if (isEditing) setDobInputType('date');
+											}}
+											onBlur={() => {
+												if (isEditing && !formData.dob) setDobInputType('text');
+											}}
 											isReadOnly={!isEditing}
+											placeholder="Date of birth"
+											max={todayDate}
 											bg={isEditing ? 'whiteAlpha.50' : 'transparent'}
 											border="1px solid"
 											borderColor={isEditing ? 'cyan.400' : 'whiteAlpha.200'}
 											_hover={{ borderColor: isEditing ? 'cyan.300' : 'whiteAlpha.200' }}
 											_focus={{ borderColor: 'cyan.400', boxShadow: '0 0 0 1px rgba(34, 211, 238, 0.5)' }}
 											color={textPrimary}
+											_placeholder={{ color: textSecondary }}
 											transition="all 0.2s"
 										/>
+										{errors.dob && (
+											<Text color="red.400" fontSize="xs" mt={1}>
+												{errors.dob}
+											</Text>
+										)}
 									</FormControl>
 
 

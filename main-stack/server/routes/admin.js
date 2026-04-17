@@ -13,6 +13,60 @@ router.get('/overview', authMiddleware, async (req, res, next) => {
   }
 });
 
+router.get('/analytics', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getAnalytics(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/financial/metrics', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getFinancialMetrics(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/financial/profit-waterfall', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getProfitWaterfall(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/financial/expenses-breakdown', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getExpenseBreakdown(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/financial/yoy-comparison', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getYoyComparison(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/financial/anomalies', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.getFinancialAnomalies(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/get-users", authMiddleware, async (req, res, next) => {
   try {
     if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
@@ -21,6 +75,15 @@ router.get("/get-users", authMiddleware, async (req, res, next) => {
     next(err);
   }
 })
+
+router.get('/export', authMiddleware, async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+    return adminController.exportReport(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Categories routes
 router.get('/categories', authMiddleware, async (req, res, next) => {

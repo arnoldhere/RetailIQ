@@ -40,6 +40,10 @@ app.use('/api/user', userRoutes);
 const recommendationRoutes = require('./routes/recommendations');
 app.use('/api/recommendations', recommendationRoutes);
 
+// demand forecast routes
+const demandForecastRoutes = require('./routes/demandForecast');
+app.use('/api/demand-forecast', demandForecastRoutes);
+
 // cart routes (customer)
 const cartRoutes = require('./routes/cart');
 app.use('/api/cart', cartRoutes);

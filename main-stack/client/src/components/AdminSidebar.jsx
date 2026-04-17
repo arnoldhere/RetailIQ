@@ -16,11 +16,13 @@ import {
   Badge,
 } from '@chakra-ui/react'
 import { Link, useLocation } from 'react-router-dom'
-import { FiGrid, FiUsers, FiTag, FiBox, FiMessageSquare, FiShoppingCart, FiTruck, FiChevronRight } from 'react-icons/fi'
+import { FiGrid, FiUsers, FiTag, FiBox, FiMessageSquare, FiShoppingCart, FiTruck, FiChevronRight, FiBarChart2, FiTrendingUp } from 'react-icons/fi'
 import { FaStore } from "react-icons/fa";
 
 const items = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: FiGrid, badge: null },
+  { to: '/admin/analytics', label: 'Analytics', icon: FiBarChart2, badge: null },
+  { to: '/admin/demand-forecasting', label: 'Demand Forecasting', icon: FiTrendingUp, badge: 'New' },
   { to: '/admin/users', label: 'Users', icon: FiUsers, badge: null },
   { to: '/admin/categories', label: 'Categories', icon: FiTag, badge: null },
   { to: '/admin/products', label: 'Products', icon: FiBox, badge: null },

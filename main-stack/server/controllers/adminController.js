@@ -16,6 +16,561 @@ function normalizeCount(row) {
   return Number(row.count || row['COUNT(*)'] || Object.values(row)[0] || 0);
 }
 
+function formatDateOnly(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+}
+
+function formatDateTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.toISOString().slice(0, 10)} ${date.toISOString().slice(11, 19)}`;
+}
+
+function formatCurrency(value) {
+  return Number(value || 0).toFixed(2);
+}
+
+function csvEscape(value) {
+  if (value === null || value === undefined) return '';
+  const normalized = String(value).replace(/\r?\n|\r/g, ' ').trim();
+  if (/[",]/.test(normalized)) {
+    return `"${normalized.replace(/"/g, '""')}"`;
+  }
+  return normalized;
+}
+
+function toCsv(rows) {
+  const safeRows = Array.isArray(rows) && rows.length ? rows : [{ message: 'No data available' }];
+  const headers = Object.keys(safeRows[0]);
+  const lines = [
+    headers.join(','),
+    ...safeRows.map((row) => headers.map((key) => csvEscape(row[key])).join(',')),
+  ];
+  return Buffer.from(lines.join('\n'), 'utf8');
+}
+
+function escapePdfText(value) {
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)')
+    .replace(/[^\x20-\x7E]/g, '?');
+}
+
+function wrapPdfLine(value, maxLength = 92) {
+  const text = String(value ?? '').trim();
+  if (!text) return [''];
+
+  const words = text.split(/\s+/);
+  const lines = [];
+  let current = '';
+
+  for (const word of words) {
+    if (!current) {
+      current = word;
+      continue;
+    }
+
+    if (`${current} ${word}`.length <= maxLength) {
+      current = `${current} ${word}`;
+      continue;
+    }
+
+    lines.push(current);
+    current = word;
+  }
+
+  if (current) lines.push(current);
+  return lines;
+}
+
+function humanizeKey(key) {
+  return String(key || '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function createPdfBuffer(title, summaryLines = [], tableLines = []) {
+  const combinedLines = [
+    ...summaryLines,
+    ...(summaryLines.length && tableLines.length ? [''] : []),
+    ...tableLines,
+  ];
+
+  const wrappedLines = combinedLines
+    .flatMap((line) => wrapPdfLine(line))
+    .slice(0, 48);
+
+  const commands = [
+    'BT',
+    '/F1 18 Tf',
+    '50 800 Td',
+    `(${escapePdfText(title)}) Tj`,
+    'ET',
+  ];
+
+  let y = 774;
+  for (const line of wrappedLines) {
+    commands.push(
+      'BT',
+      '/F1 10 Tf',
+      `50 ${y} Td`,
+      `(${escapePdfText(line)}) Tj`,
+      'ET'
+    );
+    y -= 14;
+    if (y < 50) break;
+  }
+
+  const stream = commands.join('\n');
+  const objects = [
+    '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+    '2 0 obj << /Type /Pages /Count 1 /Kids [3 0 R] >> endobj',
+    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj',
+    '4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+    `5 0 obj << /Length ${Buffer.byteLength(stream, 'utf8')} >> stream\n${stream}\nendstream endobj`,
+  ];
+
+  const header = '%PDF-1.4\n';
+  let body = '';
+  const offsets = [0];
+
+  for (const object of objects) {
+    offsets.push(Buffer.byteLength(header + body, 'utf8'));
+    body += `${object}\n`;
+  }
+
+  const xrefStart = Buffer.byteLength(header + body, 'utf8');
+  const xrefEntries = offsets
+    .map((offset, index) => (
+      index === 0
+        ? '0000000000 65535 f '
+        : `${String(offset).padStart(10, '0')} 00000 n `
+    ))
+    .join('\n');
+
+  const trailer = `xref\n0 ${objects.length + 1}\n${xrefEntries}\ntrailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+  return Buffer.from(`${header}${body}${trailer}`, 'utf8');
+}
+
+function getCurrentStamp() {
+  return formatDateOnly(new Date()) || 'report';
+}
+
+function getIntervalBucketKey(value, interval) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+
+  if (interval === 'year') return String(year);
+  if (interval === 'month') return `${year}-${month}`;
+  if (interval === 'day') return `${year}-${month}-${day}`;
+
+  const utcDate = new Date(Date.UTC(year, date.getUTCMonth(), date.getUTCDate()));
+  const dayNumber = utcDate.getUTCDay() || 7;
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNumber);
+  const weekYear = utcDate.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(weekYear, 0, 1));
+  const weekNumber = Math.ceil((((utcDate - yearStart) / 86400000) + 1) / 7);
+  return `${weekYear}-W${String(weekNumber).padStart(2, '0')}`;
+}
+
+function rowsToPdfLines(rows) {
+  return rows.map((row) => Object.entries(row).map(([key, value]) => `${humanizeKey(key)}: ${value ?? ''}`).join(' | '));
+}
+
+async function buildUsersListReport() {
+  const users = await db('users')
+    .select('id', 'firstname', 'lastname', 'email', 'phone', 'role', 'gender', 'date_of_birth', 'is_active', 'created_at')
+    .orderBy('created_at', 'desc');
+
+  const rows = users.map((user) => ({
+    id: user.id,
+    name: `${user.firstname || ''} ${user.lastname || ''}`.trim(),
+    email: user.email || '',
+    phone: user.phone || '',
+    role: user.role || '',
+    gender: user.gender || '',
+    date_of_birth: formatDateOnly(user.date_of_birth),
+    status: user.is_active ? 'Active' : 'Inactive',
+    created_at: formatDateTime(user.created_at),
+  }));
+
+  const activeCount = users.filter((user) => user.is_active).length;
+
+  return {
+    title: 'Users List Report',
+    filename: `users-list-${getCurrentStamp()}`,
+    rows,
+    summaryLines: [
+      `Generated on: ${formatDateTime(new Date())}`,
+      `Total users: ${users.length}`,
+      `Active users: ${activeCount}`,
+      `Inactive users: ${users.length - activeCount}`,
+    ],
+  };
+}
+
+async function buildSignupGrowthReport(interval = 'month') {
+  const users = await db('users')
+    .select('id', 'role', 'created_at')
+    .whereNot('role', 'admin')
+    .orderBy('created_at', 'asc');
+
+  const bucketMap = new Map();
+
+  for (const user of users) {
+    const bucket = getIntervalBucketKey(user.created_at, interval);
+    if (!bucket) continue;
+
+    if (!bucketMap.has(bucket)) {
+      bucketMap.set(bucket, {
+        period: bucket,
+        new_signups: 0,
+        customers: 0,
+        suppliers: 0,
+        store_managers: 0,
+      });
+    }
+
+    const row = bucketMap.get(bucket);
+    row.new_signups += 1;
+    if (user.role === 'customer') row.customers += 1;
+    if (user.role === 'supplier') row.suppliers += 1;
+    if (user.role === 'store_manager') row.store_managers += 1;
+  }
+
+  const rows = Array.from(bucketMap.values()).sort((a, b) => a.period.localeCompare(b.period));
+
+  return {
+    title: `User Signup Growth Report (${humanizeKey(interval)})`,
+    filename: `user-signup-growth-${interval}-${getCurrentStamp()}`,
+    rows,
+    summaryLines: [
+      `Generated on: ${formatDateTime(new Date())}`,
+      `Interval: ${interval}`,
+      `Tracked signups: ${users.length}`,
+      `Buckets generated: ${rows.length}`,
+    ],
+  };
+}
+
+async function buildCustomerOrdersReport() {
+  const orders = await db('customer_orders')
+    .select(
+      'customer_orders.order_no',
+      'customer_orders.status',
+      'customer_orders.payment_status',
+      'customer_orders.payment_method',
+      'customer_orders.total_amount',
+      'customer_orders.created_at',
+      'users.firstname',
+      'users.lastname',
+      'users.email as customer_email',
+      'stores.name as store_name'
+    )
+    .leftJoin('users', 'customer_orders.cust_id', 'users.id')
+    .leftJoin('stores', 'customer_orders.store_id', 'stores.id')
+    .orderBy('customer_orders.created_at', 'desc');
+
+  const rows = orders.map((order) => ({
+    order_no: order.order_no,
+    customer_name: `${order.firstname || ''} ${order.lastname || ''}`.trim(),
+    customer_email: order.customer_email || '',
+    store_name: order.store_name || '',
+    status: order.status || '',
+    payment_status: order.payment_status || '',
+    payment_method: order.payment_method || '',
+    total_amount_inr: formatCurrency(order.total_amount),
+    created_at: formatDateTime(order.created_at),
+  }));
+
+  const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+
+  return {
+    title: 'Customer Orders Detail Report',
+    filename: `customer-orders-${getCurrentStamp()}`,
+    rows,
+    summaryLines: [
+      `Generated on: ${formatDateTime(new Date())}`,
+      `Total orders: ${orders.length}`,
+      `Aggregate order value: INR ${formatCurrency(totalRevenue)}`,
+    ],
+  };
+}
+
+async function buildTransactionalTrafficReport() {
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - 30);
+
+  const orders = await db('customer_orders')
+    .select('order_no', 'status', 'payment_status', 'total_amount', 'created_at')
+    .where('created_at', '>=', cutoff)
+    .orderBy('created_at', 'asc');
+
+  const buckets = new Map();
+
+  for (const order of orders) {
+    const bucket = formatDateOnly(order.created_at);
+    if (!bucket) continue;
+
+    if (!buckets.has(bucket)) {
+      buckets.set(bucket, {
+        date: bucket,
+        total_orders: 0,
+        paid_orders: 0,
+        cancelled_orders: 0,
+        gross_amount_inr: '0.00',
+      });
+    }
+
+    const row = buckets.get(bucket);
+    row.total_orders += 1;
+    if (order.payment_status === 'paid') row.paid_orders += 1;
+    if (order.status === 'cancelled') row.cancelled_orders += 1;
+    row.gross_amount_inr = formatCurrency(Number(row.gross_amount_inr) + Number(order.total_amount || 0));
+  }
+
+  const rows = Array.from(buckets.values()).sort((a, b) => a.date.localeCompare(b.date));
+  const paidOrders = orders.filter((order) => order.payment_status === 'paid').length;
+  const grossAmount = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+
+  return {
+    title: 'Transactional Traffic Report',
+    filename: `transactional-traffic-${getCurrentStamp()}`,
+    rows,
+    summaryLines: [
+      `Generated on: ${formatDateTime(new Date())}`,
+      `Window: last 30 days`,
+      `Transactions captured: ${orders.length}`,
+      `Paid transactions: ${paidOrders}`,
+      `Gross order value: INR ${formatCurrency(grossAmount)}`,
+    ],
+  };
+}
+
+async function buildOrdersSummaryReport() {
+  const customerOrders = await db('customer_orders')
+    .select('status', 'payment_status', 'total_amount');
+  const supplyOrders = await db('supply_orders')
+    .select('status', 'total_amount');
+
+  const rows = [
+    {
+      channel: 'Customer Orders',
+      total_orders: customerOrders.length,
+      completed_orders: customerOrders.filter((order) => order.status === 'completed').length,
+      cancelled_orders: customerOrders.filter((order) => order.status === 'cancelled').length,
+      paid_orders: customerOrders.filter((order) => order.payment_status === 'paid').length,
+      total_value_inr: formatCurrency(customerOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)),
+    },
+    {
+      channel: 'Supply Orders',
+      total_orders: supplyOrders.length,
+      completed_orders: supplyOrders.filter((order) => order.status === 'received').length,
+      cancelled_orders: supplyOrders.filter((order) => order.status === 'cancelled').length,
+      paid_orders: '',
+      total_value_inr: formatCurrency(supplyOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)),
+    },
+  ];
+
+  return {
+    title: 'Orders Summary Report',
+    filename: `orders-summary-${getCurrentStamp()}`,
+    rows,
+    summaryLines: [
+      `Generated on: ${formatDateTime(new Date())}`,
+      `Customer channels covered: ${customerOrders.length} orders`,
+      `Supply channels covered: ${supplyOrders.length} orders`,
+    ],
+  };
+}
+
+async function buildSupplierReport() {
+  const suppliers = await db('suppliers')
+    .select('id', 'name', 'email', 'phone', 'rating', 'is_active', 'created_at')
+    .orderBy('created_at', 'desc');
+
+  const orderStatsRows = await db('supply_orders')
+    .select('supplier_id')
+    .count({ total_orders: 'id' })
+    .sum({ total_order_value: 'total_amount' })
+    .groupBy('supplier_id');
+
+  const receivedStatsRows = await db('supply_orders')
+    .select('supplier_id')
+    .count({ received_orders: 'id' })
+    .where('status', 'received')
+    .groupBy('supplier_id');
+
+  const paymentStatsRows = await db('supply_payments')
+    .select('supplier_id')
+    .sum({ payments_received: 'amount' })
+    .groupBy('supplier_id');
+
+  const orderStats = new Map(orderStatsRows.map((row) => [Number(row.supplier_id), row]));
+  const receivedStats = new Map(receivedStatsRows.map((row) => [Number(row.supplier_id), row]));
+  const paymentStats = new Map(paymentStatsRows.map((row) => [Number(row.supplier_id), row]));
+
+  const rows = suppliers.map((supplier) => {
+    const supplierOrders = orderStats.get(Number(supplier.id)) || {};
+    const receivedOrders = receivedStats.get(Number(supplier.id)) || {};
+    const payments = paymentStats.get(Number(supplier.id)) || {};
+
+    return {
+      supplier_id: supplier.id,
+      supplier_name: supplier.name || '',
+      email: supplier.email || '',
+      phone: supplier.phone || '',
+      rating: supplier.rating ?? '',
+      status: supplier.is_active ? 'Active' : 'Inactive',
+      total_orders: Number(supplierOrders.total_orders || 0),
+      received_orders: Number(receivedOrders.received_orders || 0),
+      total_order_value_inr: formatCurrency(supplierOrders.total_order_value),
+      payments_received_inr: formatCurrency(payments.payments_received),
+      created_at: formatDateTime(supplier.created_at),
+    };
+  });
+
+  return {
+    title: 'Supplier Report',
+    filename: `suppliers-${getCurrentStamp()}`,
+    rows,
+    summaryLines: [
+      `Generated on: ${formatDateTime(new Date())}`,
+      `Suppliers covered: ${suppliers.length}`,
+      `Active suppliers: ${suppliers.filter((supplier) => supplier.is_active).length}`,
+    ],
+  };
+}
+
+async function buildExportPayload(report, interval) {
+  if (report === 'signup_growth') return buildSignupGrowthReport(interval);
+  if (report === 'orders_details') return buildCustomerOrdersReport();
+  if (report === 'transactional_traffic') return buildTransactionalTrafficReport();
+  if (report === 'orders_report') return buildOrdersSummaryReport();
+  if (report === 'supplier_report') return buildSupplierReport();
+  return buildUsersListReport();
+}
+
+function normalizeAnalyticsDate(value, fallback) {
+  const date = value ? new Date(value) : new Date(fallback);
+  if (Number.isNaN(date.getTime())) return new Date(fallback);
+  return date;
+}
+
+function startOfDay(date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function endOfDay(date) {
+  const copy = new Date(date);
+  copy.setHours(23, 59, 59, 999);
+  return copy;
+}
+
+function subtractDays(date, days) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() - days);
+  return copy;
+}
+
+function subtractYears(date, years) {
+  const copy = new Date(date);
+  copy.setFullYear(copy.getFullYear() - years);
+  return copy;
+}
+
+function parseAnalyticsFilters(query = {}) {
+  const allowedRanges = new Set(['7d', '30d', '90d', '365d', 'custom']);
+  const allowedIntervals = new Set(['day', 'week', 'month']);
+  const today = new Date();
+
+  const range = allowedRanges.has(query.range) ? query.range : '30d';
+  const interval = allowedIntervals.has(query.interval) ? query.interval : 'day';
+  const storeId = query.store_id ? Number(query.store_id) : null;
+
+  let endDate = endOfDay(today);
+  let startDate = startOfDay(subtractDays(today, 29));
+
+  if (range === '7d') startDate = startOfDay(subtractDays(today, 6));
+  if (range === '90d') startDate = startOfDay(subtractDays(today, 89));
+  if (range === '365d') startDate = startOfDay(subtractDays(today, 364));
+
+  if (range === 'custom') {
+    startDate = startOfDay(normalizeAnalyticsDate(query.start_date, subtractDays(today, 29)));
+    endDate = endOfDay(normalizeAnalyticsDate(query.end_date, today));
+
+    if (startDate > endDate) {
+      const temp = startDate;
+      startDate = endDate;
+      endDate = temp;
+    }
+  }
+
+  const durationDays = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000) + 1);
+  const previousEndDate = endOfDay(subtractDays(startDate, 1));
+  const previousStartDate = startOfDay(subtractDays(previousEndDate, durationDays - 1));
+
+  return {
+    range,
+    interval,
+    storeId: Number.isFinite(storeId) && storeId > 0 ? storeId : null,
+    startDate,
+    endDate,
+    previousStartDate,
+    previousEndDate,
+  };
+}
+
+function settledValue(result, fallback, warnings, label) {
+  if (result.status === 'fulfilled') return result.value;
+  warnings.push(`${label} unavailable`);
+  console.error(`analytics section failed: ${label}`, result.reason);
+  return fallback;
+}
+
+function sumValues(items, selector) {
+  return items.reduce((sum, item) => sum + Number(selector(item) || 0), 0);
+}
+
+function percentage(numerator, denominator) {
+  if (!denominator) return 0;
+  return Number(((numerator / denominator) * 100).toFixed(1));
+}
+
+function growthPct(current, previous) {
+  if (!previous && !current) return 0;
+  if (!previous) return 100;
+  return Number((((current - previous) / previous) * 100).toFixed(1));
+}
+
+function buildBucketSeries(items, interval, createInitialValue, applyItem) {
+  const buckets = new Map();
+
+  for (const item of items) {
+    const key = getIntervalBucketKey(item.created_at, interval);
+    if (!key) continue;
+
+    if (!buckets.has(key)) {
+      buckets.set(key, { bucket: key, ...createInitialValue() });
+    }
+
+    applyItem(buckets.get(key), item);
+  }
+
+  return Array.from(buckets.values()).sort((a, b) => a.bucket.localeCompare(b.bucket));
+}
+
 function normalizeImages(images) {
   if (!images) return [];
 
@@ -429,6 +984,613 @@ exports.getUsers = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" })
   }
 }
+
+exports.exportReport = async (req, res) => {
+  try {
+    const report = req.query.report || 'users_list';
+    const format = String(req.query.format || 'csv').toLowerCase();
+    const interval = String(req.query.interval || 'month').toLowerCase();
+
+    const allowedReports = new Set([
+      'users_list',
+      'signup_growth',
+      'orders_details',
+      'transactional_traffic',
+      'orders_report',
+      'supplier_report',
+    ]);
+    const allowedFormats = new Set(['csv', 'pdf']);
+    const allowedIntervals = new Set(['year', 'month', 'week', 'day']);
+
+    if (!allowedReports.has(report)) {
+      return res.status(400).json({ message: 'Invalid report selection' });
+    }
+    if (!allowedFormats.has(format)) {
+      return res.status(400).json({ message: 'Invalid export format' });
+    }
+    if (!allowedIntervals.has(interval)) {
+      return res.status(400).json({ message: 'Invalid interval selection' });
+    }
+
+    const payload = await buildExportPayload(report, interval);
+
+    if (format === 'pdf') {
+      const pdfLines = rowsToPdfLines(payload.rows);
+      const pdfBuffer = createPdfBuffer(payload.title, payload.summaryLines, pdfLines);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${payload.filename}.pdf"`);
+      return res.send(pdfBuffer);
+    }
+
+    const csvBuffer = toCsv(payload.rows);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${payload.filename}.csv"`);
+    return res.send(csvBuffer);
+  } catch (err) {
+    console.error('export report error', err);
+    return res.status(500).json({ message: 'Failed to export report' });
+  }
+}
+
+exports.getAnalytics = async (req, res) => {
+  try {
+    const filters = parseAnalyticsFilters(req.query);
+
+    const buildCustomerOrdersQuery = (startDate, endDate) => {
+      const query = db('customer_orders')
+        .select('id', 'cust_id', 'store_id', 'status', 'payment_status', 'payment_method', 'total_amount', 'created_at')
+        .whereBetween('created_at', [startDate, endDate]);
+
+      if (filters.storeId) query.where('store_id', filters.storeId);
+      return query;
+    };
+
+    const buildSupplyOrdersQuery = (startDate, endDate) => {
+      const query = db('supply_orders')
+        .select('id', 'store_id', 'status', 'total_amount', 'created_at')
+        .whereBetween('created_at', [startDate, endDate]);
+
+      if (filters.storeId) query.where('store_id', filters.storeId);
+      return query;
+    };
+
+    const buildSupplyPaymentsQuery = (startDate, endDate) => {
+      const query = db('supply_payments')
+        .join('supply_orders', 'supply_payments.supply_order_id', 'supply_orders.id')
+        .select('supply_payments.amount', 'supply_payments.created_at')
+        .whereBetween('supply_payments.created_at', [startDate, endDate]);
+
+      if (filters.storeId) query.where('supply_orders.store_id', filters.storeId);
+      return query;
+    };
+
+    const buildOrderItemsQuery = (startDate, endDate) => {
+      const query = db('customer_order_items')
+        .join('customer_orders', 'customer_order_items.customer_order_id', 'customer_orders.id')
+        .leftJoin('products', 'customer_order_items.product_id', 'products.id')
+        .select(
+          'customer_order_items.product_id',
+          'customer_order_items.qty',
+          'customer_order_items.total_amount',
+          'customer_order_items.unit_price',
+          'products.name as product_name',
+          'products.cost_price as product_cost',
+          'customer_orders.status',
+          'customer_orders.payment_status',
+          'customer_orders.store_id',
+          'customer_orders.created_at'
+        )
+        .whereBetween('customer_orders.created_at', [startDate, endDate]);
+
+      if (filters.storeId) query.where('customer_orders.store_id', filters.storeId);
+      return query;
+    };
+
+    const [
+      currentCustomerOrdersResult,
+      previousCustomerOrdersResult,
+      currentSupplyOrdersResult,
+      previousSupplyOrdersResult,
+      currentSupplyPaymentsResult,
+      currentOrderItemsResult,
+      currentSignupsResult,
+      previousSignupsResult,
+      totalCustomerCountResult,
+      totalSupplierCountResult,
+      storesResult,
+    ] = await Promise.allSettled([
+      buildCustomerOrdersQuery(filters.startDate, filters.endDate),
+      buildCustomerOrdersQuery(filters.previousStartDate, filters.previousEndDate),
+      buildSupplyOrdersQuery(filters.startDate, filters.endDate),
+      buildSupplyOrdersQuery(filters.previousStartDate, filters.previousEndDate),
+      buildSupplyPaymentsQuery(filters.startDate, filters.endDate),
+      buildOrderItemsQuery(filters.startDate, filters.endDate),
+      db('users')
+        .select('id', 'role', 'created_at')
+        .whereNot('role', 'admin')
+        .whereBetween('created_at', [filters.startDate, filters.endDate]),
+      db('users')
+        .select('id', 'role', 'created_at')
+        .whereNot('role', 'admin')
+        .whereBetween('created_at', [filters.previousStartDate, filters.previousEndDate]),
+      db('users').where('role', 'customer').count({ count: 'id' }).first(),
+      db('suppliers').count({ count: 'id' }).first(),
+      db('stores').select('id', 'name', 'is_active', 'created_at').orderBy('name', 'asc'),
+    ]);
+
+    const warnings = [];
+    const currentCustomerOrders = settledValue(currentCustomerOrdersResult, [], warnings, 'customer order analytics');
+    const previousCustomerOrders = settledValue(previousCustomerOrdersResult, [], warnings, 'previous customer order analytics');
+    const currentSupplyOrders = settledValue(currentSupplyOrdersResult, [], warnings, 'supply order analytics');
+    const previousSupplyOrders = settledValue(previousSupplyOrdersResult, [], warnings, 'previous supply order analytics');
+    const currentSupplyPayments = settledValue(currentSupplyPaymentsResult, [], warnings, 'supply payment analytics');
+    const currentOrderItems = settledValue(currentOrderItemsResult, [], warnings, 'product performance analytics');
+    const currentSignups = settledValue(currentSignupsResult, [], warnings, 'signup analytics');
+    const previousSignups = settledValue(previousSignupsResult, [], warnings, 'previous signup analytics');
+    const totalCustomerCount = normalizeCount(settledValue(totalCustomerCountResult, { count: 0 }, warnings, 'customer totals'));
+    const totalSupplierCount = normalizeCount(settledValue(totalSupplierCountResult, { count: 0 }, warnings, 'supplier totals'));
+    const stores = settledValue(storesResult, [], warnings, 'store analytics');
+
+    const validCustomerOrders = currentCustomerOrders.filter((order) => order.status !== 'cancelled');
+    const paidCustomerOrders = validCustomerOrders.filter((order) => order.payment_status === 'paid');
+    const completedCustomerOrders = validCustomerOrders.filter((order) => order.status === 'completed');
+    const validSupplyOrders = currentSupplyOrders.filter((order) => order.status !== 'cancelled');
+    const receivedSupplyOrders = validSupplyOrders.filter((order) => order.status === 'received');
+
+    const previousValidCustomerOrders = previousCustomerOrders.filter((order) => order.status !== 'cancelled');
+    const previousValidSupplyOrders = previousSupplyOrders.filter((order) => order.status !== 'cancelled');
+
+    const grossRevenue = sumValues(validCustomerOrders, (order) => order.total_amount);
+    const paidRevenue = sumValues(paidCustomerOrders, (order) => order.total_amount);
+    const procurementSpend = sumValues(validSupplyOrders, (order) => order.total_amount);
+    const supplierPayments = sumValues(currentSupplyPayments, (payment) => payment.amount);
+    const previousGrossRevenue = sumValues(previousValidCustomerOrders, (order) => order.total_amount);
+    const previousOrderCount = previousValidCustomerOrders.length;
+
+    const paidOrderItems = currentOrderItems.filter(
+      (item) => item.status !== 'cancelled' && item.payment_status === 'paid'
+    );
+    const cogs = sumValues(paidOrderItems, (item) => {
+      const costPrice = Number(item.product_cost || item.unit_price || 0);
+      return Number(item.qty || 0) * costPrice;
+    });
+    const grossProfit = paidRevenue - cogs;
+    const netProfit = grossProfit - supplierPayments;
+
+    const activeCustomerIds = new Set(validCustomerOrders.map((order) => order.cust_id).filter(Boolean));
+    const activeStoreIds = new Set(
+      [...currentCustomerOrders, ...currentSupplyOrders]
+        .map((entry) => entry.store_id)
+        .filter(Boolean)
+    );
+
+    const storeMap = new Map(stores.map((store) => [Number(store.id), store]));
+
+    const customerTrend = buildBucketSeries(
+      currentCustomerOrders,
+      filters.interval,
+      () => ({ revenue: 0, paidRevenue: 0, orders: 0, completedOrders: 0 }),
+      (bucket, order) => {
+        bucket.orders += 1;
+        if (order.status !== 'cancelled') bucket.revenue += Number(order.total_amount || 0);
+        if (order.payment_status === 'paid' && order.status !== 'cancelled') bucket.paidRevenue += Number(order.total_amount || 0);
+        if (order.status === 'completed') bucket.completedOrders += 1;
+      }
+    );
+
+    const supplyTrend = buildBucketSeries(
+      currentSupplyOrders,
+      filters.interval,
+      () => ({ spend: 0, orders: 0, receivedOrders: 0 }),
+      (bucket, order) => {
+        bucket.orders += 1;
+        if (order.status !== 'cancelled') bucket.spend += Number(order.total_amount || 0);
+        if (order.status === 'received') bucket.receivedOrders += 1;
+      }
+    );
+
+    const signupTrend = buildBucketSeries(
+      currentSignups,
+      filters.interval,
+      () => ({ total: 0, customers: 0, suppliers: 0, storeManagers: 0 }),
+      (bucket, user) => {
+        bucket.total += 1;
+        if (user.role === 'customer') bucket.customers += 1;
+        if (user.role === 'supplier') bucket.suppliers += 1;
+        if (user.role === 'store_manager') bucket.storeManagers += 1;
+      }
+    );
+
+    const storePerformanceMap = new Map();
+
+    for (const order of validCustomerOrders) {
+      const storeId = Number(order.store_id || 0);
+      if (!storeId) continue;
+      if (!storePerformanceMap.has(storeId)) {
+        storePerformanceMap.set(storeId, {
+          store_id: storeId,
+          store_name: storeMap.get(storeId)?.name || `Store #${storeId}`,
+          customer_orders: 0,
+          paid_revenue: 0,
+          gross_revenue: 0,
+          supply_orders: 0,
+          procurement_spend: 0,
+          active_customers: new Set(),
+        });
+      }
+
+      const row = storePerformanceMap.get(storeId);
+      row.customer_orders += 1;
+      row.gross_revenue += Number(order.total_amount || 0);
+      if (order.payment_status === 'paid') row.paid_revenue += Number(order.total_amount || 0);
+      if (order.cust_id) row.active_customers.add(order.cust_id);
+    }
+
+    for (const order of validSupplyOrders) {
+      const storeId = Number(order.store_id || 0);
+      if (!storeId) continue;
+      if (!storePerformanceMap.has(storeId)) {
+        storePerformanceMap.set(storeId, {
+          store_id: storeId,
+          store_name: storeMap.get(storeId)?.name || `Store #${storeId}`,
+          customer_orders: 0,
+          paid_revenue: 0,
+          gross_revenue: 0,
+          supply_orders: 0,
+          procurement_spend: 0,
+          active_customers: new Set(),
+        });
+      }
+
+      const row = storePerformanceMap.get(storeId);
+      row.supply_orders += 1;
+      row.procurement_spend += Number(order.total_amount || 0);
+    }
+
+    const storePerformance = Array.from(storePerformanceMap.values())
+      .map((row) => ({
+        ...row,
+        paid_revenue: Number(row.paid_revenue.toFixed(2)),
+        gross_revenue: Number(row.gross_revenue.toFixed(2)),
+        procurement_spend: Number(row.procurement_spend.toFixed(2)),
+        active_customers: row.active_customers.size,
+      }))
+      .sort((a, b) => (b.paid_revenue + b.procurement_spend) - (a.paid_revenue + a.procurement_spend))
+      .slice(0, 8);
+
+    const statusBreakdownMap = new Map();
+    for (const order of currentCustomerOrders) {
+      const key = order.status || 'unknown';
+      statusBreakdownMap.set(key, (statusBreakdownMap.get(key) || 0) + 1);
+    }
+    const statusBreakdown = Array.from(statusBreakdownMap.entries()).map(([status, count]) => ({ status, count }));
+
+    const paymentMixMap = new Map();
+    for (const order of currentCustomerOrders) {
+      const key = order.payment_method || 'unknown';
+      paymentMixMap.set(key, (paymentMixMap.get(key) || 0) + 1);
+    }
+    const paymentMix = Array.from(paymentMixMap.entries()).map(([method, count]) => ({ method, count }));
+
+    const productPerformanceMap = new Map();
+    for (const item of currentOrderItems) {
+      if (item.status === 'cancelled') continue;
+      const key = Number(item.product_id || 0);
+      if (!key) continue;
+
+      if (!productPerformanceMap.has(key)) {
+        productPerformanceMap.set(key, {
+          product_id: key,
+          product_name: item.product_name || `Product #${key}`,
+          units_sold: 0,
+          revenue: 0,
+        });
+      }
+
+      const row = productPerformanceMap.get(key);
+      row.units_sold += Number(item.qty || 0);
+      row.revenue += Number(item.total_amount || 0);
+    }
+
+    const topProducts = Array.from(productPerformanceMap.values())
+      .map((row) => ({
+        ...row,
+        revenue: Number(row.revenue.toFixed(2)),
+      }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 6);
+
+    const currentSignupCount = currentSignups.length;
+    const previousSignupCount = previousSignups.length;
+
+    return res.json({
+      filters: {
+        range: filters.range,
+        interval: filters.interval,
+        store_id: filters.storeId,
+        start_date: formatDateOnly(filters.startDate),
+        end_date: formatDateOnly(filters.endDate),
+      },
+      warnings,
+      stores,
+      kpis: {
+        grossRevenue: Number(grossRevenue.toFixed(2)),
+        paidRevenue: Number(paidRevenue.toFixed(2)),
+        costOfGoodsSold: Number(cogs.toFixed(2)),
+        grossProfit: Number(grossProfit.toFixed(2)),
+        procurementSpend: Number(procurementSpend.toFixed(2)),
+        supplierPayments: Number(supplierPayments.toFixed(2)),
+        netRevenue: Number(netProfit.toFixed(2)),
+        grossProfitMargin: paidRevenue ? Number(((grossProfit / paidRevenue) * 100).toFixed(1)) : 0,
+        netProfitMargin: paidRevenue ? Number(((netProfit / paidRevenue) * 100).toFixed(1)) : 0,
+        totalCustomerOrders: currentCustomerOrders.length,
+        completedCustomerOrders: completedCustomerOrders.length,
+        totalSupplyOrders: currentSupplyOrders.length,
+        receivedSupplyOrders: receivedSupplyOrders.length,
+        averageOrderValue: Number((validCustomerOrders.length ? grossRevenue / validCustomerOrders.length : 0).toFixed(2)),
+        completionRate: percentage(completedCustomerOrders.length, currentCustomerOrders.length),
+        paidRate: percentage(paidCustomerOrders.length, currentCustomerOrders.length),
+        activeCustomers: activeCustomerIds.size,
+        totalCustomers: totalCustomerCount,
+        newCustomers: currentSignups.filter((user) => user.role === 'customer').length,
+        totalSuppliers: totalSupplierCount,
+        newSuppliers: currentSignups.filter((user) => user.role === 'supplier').length,
+        totalStores: stores.length,
+        activeStores: stores.filter((store) => store.is_active).length,
+        storesInScope: filters.storeId ? 1 : activeStoreIds.size,
+        newStores: stores.filter((store) => {
+          const createdAt = new Date(store.created_at);
+          return createdAt >= filters.startDate && createdAt <= filters.endDate;
+        }).length,
+        revenueGrowth: growthPct(grossRevenue, previousGrossRevenue),
+        orderGrowth: growthPct(validCustomerOrders.length, previousOrderCount),
+        signupGrowth: growthPct(currentSignupCount, previousSignupCount),
+        supplyGrowth: growthPct(validSupplyOrders.length, previousValidSupplyOrders.length),
+      },
+      charts: {
+        customerTrend,
+        supplyTrend,
+        signupTrend,
+        storePerformance,
+        statusBreakdown,
+        paymentMix,
+        topProducts,
+      },
+    });
+  } catch (err) {
+    console.error('admin analytics error', err);
+    return res.status(500).json({ message: 'Failed to load analytics dashboard' });
+  }
+}
+
+async function buildFinancialSnapshot(filters) {
+  const paidOrdersQuery = db('customer_orders')
+    .select('id', 'store_id', 'status', 'payment_status', 'total_amount', 'created_at')
+    .whereBetween('created_at', [filters.startDate, filters.endDate])
+    .where('payment_status', 'paid')
+    .whereNot('status', 'cancelled');
+
+  if (filters.storeId) paidOrdersQuery.where('store_id', filters.storeId);
+
+  const paidOrders = await paidOrdersQuery;
+
+  const paidOrderItemsQuery = db('customer_order_items')
+    .join('customer_orders', 'customer_order_items.customer_order_id', 'customer_orders.id')
+    .leftJoin('products', 'customer_order_items.product_id', 'products.id')
+    .select(
+      'customer_order_items.qty',
+      'customer_order_items.total_amount',
+      'customer_order_items.unit_price',
+      'products.cost_price as product_cost',
+      'customer_orders.status',
+      'customer_orders.payment_status',
+      'customer_orders.store_id',
+      'customer_orders.created_at'
+    )
+    .whereBetween('customer_orders.created_at', [filters.startDate, filters.endDate])
+    .where('customer_orders.payment_status', 'paid')
+    .whereNot('customer_orders.status', 'cancelled');
+
+  if (filters.storeId) paidOrderItemsQuery.where('customer_orders.store_id', filters.storeId);
+
+  const paidOrderItems = await paidOrderItemsQuery;
+
+  const supplyOrdersQuery = db('supply_orders')
+    .select('id', 'store_id', 'status', 'total_amount', 'created_at')
+    .whereBetween('created_at', [filters.startDate, filters.endDate])
+    .whereNot('status', 'cancelled');
+
+  if (filters.storeId) supplyOrdersQuery.where('store_id', filters.storeId);
+  const supplyOrders = await supplyOrdersQuery;
+
+  const supplierPaymentsQuery = db('supply_payments')
+    .join('supply_orders', 'supply_payments.supply_order_id', 'supply_orders.id')
+    .select('supply_payments.amount', 'supply_orders.store_id')
+    .whereBetween('supply_payments.created_at', [filters.startDate, filters.endDate]);
+
+  if (filters.storeId) supplierPaymentsQuery.where('supply_orders.store_id', filters.storeId);
+  const supplierPayments = await supplierPaymentsQuery;
+
+  const grossRevenue = sumValues(paidOrders, (order) => order.total_amount);
+  const cogs = sumValues(paidOrderItems, (item) => {
+    const costPrice = Number(item.product_cost || item.unit_price || 0);
+    return Number(item.qty || 0) * costPrice;
+  });
+  const grossProfit = grossRevenue - cogs;
+  const supplierPaymentTotal = sumValues(supplierPayments, (payment) => payment.amount);
+  const procurementSpend = sumValues(supplyOrders, (order) => order.total_amount);
+  const netProfit = grossProfit - supplierPaymentTotal;
+
+  return {
+    total_revenue: Number(grossRevenue.toFixed(2)),
+    total_orders: paidOrders.length,
+    total_cost_of_goods_sold: Number(cogs.toFixed(2)),
+    gross_profit: Number(grossProfit.toFixed(2)),
+    gross_profit_margin: grossRevenue ? Number(((grossProfit / grossRevenue) * 100).toFixed(1)) : 0,
+    total_procurement_spend: Number(procurementSpend.toFixed(2)),
+    total_supplier_payments: Number(supplierPaymentTotal.toFixed(2)),
+    net_profit: Number(netProfit.toFixed(2)),
+    net_profit_margin: grossRevenue ? Number(((netProfit / grossRevenue) * 100).toFixed(1)) : 0,
+    average_order_value: paidOrders.length ? Number((grossRevenue / paidOrders.length).toFixed(2)) : 0,
+    completed_order_count: paidOrders.filter((order) => order.status === 'completed').length,
+  };
+}
+
+async function buildProfitWaterfallData(filters) {
+  const snapshot = await buildFinancialSnapshot(filters);
+  return {
+    breakdown: [
+      { label: 'Paid Customer Revenue', amount: snapshot.total_revenue },
+      { label: 'Cost of Goods Sold (COGS)', amount: -snapshot.total_cost_of_goods_sold },
+      { label: 'Gross Profit', amount: snapshot.gross_profit },
+      { label: 'Supplier Payments', amount: -snapshot.total_supplier_payments },
+      { label: 'Net Profit', amount: snapshot.net_profit },
+    ],
+    net_profit: snapshot.net_profit,
+  };
+}
+
+async function buildExpensesBreakdownData(filters) {
+  const snapshot = await buildFinancialSnapshot(filters);
+  return [
+    { category: 'Cost of Goods Sold', amount: snapshot.total_cost_of_goods_sold },
+    { category: 'Supplier Payments', amount: snapshot.total_supplier_payments },
+    { category: 'Procurement Spend', amount: snapshot.total_procurement_spend },
+  ];
+}
+
+async function buildYoYComparisonData(filters) {
+  const currentMetrics = await buildFinancialSnapshot(filters);
+  const lastYearFilters = {
+    ...filters,
+    startDate: subtractYears(filters.startDate, 1),
+    endDate: subtractYears(filters.endDate, 1),
+  };
+  const previousMetrics = await buildFinancialSnapshot(lastYearFilters);
+
+  return {
+    comparison: [
+      {
+        metric: 'Gross Revenue',
+        current: currentMetrics.total_revenue,
+        previous: previousMetrics.total_revenue,
+        growth_pct: growthPct(currentMetrics.total_revenue, previousMetrics.total_revenue),
+      },
+      {
+        metric: 'Gross Profit',
+        current: currentMetrics.gross_profit,
+        previous: previousMetrics.gross_profit,
+        growth_pct: growthPct(currentMetrics.gross_profit, previousMetrics.gross_profit),
+      },
+      {
+        metric: 'Net Profit',
+        current: currentMetrics.net_profit,
+        previous: previousMetrics.net_profit,
+        growth_pct: growthPct(currentMetrics.net_profit, previousMetrics.net_profit),
+      },
+      {
+        metric: 'Average Order Value',
+        current: currentMetrics.average_order_value,
+        previous: previousMetrics.average_order_value,
+        growth_pct: growthPct(currentMetrics.average_order_value, previousMetrics.average_order_value),
+      },
+    ],
+  };
+}
+
+function buildFinancialAnomaliesData(metrics) {
+  const anomalies = [];
+
+  if (metrics.total_revenue === 0 && metrics.total_orders > 0) {
+    anomalies.push({
+      title: 'Orders with no revenue',
+      description: 'Paid order count exists without collected revenue in the selected period.',
+      severity: 'warning',
+    });
+  }
+
+  if (metrics.gross_profit_margin < 10 && metrics.total_revenue > 0) {
+    anomalies.push({
+      title: 'Low gross profit margin',
+      description: `Gross margin is ${metrics.gross_profit_margin}% which is below normal retail benchmarks. Review pricing or cost structure.`,
+      severity: 'warning',
+    });
+  }
+
+  if (metrics.net_profit < 0) {
+    anomalies.push({
+      title: 'Negative net profit',
+      description: 'Cost of goods sold plus supplier payments exceed collected revenue. Profitability is negative.',
+      severity: 'critical',
+    });
+  }
+
+  if (metrics.total_supplier_payments > metrics.total_revenue && metrics.total_revenue > 0) {
+    anomalies.push({
+      title: 'Supplier payments exceed revenue',
+      description: 'Cash outflows to suppliers are higher than revenue for the selected period.',
+      severity: 'critical',
+    });
+  }
+
+  return { anomalies };
+}
+
+exports.getFinancialMetrics = async (req, res) => {
+  try {
+    const filters = parseAnalyticsFilters(req.query);
+    const metrics = await buildFinancialSnapshot(filters);
+    return res.json(metrics);
+  } catch (err) {
+    console.error('admin financial metrics error', err);
+    return res.status(500).json({ message: 'Failed to load financial metrics' });
+  }
+};
+
+exports.getProfitWaterfall = async (req, res) => {
+  try {
+    const filters = parseAnalyticsFilters(req.query);
+    const data = await buildProfitWaterfallData(filters);
+    return res.json(data);
+  } catch (err) {
+    console.error('admin profit waterfall error', err);
+    return res.status(500).json({ message: 'Failed to load profit waterfall' });
+  }
+};
+
+exports.getExpenseBreakdown = async (req, res) => {
+  try {
+    const filters = parseAnalyticsFilters(req.query);
+    const data = await buildExpensesBreakdownData(filters);
+    return res.json(data);
+  } catch (err) {
+    console.error('admin expense breakdown error', err);
+    return res.status(500).json({ message: 'Failed to load expense breakdown' });
+  }
+};
+
+exports.getYoyComparison = async (req, res) => {
+  try {
+    const filters = parseAnalyticsFilters(req.query);
+    const data = await buildYoYComparisonData(filters);
+    return res.json(data);
+  } catch (err) {
+    console.error('admin yoy comparison error', err);
+    return res.status(500).json({ message: 'Failed to load year-over-year comparison' });
+  }
+};
+
+exports.getFinancialAnomalies = async (req, res) => {
+  try {
+    const filters = parseAnalyticsFilters(req.query);
+    const metrics = await buildFinancialSnapshot(filters);
+    const data = buildFinancialAnomaliesData(metrics);
+    return res.json(data);
+  } catch (err) {
+    console.error('admin financial anomalies error', err);
+    return res.status(500).json({ message: 'Failed to load financial anomalies' });
+  }
+};
 
 exports.getFeedbacks = async (req, res) => {
   try {
