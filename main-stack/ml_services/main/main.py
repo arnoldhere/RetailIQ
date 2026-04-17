@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 from app.config import settings
 from app.recommender_pipeline import recommendation_pipeline
 from app.demand_forecasting import demand_forecasting_pipeline
@@ -9,6 +10,8 @@ from app.schemas import (
     DemandForecastRequest,
     DemandForecastResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
@@ -90,6 +93,10 @@ def forecast_demand(payload: DemandForecastRequest):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover - protects the API boundary
+        logger.exception(
+            "Failed to generate demand forecast for product %s",
+            payload.product_id,
+        )
         raise HTTPException(
             status_code=500, detail="Failed to generate demand forecast"
         ) from exc

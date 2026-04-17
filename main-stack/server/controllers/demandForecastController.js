@@ -1,6 +1,18 @@
 const db = require('../config/db');
 const mlService = require('../services/mlService');
 
+function buildForecastFallback(productId, daysAhead, historicalData, errorMessage) {
+  return {
+    product_id: productId,
+    forecast_next_7_days: new Array(Math.min(daysAhead, 7)).fill(0),
+    algorithm_used: 'service_unavailable',
+    confidence_score: 0.0,
+    historical_data_points: historicalData.length,
+    model_source: 'fallback',
+    error_message: errorMessage,
+  };
+}
+
 async function getDemandForecast(req, res) {
   try {
     const { productId } = req.params;
@@ -68,16 +80,19 @@ async function getDemandForecast(req, res) {
         historicalData
       );
     } catch (mlError) {
-      // If ML service fails, return a safe fallback response
-      console.warn(`ML service failed for product ${productIdNum}:`, mlError.message);
+      console.warn(`ML service failed for product ${productIdNum}:`, {
+        message: mlError.message,
+        code: mlError.code,
+        status: mlError.status,
+        retryable: mlError.retryable,
+      });
 
-      forecastResult = {
-        product_id: productIdNum,
-        forecast_next_7_days: new Array(Math.min(daysAheadNum, 7)).fill(0),
-        algorithm_used: 'service_unavailable',
-        confidence_score: 0.0,
-        historical_data_points: historicalData.length,
-      };
+      forecastResult = buildForecastFallback(
+        productIdNum,
+        daysAheadNum,
+        historicalData,
+        mlError.message
+      );
     }
 
     // Return successful response
@@ -236,14 +251,13 @@ async function getDemandForecastForProduct(productId, daysAhead, historicalDays)
   try {
     return await mlService.getDemandForecast(productId, daysAhead, historicalDays, historicalData);
   } catch (mlError) {
-    console.warn(`ML service failed for product ${productId}:`, mlError.message);
-    return {
-      product_id: productId,
-      forecast_next_7_days: new Array(Math.min(daysAhead, 7)).fill(0),
-      algorithm_used: 'service_unavailable',
-      confidence_score: 0.0,
-      historical_data_points: historicalData.length,
-    };
+    console.warn(`ML service failed for product ${productId}:`, {
+      message: mlError.message,
+      code: mlError.code,
+      status: mlError.status,
+      retryable: mlError.retryable,
+    });
+    return buildForecastFallback(productId, daysAhead, historicalData, mlError.message);
   }
 }
 

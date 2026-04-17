@@ -84,3 +84,5 @@ class DemandForecastResponse(BaseModel):
     algorithm_used: str
     confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
     historical_data_points: int
+    model_source: str | None = None
+    error_message: str | None = None

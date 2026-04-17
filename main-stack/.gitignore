@@ -9,3 +9,4 @@ demo.py
 todo.txt
 tasks.txt
 *__pycache__/
+.codex

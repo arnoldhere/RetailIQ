@@ -18,6 +18,7 @@ class Settings:
     """Centralized runtime settings for the FastAPI service."""
 
     model_path: Path = BASE_DIR / "models" / "saved" / "v1_retailiq_lightfm.pkl"
+    demand_forecast_model_dir: Path = BASE_DIR / "models" / "saved" / "demand_forecasting"
     user_map_path: Path = BASE_DIR / "notebooks" / "user_map.json"
     item_map_path: Path = BASE_DIR / "notebooks" / "item_map.json"
     raw_data_dir: Path = BASE_DIR / "data" / "raw_kaggle"
